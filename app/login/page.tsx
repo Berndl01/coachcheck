@@ -49,6 +49,11 @@ function LoginForm() {
           <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Passwort</label>
           <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none" />
+          <div className="text-right mt-2">
+            <Link href="/passwort-vergessen" className="text-xs text-muted hover:text-gold-deep transition">
+              Passwort vergessen?
+            </Link>
+          </div>
         </div>
 
         {error && <div className="text-red-600 text-sm">{error}</div>}

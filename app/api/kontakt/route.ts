@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ungültige E-Mail-Adresse' }, { status: 400 });
   }
 
-  const recipient = process.env.KONTAKT_EMAIL ?? 'hello@humatrix.cc';
+  const recipient = process.env.KONTAKT_EMAIL ?? 'office@humatrix.cc';
 
   const htmlContent = `
     <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto;">

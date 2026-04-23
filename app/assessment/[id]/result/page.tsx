@@ -124,6 +124,16 @@ export default async function ResultPage({
                 <p className="font-editorial italic text-xl leading-[1.5] max-w-[58ch] text-bone-soft">
                   {primary.kernmuster}
                 </p>
+                {productTier >= 2 && (
+                  <div className="mt-6">
+                    <Link
+                      href={`/archetyp/${primary.code}?assessment=${id}`}
+                      className="inline-flex items-center gap-2 px-5 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition text-sm"
+                    >
+                      Deep-Dive lesen <span className="font-mono">→</span>
+                    </Link>
+                  </div>
+                )}
                 {secondary && (
                   <div className="mt-8 pt-8 border-t border-bone/10">
                     <div className="font-mono text-xs uppercase tracking-[0.18em] text-gold mb-2">

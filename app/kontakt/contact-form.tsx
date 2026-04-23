@@ -44,7 +44,7 @@ export function ContactForm({ defaultPlan }: Props) {
         <h2 className="font-display text-3xl tracking-[-0.02em] mb-3">Danke für deine Nachricht.</h2>
         <p className="font-editorial italic text-lg text-muted leading-[1.5] max-w-[45ch] mx-auto">
           Wir melden uns innerhalb von 24 Stunden bei dir. Wenn&apos;s dringend ist, erreichst du uns auch unter{' '}
-          <a href="mailto:hello@humatrix.cc" className="text-gold-deep hover:underline">hello@humatrix.cc</a>.
+          <a href="mailto:office@humatrix.cc" className="text-gold-deep hover:underline">office@humatrix.cc</a>.
         </p>
       </div>
     );

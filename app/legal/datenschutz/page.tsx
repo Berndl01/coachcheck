@@ -25,8 +25,9 @@ export default function DatenschutzPage() {
           <section>
             <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">1. Verantwortlicher</h2>
             <p>
-              Humatrix GmbH · Musteradresse 1 · 6020 Innsbruck, Tirol, Österreich<br />
-              <a href="mailto:hello@humatrix.cc" className="text-gold-deep hover:underline">hello@humatrix.cc</a>
+              Humatrix by Bernhard Lampl · Mag. Bernhard Lampl, PhD<br />
+              Ried 80 · 6363 Westendorf · Tirol, Österreich<br />
+              <a href="mailto:office@humatrix.cc" className="text-gold-deep hover:underline">office@humatrix.cc</a>
             </p>
           </section>
 
@@ -136,7 +137,7 @@ export default function DatenschutzPage() {
             </ul>
             <p className="mt-4">
               Schreib uns dazu jederzeit formlos an{' '}
-              <a href="mailto:privacy@humatrix.cc" className="text-gold-deep hover:underline">privacy@humatrix.cc</a>.
+              <a href="mailto:office@humatrix.cc" className="text-gold-deep hover:underline">office@humatrix.cc</a>.
               Wir antworten in der Regel innerhalb von 7 Tagen.
             </p>
           </section>

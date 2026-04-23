@@ -50,7 +50,7 @@ export async function POST(
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, sport')
+    .select('full_name, sport, training_level, age_group, club_type')
     .eq('id', user.id)
     .single();
 
@@ -289,14 +289,20 @@ export async function POST(
     }
   }
 
-  // Context from assessment
-  const context = (assessment.context_season_phase || assessment.context_team_maturity || assessment.context_conflict_state)
+  // Context from assessment + profile
+  const hasAssessmentContext = !!(assessment.context_season_phase || assessment.context_team_maturity || assessment.context_conflict_state);
+  const hasProfileContext = !!(profile?.training_level || profile?.age_group || profile?.club_type);
+
+  const context = (hasAssessmentContext || hasProfileContext)
     ? {
         seasonPhase: assessment.context_season_phase ?? null,
         teamMaturity: assessment.context_team_maturity ?? null,
         conflictState: assessment.context_conflict_state ?? null,
         ageRange: assessment.context_age_range ?? null,
         notes: assessment.context_notes ?? null,
+        trainingLevel: profile?.training_level ?? null,
+        ageGroup: profile?.age_group ?? null,
+        clubType: profile?.club_type ?? null,
       }
     : null;
 

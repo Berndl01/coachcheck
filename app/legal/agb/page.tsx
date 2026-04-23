@@ -21,9 +21,10 @@ export default function AGBPage() {
           <section>
             <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">§ 1 Geltungsbereich</h2>
             <p>
-              (1) Diese AGB gelten für alle Verträge zwischen der Humatrix GmbH, Innsbruck
-              (im Folgenden „Anbieter") und ihren Kunden (im Folgenden „Kunde") über die Nutzung
-              der Plattform <em>coachcheck.humatrix.cc</em> und der dort angebotenen digitalen Produkte.
+              (1) Diese AGB gelten für alle Verträge zwischen <strong>Humatrix by Bernhard Lampl</strong>,
+              Mag. Bernhard Lampl, PhD, Ried 80, 6363 Westendorf, Tirol, Österreich (im Folgenden „Anbieter")
+              und den Kunden (im Folgenden „Kunde") über die Nutzung der Plattform <em>coachcheck.humatrix.cc</em>
+              und der dort angebotenen digitalen Produkte.
             </p>
             <p className="mt-3">
               (2) Abweichende Bedingungen des Kunden gelten nur, wenn sie ausdrücklich schriftlich
@@ -87,7 +88,7 @@ export default function AGBPage() {
             </div>
             <p>
               Wenn du dein Widerrufsrecht ausüben möchtest, schreib uns an{' '}
-              <a href="mailto:hello@humatrix.cc" className="text-gold-deep hover:underline">hello@humatrix.cc</a>.
+              <a href="mailto:office@humatrix.cc" className="text-gold-deep hover:underline">office@humatrix.cc</a>.
             </p>
           </section>
 
@@ -144,7 +145,7 @@ export default function AGBPage() {
               (1) Es gilt österreichisches Recht unter Ausschluss des UN-Kaufrechts.
             </p>
             <p className="mt-3">
-              (2) Gerichtsstand ist Innsbruck, soweit der Kunde Unternehmer ist. Bei Verbrauchern
+              (2) Gerichtsstand ist Kitzbühel, soweit der Kunde Unternehmer ist. Bei Verbrauchern
               gelten die gesetzlichen Regelungen.
             </p>
             <p className="mt-3">

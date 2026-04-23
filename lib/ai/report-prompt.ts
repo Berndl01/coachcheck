@@ -63,6 +63,9 @@ export type ReportInput = {
     conflictState?: ConflictState | null;
     ageRange?: string | null;
     notes?: string | null;
+    trainingLevel?: string | null;  // amateur_hobby | amateur_ambitioniert | semi_profi | profi
+    ageGroup?: string | null;        // kids_u12 | jugend_u16 | jugend_u18 | erwachsene | gemischt
+    clubType?: string | null;
   } | null;
 
   fremdbild?: {
@@ -225,6 +228,25 @@ ${matLines}
   if (input.context) {
     const c = input.context;
     const lines: string[] = [];
+    if (c.trainingLevel) {
+      const LEVEL_LABELS: Record<string, string> = {
+        amateur_hobby: 'Amateur-Hobby (Freizeit, Spaß-Fokus)',
+        amateur_ambitioniert: 'Ambitionierter Amateur (Liga-Fokus)',
+        semi_profi: 'Semi-Profi / Nachwuchs-Leistungssport',
+        profi: 'Profi-Vollzeit',
+      };
+      lines.push(`- Niveau: ${LEVEL_LABELS[c.trainingLevel] ?? c.trainingLevel}`);
+    }
+    if (c.ageGroup) {
+      const AGE_LABELS: Record<string, string> = {
+        kids_u12: 'Kinder (bis U12)',
+        jugend_u16: 'Jugend U13-U16',
+        jugend_u18: 'Jugend U17-U19',
+        erwachsene: 'Erwachsene',
+        gemischt: 'gemischte Altersgruppen',
+      };
+      lines.push(`- Altersklasse der Spieler: ${AGE_LABELS[c.ageGroup] ?? c.ageGroup}`);
+    }
     if (c.seasonPhase) lines.push(`- Saisonphase: ${SEASON_PHASE_LABELS[c.seasonPhase] ?? c.seasonPhase}`);
     if (c.teamMaturity) lines.push(`- Team-Reife: ${TEAM_MATURITY_LABELS[c.teamMaturity] ?? c.teamMaturity}`);
     if (c.conflictState) lines.push(`- Konfliktlage: ${CONFLICT_STATE_LABELS[c.conflictState] ?? c.conflictState}`);
@@ -236,7 +258,7 @@ ${matLines}
 # AKTUELLER KONTEXT
 ${lines.join('\n')}
 
-→ Wichtig: Derselbe Stil wirkt anders in unterschiedlichen Kontexten. Berücksichtige das in der Interpretation.
+→ Wichtig: Schreibe den Report SPEZIFISCH für dieses Niveau. Ein Amateur-Hobby-Trainer braucht andere Beispiele und einen anderen Ton als ein Profi-Trainer. Die Szenen sollten aus dem echten Alltag dieses Niveaus stammen. Derselbe Stil wirkt in verschiedenen Kontexten unterschiedlich.
 `;
     }
   }
