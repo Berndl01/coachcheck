@@ -43,7 +43,7 @@ export function Footer() {
               <li><a href="/legal/impressum" className="text-bone-soft hover:text-gold transition">Impressum</a></li>
               <li><a href="/legal/datenschutz" className="text-bone-soft hover:text-gold transition">Datenschutz</a></li>
               <li><a href="/legal/agb" className="text-bone-soft hover:text-gold transition">AGB</a></li>
-              <li><a href="mailto:hello@humatrix.cc" className="text-bone-soft hover:text-gold transition">Kontakt</a></li>
+              <li><a href="/kontakt" className="text-bone-soft hover:text-gold transition">Kontakt</a></li>
             </ul>
           </div>
         </div>

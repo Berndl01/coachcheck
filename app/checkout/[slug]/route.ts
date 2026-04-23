@@ -50,6 +50,19 @@ export async function POST(
       },
     ],
     customer_email: user.email,
+    // DSGVO / ECG: ausdrückliche Zustimmung zu AGB & Rechnungsadresse erfassen
+    consent_collection: {
+      terms_of_service: 'required',
+    },
+    custom_text: {
+      terms_of_service_acceptance: {
+        message: 'Ich akzeptiere die [AGB](https://coachcheck.humatrix.cc/legal/agb) und die [Datenschutzerklärung](https://coachcheck.humatrix.cc/legal/datenschutz).',
+      },
+    },
+    // Rechnungsadresse für Rechnungsstellung
+    billing_address_collection: 'required',
+    // Automatische Steuerberechnung kann später aktiviert werden
+    // automatic_tax: { enabled: true },
     metadata: {
       user_id: user.id,
       product_id: product.id.toString(),
