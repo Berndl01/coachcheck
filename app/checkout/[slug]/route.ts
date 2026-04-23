@@ -14,7 +14,6 @@ export async function POST(
     return NextResponse.redirect(new URL(`/login?redirectTo=/checkout/${slug}`, request.url));
   }
 
-  // Load product
   const { data: product, error } = await supabase
     .from('products')
     .select('*')
@@ -25,12 +24,14 @@ export async function POST(
     return NextResponse.json({ error: 'Product not found' }, { status: 404 });
   }
 
-  // For tier 4+5 (TeamCheck, Saison) — send to contact form, not Stripe
+  // tier 4+5 → Kontaktformular statt Stripe
   if (product.tier >= 4) {
     return NextResponse.redirect(new URL(`/kontakt?plan=${slug}`, request.url));
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-02-24.acacia' });
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-02-24.acacia',
+  });
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -61,5 +62,4 @@ export async function POST(
   return NextResponse.redirect(session.url!, { status: 303 });
 }
 
-// Allow GET for convenience (direct link clicks)
 export const GET = POST;

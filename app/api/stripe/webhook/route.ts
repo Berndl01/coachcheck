@@ -2,19 +2,23 @@ import { NextResponse, type NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-02-24.acacia',
+  });
+}
 
 export async function POST(request: NextRequest) {
+  const stripe = getStripe();
   const body = await request.text();
   const sig = request.headers.get('stripe-signature')!;
 
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err: any) {
-    return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'unknown';
+    return NextResponse.json({ error: `Webhook error: ${msg}` }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -28,7 +32,6 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // 1. Create assessment
     const { data: assessment, error: aErr } = await admin
       .from('assessments')
       .insert({
@@ -44,7 +47,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Assessment creation failed' }, { status: 500 });
     }
 
-    // 2. Record purchase
     await admin.from('purchases').insert({
       user_id: userId,
       product_id: parseInt(productId),
@@ -56,8 +58,6 @@ export async function POST(request: NextRequest) {
       status: 'paid',
       paid_at: new Date().toISOString(),
     });
-
-    // TODO: Send confirmation email via Resend
   }
 
   return NextResponse.json({ received: true });
