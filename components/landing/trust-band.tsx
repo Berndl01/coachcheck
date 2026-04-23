@@ -14,7 +14,7 @@ export function TrustBand() {
     },
     {
       num: <>AT<em className="font-editorial italic">·</em></>,
-      lbl: 'Entwickelt in Wien · Humatrix · Mind Club Company',
+      lbl: 'Entwickelt in Tirol · Wissenschaftler × Trainer × Sportler',
     },
   ];
 

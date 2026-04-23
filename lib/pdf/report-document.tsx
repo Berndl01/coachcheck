@@ -525,6 +525,23 @@ export type ReportProps = {
     klarheit: number;
   } | null;
   teamcheckResponseCount?: number;
+
+  // Premium Intelligence Layer (Phase 8)
+  maturityScores?: {
+    selbstregulation: number;
+    perspektivflexibilitaet: number;
+    konfliktreife: number;
+    druckreife: number;
+    verantwortungsklarheit: number;
+    integrationsfaehigkeit: number;
+  } | null;
+  context?: {
+    seasonPhase?: string | null;
+    teamMaturity?: string | null;
+    conflictState?: string | null;
+    ageRange?: string | null;
+    notes?: string | null;
+  } | null;
 };
 
 export function ReportDocument(props: ReportProps) {
@@ -533,11 +550,23 @@ export function ReportDocument(props: ReportProps) {
     primaryArchetype, secondaryArchetype, axisScores, texts,
     fremdbildScores, discrepancies, fremdbildResponseCount,
     teamcheckScores, teamcheckResponseCount,
+    maturityScores, context,
   } = props;
 
   const showAllModules = productTier >= 2;
   const has360 = !!(fremdbildScores && discrepancies && discrepancies.length > 0);
   const hasTeamcheck = !!teamcheckScores;
+  const hasPremium = productTier >= 2 && (texts.coach_signature_portrait || texts.paradoxien);
+  const hasMaturity = !!maturityScores && !!texts.fuehrungsreife_interpretation;
+
+  const MATURITY_LABELS_PDF: Record<string, string> = {
+    selbstregulation: 'Selbstregulation',
+    perspektivflexibilitaet: 'Perspektivflexibilität',
+    konfliktreife: 'Konfliktreife',
+    druckreife: 'Druckreife',
+    verantwortungsklarheit: 'Verantwortungsklarheit',
+    integrationsfaehigkeit: 'Integrationsfähigkeit',
+  };
 
   return (
     <Document
@@ -645,6 +674,199 @@ export function ReportDocument(props: ReportProps) {
         </View>
         <PageFooter pageNum={4} productName={productName} />
       </Page>
+
+      {/* ============ PREMIUM INTELLIGENCE LAYER ============ */}
+
+      {/* COACH SIGNATURE PORTRAIT (essayistic) */}
+      {hasPremium && texts.coach_signature_portrait && (
+        <Page size="A4" style={styles.pagePetrol}>
+          <Text style={{ ...styles.kickerDark, color: COLORS.gold }}>Premium · Signature Portrait</Text>
+          <Text style={{ ...styles.h1, color: COLORS.bone }}>
+            Coach{'\n'}
+            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic', color: COLORS.gold }}>Signature.</Text>
+          </Text>
+          <View style={{ ...styles.dividerGold, backgroundColor: COLORS.gold }} />
+          <Text style={{ ...styles.bodyLight, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 13, lineHeight: 1.55 }}>
+            {texts.coach_signature_portrait}
+          </Text>
+          {texts.fuehrungsenergie && (
+            <View style={{ marginTop: 30, paddingTop: 18, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+              <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.goldLight, textTransform: 'uppercase', marginBottom: 6 }}>
+                Führungsenergie
+              </Text>
+              <Text style={{ fontSize: 14, color: COLORS.bone, fontFamily: 'Fraunces', fontStyle: 'italic' }}>
+                {texts.fuehrungsenergie}
+              </Text>
+            </View>
+          )}
+        </Page>
+      )}
+
+      {/* PARADOXIEN + SHADOW PATTERN */}
+      {hasPremium && (texts.paradoxien || texts.shadow_pattern) && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>Premium · Paradoxien & Kippmuster</Text>
+          <Text style={styles.h1}>Die Spannungen,{'\n'}in denen du führst.</Text>
+          <View style={styles.dividerGold} />
+
+          {texts.paradoxien && texts.paradoxien.length > 0 && (
+            <View style={{ marginTop: 18 }}>
+              <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.goldDeep, textTransform: 'uppercase', marginBottom: 10 }}>
+                Trainer-Paradoxien
+              </Text>
+              {texts.paradoxien.map((p, i) => (
+                <View key={i} style={{ marginBottom: 10, paddingLeft: 18, position: 'relative' }}>
+                  <Text style={{ position: 'absolute', left: 0, top: 0, color: COLORS.gold, fontFamily: 'Manrope', fontSize: 10 }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </Text>
+                  <Text style={{ ...styles.body, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 12 }}>
+                    {p}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {texts.shadow_pattern && (
+            <View style={{ ...styles.calloutGold, marginTop: 24 }}>
+              <Text style={styles.calloutLabel}>Shadow Pattern · Kippmuster</Text>
+              <Text style={styles.body}>{texts.shadow_pattern}</Text>
+            </View>
+          )}
+        </Page>
+      )}
+
+      {/* WIRKUNG JE KONTEXT */}
+      {hasPremium && texts.wirkung_je_kontext && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>Premium · Wirkung je Kontext</Text>
+          <Text style={styles.h1}>Du wirkst nicht{'\n'}überall gleich.</Text>
+          <View style={styles.dividerGold} />
+
+          <View style={{ marginTop: 16 }}>
+            {([
+              ['trainingsalltag', 'Trainingsalltag'],
+              ['spieltag', 'Spieltag'],
+              ['niederlage', 'Niederlage'],
+              ['konflikt', 'Konflikt'],
+              ['krise', 'Krise / Akute Phase'],
+            ] as const).map(([key, title]) => {
+              const text = texts.wirkung_je_kontext?.[key];
+              if (!text) return null;
+              return (
+                <View key={key} style={styles.moduleCard}>
+                  <View style={styles.moduleHeader}>
+                    <Text style={styles.moduleCode}>{title}</Text>
+                  </View>
+                  <Text style={{ ...styles.body, fontSize: 9.5 }}>{text}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </Page>
+      )}
+
+      {/* FÜHRUNGSREIFE */}
+      {hasMaturity && maturityScores && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>Premium · Führungsreife</Text>
+          <Text style={styles.h1}>
+            Stil ist das eine.{'\n'}
+            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic' }}>Reife</Text> ist etwas anderes.
+          </Text>
+          <View style={styles.dividerGold} />
+          <Text style={styles.body}>{texts.fuehrungsreife_interpretation}</Text>
+
+          <View style={{ marginTop: 22 }}>
+            {Object.entries(maturityScores).map(([key, val]) => (
+              <View key={key} style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.ink }}>
+                    {MATURITY_LABELS_PDF[key] ?? key}
+                  </Text>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>
+                    {Math.round(val * 100)} %
+                  </Text>
+                </View>
+                <Svg height={8} width="100%">
+                  <Rect x={0} y={3} width="100%" height={2} fill={COLORS.boneLine} rx={1} />
+                  <Circle cx={`${val * 100}%`} cy={4} r={4} fill={COLORS.gold} />
+                </Svg>
+              </View>
+            ))}
+          </View>
+        </Page>
+      )}
+
+      {/* SAISONPHASE & COACH-TO-TEAM-FIT */}
+      {hasPremium && (texts.saisonphase_interpretation || texts.coach_to_team_fit) && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>Premium · Kontext-Fit</Text>
+          <Text style={styles.h1}>Stil × Phase × Team.</Text>
+          <View style={styles.dividerGold} />
+
+          {texts.saisonphase_interpretation && (
+            <View style={{ marginTop: 14 }}>
+              <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.goldDeep, textTransform: 'uppercase', marginBottom: 8 }}>
+                Wirkung in aktueller Saisonphase
+              </Text>
+              <Text style={styles.body}>{texts.saisonphase_interpretation}</Text>
+            </View>
+          )}
+
+          {texts.coach_to_team_fit && (
+            <View style={{ marginTop: 18 }}>
+              <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.goldDeep, textTransform: 'uppercase', marginBottom: 8 }}>
+                Coach-to-Team Fit
+              </Text>
+              <Text style={styles.body}>{texts.coach_to_team_fit}</Text>
+            </View>
+          )}
+
+          {texts.spielerbedarf && (
+            <View style={{ ...styles.calloutGold, marginTop: 18 }}>
+              <Text style={styles.calloutLabel}>Was Spieler von diesem Stil brauchen</Text>
+              <Text style={styles.body}>{texts.spielerbedarf}</Text>
+            </View>
+          )}
+        </Page>
+      )}
+
+      {/* NO-GO WARNUNGEN */}
+      {hasPremium && texts.no_go_warnungen && texts.no_go_warnungen.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>Premium · Warnhinweise</Text>
+          <Text style={styles.h1}>
+            Was du{'\n'}
+            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic' }}>nicht</Text> tun solltest.
+          </Text>
+          <View style={styles.dividerGold} />
+          <Text style={{ ...styles.body, fontStyle: 'italic', color: COLORS.muted, marginBottom: 18 }}>
+            Keine Moral, sondern Praxis. Basierend auf deinem Profil sind dies die typischen Fehler,
+            die dein Stil unter Druck produziert — und die du kennen solltest.
+          </Text>
+
+          {texts.no_go_warnungen.map((warn, i) => (
+            <View key={i} style={{ marginBottom: 12, paddingLeft: 24, position: 'relative' }}>
+              <Text style={{ position: 'absolute', left: 0, top: 1, color: COLORS.gold, fontFamily: 'Manrope', fontSize: 11, fontWeight: 700 }}>
+                ⌀
+              </Text>
+              <Text style={{ ...styles.body, fontSize: 10.5 }}>{warn}</Text>
+            </View>
+          ))}
+
+          {texts.beratungswuerdigkeit && (
+            <View style={{ marginTop: 28, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.boneLine }}>
+              <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.muted, textTransform: 'uppercase', marginBottom: 4 }}>
+                Beratungswürdigkeit dieses Profils
+              </Text>
+              <Text style={{ fontFamily: 'Fraunces', fontSize: 18, color: COLORS.goldDeep, textTransform: 'uppercase', letterSpacing: 2 }}>
+                {texts.beratungswuerdigkeit}
+              </Text>
+            </View>
+          )}
+        </Page>
+      )}
 
       {/* 360° SPIEGEL — INTRO + COMPARISON (only if data available) */}
       {has360 && (

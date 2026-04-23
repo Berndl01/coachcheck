@@ -48,9 +48,16 @@ export function Footer() {
           </div>
         </div>
       </div>
-      <div className="max-w-[1440px] mx-auto mt-12 pt-8 border-t border-ink-line flex flex-wrap justify-between gap-4 font-mono text-[0.68rem] uppercase tracking-[0.12em]">
-        <span>© 2026 Humatrix · The Mind Club Company</span>
-        <span>Made in Austria · Vienna</span>
+      <div className="max-w-[1440px] mx-auto mt-12 pt-8 border-t border-ink-line">
+        <div className="mb-6">
+          <p className="font-editorial italic text-base text-bone-soft leading-[1.5] max-w-[60ch]">
+            Entwickelt in Tirol — von Wissenschaftlern, Profi-Trainern und Sportlern. Ein Werkzeug, das aus der Praxis kommt und wissenschaftlich fundiert ist.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-between gap-4 font-mono text-[0.68rem] uppercase tracking-[0.12em]">
+          <span>© 2026 Humatrix · The Mind Club Company</span>
+          <span>Made in Tirol · Austria</span>
+        </div>
       </div>
     </footer>
   );

@@ -6,6 +6,7 @@ import { Footer } from '@/components/landing/footer';
 import { ReportGenerateButton } from '@/components/assessment/report-generate-button';
 import { InvitationsManager } from '@/components/assessment/invitations-manager';
 import { TeamcheckManager } from '@/components/assessment/teamcheck-manager';
+import { ContextForm } from '@/components/assessment/context-form';
 import { getReportSignedUrl } from '@/lib/pdf/storage';
 
 const AXIS_LABELS: Record<string, { low: string; high: string }> = {
@@ -184,6 +185,24 @@ export default async function ResultPage({
                 assessmentId={id}
                 initialInvitations={teamInvitations}
                 appUrl={appUrl}
+              />
+            </div>
+          </section>
+        )}
+
+        {/* Context Form (tier 2+) - Premium Intelligence Layer */}
+        {productTier >= 2 && (
+          <section className="py-12 md:py-16 px-4 md:px-8 bg-bone">
+            <div className="max-w-4xl mx-auto">
+              <ContextForm
+                assessmentId={id}
+                initialContext={{
+                  seasonPhase: (assessment as any).context_season_phase,
+                  teamMaturity: (assessment as any).context_team_maturity,
+                  conflictState: (assessment as any).context_conflict_state,
+                  ageRange: (assessment as any).context_age_range,
+                  notes: (assessment as any).context_notes,
+                }}
               />
             </div>
           </section>

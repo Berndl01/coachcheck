@@ -10,8 +10,11 @@ import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 import {
   computeFremdbildAxisScores,
   computeAxisDiscrepancies,
+  computeMaturityScores,
+  computeDispersion,
   type AxisScores,
   type FremdbildAggregateRow,
+  type MaturityScores,
 } from '@/lib/scoring';
 
 export const maxDuration = 120;
@@ -210,6 +213,93 @@ export async function POST(
     }
   }
 
+  // ============== PREMIUM INTELLIGENCE LAYER ==============
+
+  // Maturity scores (always computed for tier 2+)
+  let maturityScores: MaturityScores | null = null;
+  if (productTier >= 2) {
+    maturityScores = computeMaturityScores(
+      assessment.axis_scores as AxisScores,
+      moduleAverages
+    );
+    // Persist to assessments table for future use
+    try {
+      const admin = createAdminClient();
+      await admin
+        .from('assessments')
+        .update({ maturity_scores: maturityScores })
+        .eq('id', assessmentId);
+    } catch (e) {
+      console.warn('Failed to persist maturity_scores:', e);
+    }
+  }
+
+  // Polarization detection in fremdbild (if 360° data exists)
+  let polarizedAxes: string[] = [];
+  if (productTier >= 3 && fremdbildSection && fremdbildSection.responseCount >= 3) {
+    try {
+      const admin = createAdminClient();
+
+      // 1. Get completed fremdbild invitation IDs for this assessment
+      const { data: invs } = await admin
+        .from('invitations')
+        .select('id')
+        .eq('parent_assessment_id', assessmentId)
+        .eq('invitation_type', 'fremdbild')
+        .eq('status', 'completed');
+
+      const invIds = (invs ?? []).map((i: any) => i.id);
+      if (invIds.length < 3) {
+        // skip — need 3+ for meaningful dispersion
+      } else {
+        // 2. Get only relevant answers
+        const { data: rawAnswers } = await admin
+          .from('invitation_answers')
+          .select('item_id, value_numeric')
+          .in('invitation_id', invIds)
+          .not('value_numeric', 'is', null);
+
+        // Group by item, compute dispersion
+        const byItem = new Map<number, number[]>();
+        (rawAnswers ?? []).forEach((r: any) => {
+          if (!byItem.has(r.item_id)) byItem.set(r.item_id, []);
+          byItem.get(r.item_id)!.push(Number(r.value_numeric));
+        });
+
+        // Items with high dispersion → map to their axes
+        const { data: itemsInfo } = await admin
+          .from('items')
+          .select('id, axis_weights')
+          .in('id', Array.from(byItem.keys()));
+
+        const polarizedAxisSet = new Set<string>();
+        (itemsInfo ?? []).forEach((item: any) => {
+          const vals = byItem.get(item.id);
+          if (!vals || vals.length < 3) return;
+          const disp = computeDispersion(vals);
+          if (disp.polarized) {
+            const weights = item.axis_weights ?? {};
+            Object.keys(weights).forEach((ax) => polarizedAxisSet.add(ax));
+          }
+        });
+        polarizedAxes = Array.from(polarizedAxisSet);
+      }
+    } catch (e) {
+      console.warn('Polarization detection failed:', e);
+    }
+  }
+
+  // Context from assessment
+  const context = (assessment.context_season_phase || assessment.context_team_maturity || assessment.context_conflict_state)
+    ? {
+        seasonPhase: assessment.context_season_phase ?? null,
+        teamMaturity: assessment.context_team_maturity ?? null,
+        conflictState: assessment.context_conflict_state ?? null,
+        ageRange: assessment.context_age_range ?? null,
+        notes: assessment.context_notes ?? null,
+      }
+    : null;
+
   const reportInput: ReportInput = {
     productTier,
     productName: assessment.product.name_de,
@@ -229,7 +319,11 @@ export async function POST(
     },
     axisScores: assessment.axis_scores as AxisScores,
     moduleAverages,
-    fremdbild: fremdbildSection,
+    maturityScores,
+    context,
+    fremdbild: fremdbildSection
+      ? { ...fremdbildSection, polarizedAxes }
+      : null,
     teamcheck: teamcheckSection,
   };
 
@@ -267,6 +361,8 @@ export async function POST(
         klarheit: teamcheckSection.klarheit,
       } : null,
       teamcheckResponseCount,
+      maturityScores,
+      context,
     });
     // @ts-expect-error - renderToBuffer accepts Document element
     pdfBuffer = await renderToBuffer(element);

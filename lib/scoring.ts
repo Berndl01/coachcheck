@@ -308,3 +308,88 @@ export function computeAxisDiscrepancies(
     return { axis, selfValue, fremdValue, delta, magnitude, direction };
   });
 }
+
+// ============== FÜHRUNGSREIFE (zweite Schicht) ==============
+
+export type MaturityKey =
+  | 'selbstregulation'        // Halten unter Druck (Modul E + autoritaet_beteiligung-Stabilität)
+  | 'perspektivflexibilitaet' // Andere Sichten zulassen (Modul B + standardisierung_anpassung)
+  | 'konfliktreife'           // Klar bei Spannung (Modul D + Modul G)
+  | 'druckreife'              // Qualität unter Belastung (Modul E)
+  | 'verantwortungsklarheit'  // Modul C + autoritaet_beteiligung
+  | 'integrationsfaehigkeit'; // Widersprüche halten (Modul A + reflexion_direktheit)
+
+export type MaturityScores = Record<MaturityKey, number>;
+
+export const MATURITY_KEYS: MaturityKey[] = [
+  'selbstregulation',
+  'perspektivflexibilitaet',
+  'konfliktreife',
+  'druckreife',
+  'verantwortungsklarheit',
+  'integrationsfaehigkeit',
+];
+
+export const MATURITY_LABELS: Record<MaturityKey, string> = {
+  selbstregulation: 'Selbstregulation',
+  perspektivflexibilitaet: 'Perspektivflexibilität',
+  konfliktreife: 'Konfliktreife',
+  druckreife: 'Druckreife',
+  verantwortungsklarheit: 'Verantwortungsklarheit',
+  integrationsfaehigkeit: 'Integrationsfähigkeit',
+};
+
+/**
+ * Berechnet Führungsreife aus Modul-Trends + Achsen-Werten.
+ * Reife ist NICHT der Stil — sondern wie souverän der Trainer
+ * mit den Anforderungen seines Stils umgeht.
+ */
+export function computeMaturityScores(
+  axisScores: AxisScores,
+  moduleAverages: Record<string, number>
+): MaturityScores {
+  const a = axisScores;
+  const m = (code: string) => moduleAverages[code] ?? 0; // -1..+1
+
+  // Heuristik: kombiniert Modul-Trends mit Polaritäts-Indikatoren der Achsen
+  // - Reife = nicht-extrem + Modul-Konsistenz
+  // Werte kommen normiert auf 0..1 raus
+  const norm = (v: number) => Math.max(0, Math.min(1, (v + 1) / 2));
+  const balance = (axis: number) => 1 - Math.abs(axis - 0.5) * 2; // 0..1, höchster Wert wenn axis=0.5
+
+  return {
+    // Selbstregulation: stabilisierend statt aktivierend unter Druck + Modul E hoch
+    selbstregulation: norm(0.5 * m('E') + 0.5 * (1 - Math.abs(a.stabilisierung_aktivierung - 0.4) * 2)),
+    // Perspektivflexibilität: Modul B + Anpassungsfähigkeit (nicht zu standardisierend)
+    perspektivflexibilitaet: norm(0.5 * m('B') + 0.5 * (1 - a.standardisierung_anpassung)),
+    // Konfliktreife: Modul D + Modul G + Beziehungs-Balance
+    konfliktreife: norm(0.4 * m('D') + 0.4 * m('G') + 0.2 * balance(a.leistung_beziehung)),
+    // Druckreife: Modul E + Reflexionsanteil
+    druckreife: norm(0.6 * m('E') + 0.4 * a.reflexion_direktheit),
+    // Verantwortungsklarheit: Modul C + Strukturanteil
+    verantwortungsklarheit: norm(0.5 * m('C') + 0.5 * a.struktur_intuition),
+    // Integrationsfähigkeit: Modul A + Reflexion + Balance
+    integrationsfaehigkeit: norm(0.4 * m('A') + 0.3 * a.reflexion_direktheit + 0.3 * balance(a.autoritaet_beteiligung)),
+  };
+}
+
+// ============== STREUUNG / POLARISIERUNG IM FREMDBILD ==============
+
+export type DispersionInfo = {
+  mean: number;
+  stddev: number;
+  polarized: boolean;
+};
+
+/**
+ * Misst, wie einig sich Fremdeinschätzer waren.
+ * Hohe Standardabweichung bei einer Frage = polarisierte Wahrnehmung.
+ */
+export function computeDispersion(values: number[]): DispersionInfo {
+  if (values.length === 0) return { mean: 0, stddev: 0, polarized: false };
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / values.length;
+  const stddev = Math.sqrt(variance);
+  // Bei Likert 1-5 ist stddev > 1.2 hochpolarisiert
+  return { mean, stddev, polarized: stddev > 1.2 };
+}
