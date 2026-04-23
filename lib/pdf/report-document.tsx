@@ -516,6 +516,15 @@ export type ReportProps = {
     magnitude: 'gering' | 'moderat' | 'hoch';
   }> | null;
   fremdbildResponseCount?: number;
+  // Optional TeamCheck data
+  teamcheckScores?: {
+    coachImpact: number;
+    psySafety: number;
+    teamKlima: number;
+    leistungsdruck: number;
+    klarheit: number;
+  } | null;
+  teamcheckResponseCount?: number;
 };
 
 export function ReportDocument(props: ReportProps) {
@@ -523,10 +532,12 @@ export function ReportDocument(props: ReportProps) {
     traineeName, sport, productName, productTier, date,
     primaryArchetype, secondaryArchetype, axisScores, texts,
     fremdbildScores, discrepancies, fremdbildResponseCount,
+    teamcheckScores, teamcheckResponseCount,
   } = props;
 
   const showAllModules = productTier >= 2;
   const has360 = !!(fremdbildScores && discrepancies && discrepancies.length > 0);
+  const hasTeamcheck = !!teamcheckScores;
 
   return (
     <Document
@@ -750,6 +761,90 @@ export function ReportDocument(props: ReportProps) {
         </View>
         <PageFooter pageNum={5} productName={productName} />
       </Page>
+
+      {/* TEAMCHECK PAGES (nur Tier 4+) */}
+      {hasTeamcheck && (
+        <Page size="A4" style={styles.pagePetrol}>
+          <Text style={{ ...styles.kickerDark, color: COLORS.gold }}>05 — TeamCheck</Text>
+          <Text style={{ ...styles.h1, color: COLORS.bone }}>
+            Was dein{'\n'}
+            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic', color: COLORS.gold }}>Team</Text>{'\n'}
+            wirklich erlebt.
+          </Text>
+          <View style={{ ...styles.dividerGold, backgroundColor: COLORS.gold }} />
+          <Text style={{ ...styles.bodyLight, opacity: 0.92, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 12 }}>
+            {texts.teamcheck_summary}
+          </Text>
+
+          <View style={{ marginTop: 28, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+            <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.goldLight, textTransform: 'uppercase', marginBottom: 6 }}>
+              Datenbasis
+            </Text>
+            <Text style={{ fontSize: 11, color: COLORS.bone }}>
+              {teamcheckResponseCount ?? 0} eingegangene Spielerantworten · vollständig anonym aggregiert · Schwelle für Auswertung: 5
+            </Text>
+          </View>
+        </Page>
+      )}
+
+      {hasTeamcheck && teamcheckScores && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>05 — Team-Scores</Text>
+          <Text style={styles.h1}>Fünf Dimensionen{'\n'}der Team-Realität.</Text>
+          <View style={styles.dividerGold} />
+          <Text style={styles.body}>{texts.teamcheck_narrative}</Text>
+
+          <View style={{ marginTop: 22 }}>
+            {([
+              ['coach_impact', teamcheckScores.coachImpact, 'Coach Impact', 'Negativ', 'Positiv'],
+              ['psy_safety', teamcheckScores.psySafety, 'Psychologische Sicherheit', 'Unsicher', 'Sicher'],
+              ['team_klima', teamcheckScores.teamKlima, 'Teamklima', 'Schwach', 'Stark'],
+              ['leistungsdr', teamcheckScores.leistungsdruck, 'Leistungsklima', 'Erdrückend', 'Inspirierend'],
+              ['klarheit', teamcheckScores.klarheit, 'Rollenklarheit', 'Unklar', 'Klar'],
+            ] as const).map(([key, val, title, low, high]) => (
+              <View key={key} style={{ marginBottom: 18 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.ink }}>{title}</Text>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>{Math.round(val * 100)} %</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, fontSize: 8, color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 1.4 }}>
+                  <Text>{low}</Text>
+                  <Text>{high}</Text>
+                </View>
+                <Svg height={8} width="100%">
+                  <Rect x={0} y={3} width="100%" height={2} fill={COLORS.boneLine} rx={1} />
+                  <Circle cx={`${val * 100}%`} cy={4} r={4} fill={COLORS.gold} />
+                </Svg>
+              </View>
+            ))}
+          </View>
+
+          <View style={{ ...styles.calloutGold, marginTop: 14 }}>
+            <Text style={styles.calloutLabel}>Team-Dynamiken</Text>
+            <Text style={styles.body}>{texts.team_dynamics}</Text>
+          </View>
+        </Page>
+      )}
+
+      {hasTeamcheck && texts.team_handlungsempfehlungen && texts.team_handlungsempfehlungen.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>05 — Sofort-Maßnahmen</Text>
+          <Text style={styles.h1}>14 Tage.{'\n'}Konkrete Schritte.</Text>
+          <View style={styles.dividerGold} />
+          <View style={{ marginTop: 16 }}>
+            {texts.team_handlungsempfehlungen.map((step, i) => (
+              <View key={i} style={styles.moduleCard}>
+                <View style={styles.moduleHeader}>
+                  <Text style={{ ...styles.moduleCode, fontFamily: 'Fraunces', fontSize: 20, color: COLORS.gold, letterSpacing: 0 }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </Text>
+                </View>
+                <Text style={styles.body}>{step}</Text>
+              </View>
+            ))}
+          </View>
+        </Page>
+      )}
 
       {/* MODULE INTERPRETATIONS */}
       {showAllModules && (

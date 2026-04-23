@@ -133,6 +133,83 @@ export async function POST(
     }
   }
 
+  // ============== TEAMCHECK PLAYER AGGREGATION ==============
+  let teamcheckSection: ReportInput['teamcheck'] = null;
+  let teamcheckResponseCount = 0;
+  if (productTier >= 4) {
+    const admin = createAdminClient();
+    const { data: tcAggs } = await admin.rpc('get_teamcheck_aggregate', {
+      assessment_uuid: assessmentId,
+    });
+
+    if (tcAggs && tcAggs.length > 0) {
+      // Build items lookup for axis weights
+      const itemIds = (tcAggs as any[]).map((a) => a.item_id);
+      const { data: tcItems } = await supabase
+        .from('items')
+        .select('id, format, axis_weights, reverse_scored, options')
+        .in('id', itemIds);
+
+      const itemsLookup = new Map(
+        (tcItems ?? []).map((it: any) => [it.id, it])
+      );
+
+      // Aggregate per axis
+      const totals: Record<string, number> = {};
+      const counts: Record<string, number> = {};
+      const TEAM_AXES = ['coach_impact', 'psy_safety', 'team_klima', 'leistungsdr', 'klarheit'];
+
+      (tcAggs as any[]).forEach((row) => {
+        const item = itemsLookup.get(row.item_id);
+        if (!item) return;
+        let signed: number | null = null;
+        if (row.format === 'likert_5' && row.avg_numeric != null) {
+          signed = (Number(row.avg_numeric) - 3) / 2;
+          if (item.reverse_scored) signed = -signed;
+        } else if (row.format === 'spannungsfeld' && row.avg_position != null) {
+          signed = Number(row.avg_position) * 2 - 1;
+        } else if ((row.format === 'forced_choice') && row.top_choice && item.options) {
+          const opt = (item.options as any[]).find((o) => o.key === row.top_choice);
+          if (opt) {
+            // Use the option's weights to derive a signed value per axis
+            const weights = opt.weights ?? {};
+            TEAM_AXES.forEach((ax) => {
+              if (weights[ax] !== undefined) {
+                totals[ax] = (totals[ax] ?? 0) + weights[ax];
+                counts[ax] = (counts[ax] ?? 0) + Math.abs(weights[ax]);
+              }
+            });
+            return;
+          }
+        }
+        if (signed === null) return;
+        const itemWeights = item.axis_weights ?? {};
+        TEAM_AXES.forEach((ax) => {
+          const w = itemWeights[ax];
+          if (w === undefined || w === null) return;
+          totals[ax] = (totals[ax] ?? 0) + signed * w;
+          counts[ax] = (counts[ax] ?? 0) + Math.abs(w);
+        });
+      });
+
+      const norm = (axis: string) => {
+        if (!counts[axis]) return 0.5;
+        const avg = totals[axis] / counts[axis];
+        return Math.max(0, Math.min(1, (avg + 1) / 2));
+      };
+
+      teamcheckResponseCount = Math.max(...(tcAggs as any[]).map(a => Number(a.response_count) || 0));
+      teamcheckSection = {
+        coachImpact: norm('coach_impact'),
+        psySafety: norm('psy_safety'),
+        teamKlima: norm('team_klima'),
+        leistungsdruck: norm('leistungsdr'),
+        klarheit: norm('klarheit'),
+        responseCount: teamcheckResponseCount,
+      };
+    }
+  }
+
   const reportInput: ReportInput = {
     productTier,
     productName: assessment.product.name_de,
@@ -153,6 +230,7 @@ export async function POST(
     axisScores: assessment.axis_scores as AxisScores,
     moduleAverages,
     fremdbild: fremdbildSection,
+    teamcheck: teamcheckSection,
   };
 
   // 1. Generate AI texts
@@ -181,6 +259,14 @@ export async function POST(
       fremdbildScores: pdfFremdbildScores,
       discrepancies: pdfDiscrepancies,
       fremdbildResponseCount: pdfResponseCount,
+      teamcheckScores: teamcheckSection ? {
+        coachImpact: teamcheckSection.coachImpact,
+        psySafety: teamcheckSection.psySafety,
+        teamKlima: teamcheckSection.teamKlima,
+        leistungsdruck: teamcheckSection.leistungsdruck,
+        klarheit: teamcheckSection.klarheit,
+      } : null,
+      teamcheckResponseCount,
     });
     // @ts-expect-error - renderToBuffer accepts Document element
     pdfBuffer = await renderToBuffer(element);
@@ -206,9 +292,16 @@ export async function POST(
     assessment_id: assessmentId,
     storage_path: storagePath,
     file_size_bytes: pdfBuffer.length,
-    pages: productTier >= 3 && fremdbildSection ? 14 : productTier >= 2 ? 11 : 7,
+    pages: productTier >= 4 && teamcheckSection
+      ? (fremdbildSection ? 18 : 16)
+      : productTier >= 3 && fremdbildSection ? 14 : productTier >= 2 ? 11 : 7,
     generation_model: 'claude-opus-4',
-    metadata: { has_360: !!fremdbildSection, fremdbild_count: pdfResponseCount },
+    metadata: {
+      has_360: !!fremdbildSection,
+      fremdbild_count: pdfResponseCount,
+      has_teamcheck: !!teamcheckSection,
+      teamcheck_count: teamcheckResponseCount,
+    },
   });
 
   // 5. Mark assessment as report_ready

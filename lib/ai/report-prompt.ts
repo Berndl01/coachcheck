@@ -27,6 +27,16 @@ export type ReportInput = {
     discrepancies: AxisDiscrepancy[];
     responseCount: number;
   } | null;
+
+  // Optional TeamCheck data (player aggregations)
+  teamcheck?: {
+    coachImpact: number;       // 0..1, average across coach_impact items
+    psySafety: number;
+    teamKlima: number;
+    leistungsdruck: number;
+    klarheit: number;
+    responseCount: number;
+  } | null;
 };
 
 export type ReportOutput = {
@@ -45,6 +55,12 @@ export type ReportOutput = {
   spiegel_narrative?: string;
   diskrepanz_interpretationen?: Record<string, string>;
   blind_spots?: string;
+
+  // Optional TeamCheck outputs
+  teamcheck_summary?: string;
+  teamcheck_narrative?: string;
+  team_dynamics?: string;
+  team_handlungsempfehlungen?: string[];
 };
 
 const AXIS_LABELS: Record<keyof AxisScores, { low: string; high: string }> = {
@@ -165,6 +181,34 @@ ${discrepancies}
   "blind_spots": "~150 Wörter. Die 1-2 wichtigsten Blind Spots — Punkte, an denen der Trainer sich anders sieht als das Team. Konkret. Was sollte er mit seinem Co-Trainer oder Sportpsychologen besprechen?"`;
   }
 
+  // Build TeamCheck section if data available
+  let sectionTeamcheck = '';
+  let extraTeamcheckOutputs = '';
+  if (input.teamcheck) {
+    const tc = input.teamcheck;
+    const fmt = (v: number) => `${Math.round(v * 100)}%`;
+    sectionTeamcheck = `
+
+# TEAMCHECK DATEN (Spielerstimmen, anonym aggregiert)
+Anzahl Spieler-Antworten: ${tc.responseCount}
+
+## Team-Scores (0–100%)
+- Coach Impact (wie der Trainer auf Spieler wirkt): ${fmt(tc.coachImpact)}
+- Psychologische Sicherheit (Vertrauen, Fehlerangst): ${fmt(tc.psySafety)}
+- Teamklima (Zusammenhalt, Untergruppen): ${fmt(tc.teamKlima)}
+- Leistungsklima (Druck motivierend vs. erdrückend): ${fmt(tc.leistungsdruck)}
+- Rollenklarheit (klar vs. verwirrend): ${fmt(tc.klarheit)}
+`;
+
+    extraTeamcheckOutputs = `,
+  "teamcheck_summary": "~120 Wörter. Was sagen die Spieler über die Team-Realität? Wo ist es stark, wo schwach? Sei präzise mit den Werten.",
+  "teamcheck_narrative": "~200 Wörter. Lies die Team-Scores als zusammenhängendes System. Welche Werte wirken aufeinander? Wo gibt es Spannungen? Stelle die wichtigste Erkenntnis in den Vordergrund — was muss der Trainer SOFORT wissen?",
+  "team_dynamics": "~150 Wörter. Wie hängen die Coach-Impact-Werte mit der psychologischen Sicherheit und dem Leistungsklima zusammen? Was sagt das über die Trainer-Wirkung im Alltag aus?",
+  "team_handlungsempfehlungen": [
+    "4 konkrete, sofort umsetzbare Maßnahmen für die nächsten 14 Tage, basierend auf den Team-Scores"
+  ]`;
+  }
+
   return `Erstelle einen Premium-Diagnostik-Bericht für folgendes Assessment.
 
 # Trainer
@@ -190,6 +234,7 @@ ${axes}
 # Modul-Durchschnitte (Trend je Bereich)
 ${modules}
 ${section360}
+${sectionTeamcheck}
 
 ---
 
@@ -216,7 +261,7 @@ AUFGABE: Generiere folgende Textteile als JSON. Jeder Text soll personalisiert s
   ],
   "naechste_30_tage": [
     "4 konkrete, umsetzbare Handlungsschritte für die nächsten 30 Tage"
-  ]${extraOutputs}
+  ]${extraOutputs}${extraTeamcheckOutputs}
 }
 
 Antworte nur mit dem JSON.`;

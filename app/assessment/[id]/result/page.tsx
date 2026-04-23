@@ -5,6 +5,7 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ReportGenerateButton } from '@/components/assessment/report-generate-button';
 import { InvitationsManager } from '@/components/assessment/invitations-manager';
+import { TeamcheckManager } from '@/components/assessment/teamcheck-manager';
 import { getReportSignedUrl } from '@/lib/pdf/storage';
 
 const AXIS_LABELS: Record<string, { low: string; high: string }> = {
@@ -68,6 +69,7 @@ export default async function ResultPage({
   // Load invitations (only relevant for tier 3+)
   const productTier = (assessment.product as any)?.tier ?? 0;
   const isThreeSixty = productTier >= 3;
+  const isTeamcheck = productTier >= 4;
 
   let invitations: any[] = [];
   if (isThreeSixty) {
@@ -78,6 +80,17 @@ export default async function ResultPage({
       .eq('invitation_type', 'fremdbild')
       .order('created_at', { ascending: false });
     invitations = invs ?? [];
+  }
+
+  let teamInvitations: any[] = [];
+  if (isTeamcheck) {
+    const { data: invs } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('parent_assessment_id', id)
+      .eq('invitation_type', 'spieler')
+      .order('created_at', { ascending: false });
+    teamInvitations = invs ?? [];
   }
 
   const primary = assessment.primary as any;
@@ -146,6 +159,30 @@ export default async function ResultPage({
               <InvitationsManager
                 assessmentId={id}
                 initialInvitations={invitations}
+                appUrl={appUrl}
+              />
+            </div>
+          </section>
+        )}
+
+        {/* TeamCheck (nur Tier 4+) */}
+        {isTeamcheck && (
+          <section className="bg-petrol/5 py-12 md:py-16 px-4 md:px-8 border-t border-bone-line">
+            <div className="max-w-4xl mx-auto">
+              <div className="font-mono text-xs uppercase tracking-[0.2em] text-petrol mb-4 flex items-center gap-3">
+                <span className="w-10 h-px bg-petrol" /> TeamCheck · Spielerstimmen
+              </div>
+              <h2 className="font-display font-light text-[clamp(1.6rem,3.5vw,2.4rem)] leading-[1.05] tracking-[-0.025em] mb-3" style={{ fontVariationSettings: "'opsz' 144" }}>
+                Lass dein <em className="font-editorial">Team selbst sprechen.</em>
+              </h2>
+              <p className="text-muted mb-8 max-w-[55ch] leading-[1.5]">
+                Lade alle Spieler anonym ein. Sie beantworten 12 ehrliche Fragen zu Coach-Impact,
+                Teamklima, psychologischer Sicherheit und Druck-Erleben. Aggregierte Auswertung
+                ab 5 Antworten — keine Einzelpersonen identifizierbar.
+              </p>
+              <TeamcheckManager
+                assessmentId={id}
+                initialInvitations={teamInvitations}
                 appUrl={appUrl}
               />
             </div>

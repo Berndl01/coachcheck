@@ -102,6 +102,25 @@ export default async function DashboardPage() {
           )}
         </section>
 
+        {/* Saison-Monitor */}
+        <section className="mb-16">
+          <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Saison-Monitor</h2>
+          <Link
+            href="/saison"
+            className="block p-5 bg-petrol text-bone rounded-md hover:bg-petrol-soft transition"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-display text-xl">Deine Saisons & Pulse-Cycles</div>
+                <div className="font-mono text-xs uppercase tracking-[0.1em] text-gold-light mt-1">
+                  Monatliche Spieler-Pulse · Trend-Erkennung · Frühwarnsystem
+                </div>
+              </div>
+              <span className="font-mono text-xs uppercase tracking-[0.1em] text-gold">→</span>
+            </div>
+          </Link>
+        </section>
+
         {/* Upsell */}
         <section className="mb-16">
           <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Weitere Pakete</h2>
