@@ -39,7 +39,7 @@ export type RawAnswer = {
   value_position?: number | null;
   value_jsonb?: unknown;
   // For choice-based items, we also need the options for weight lookup
-  options?: Array<{ key: string; text: string; weights: Partial<AxisScores> }> | null;
+  options?: Array<{ key: string; text?: string; weights: Partial<AxisScores> }> | null;
 };
 
 export type Archetype = {
@@ -224,5 +224,87 @@ export function buildSignature(scores: AxisScores): {
     if (strength > 0.25) intensity = 'hoch';
     else if (strength < 0.1) intensity = 'niedrig';
     return { axis, value, label, intensity };
+  });
+}
+
+// ============== 360° DISCREPANCY ANALYSIS ==============
+
+export type FremdbildAggregateRow = {
+  item_id: number;
+  format: string;
+  avg_numeric: number | null;
+  avg_position: number | null;
+  top_choice: string | null;
+  response_count: number;
+};
+
+export type FremdbildScores = {
+  axisScores: AxisScores;
+  responseCount: number;
+};
+
+/**
+ * Computes axis scores from aggregated fremdbild responses.
+ * Treats avg_numeric / avg_position the same way as own answers.
+ */
+export function computeFremdbildAxisScores(
+  aggregates: FremdbildAggregateRow[],
+  itemsLookup: Map<number, { format: string; axis_weights: Partial<AxisScores>; reverse_scored: boolean; options: Array<{ key: string; text?: string; weights: Partial<AxisScores> }> | null }>
+): FremdbildScores | null {
+  if (aggregates.length === 0) return null;
+
+  const responseCount = Math.max(...aggregates.map(a => Number(a.response_count) || 0));
+  if (responseCount < 3) return null; // anonymity threshold
+
+  const mapped = aggregates.map((row): RawAnswer | null => {
+    const item = itemsLookup.get(row.item_id);
+    if (!item) return null;
+    return {
+      item_id: row.item_id,
+      format: row.format,
+      axis_weights: item.axis_weights,
+      reverse_scored: item.reverse_scored,
+      value_numeric: row.avg_numeric != null ? Number(row.avg_numeric) : undefined,
+      value_position: row.avg_position != null ? Number(row.avg_position) : undefined,
+      value_choice: row.top_choice ?? undefined,
+      options: item.options ?? undefined,
+    };
+  });
+  const rawAnswers: RawAnswer[] = mapped.filter((x): x is RawAnswer => x !== null);
+
+  return {
+    axisScores: computeAxisScores(rawAnswers),
+    responseCount,
+  };
+}
+
+export type AxisDiscrepancy = {
+  axis: AxisKey;
+  selfValue: number;
+  fremdValue: number;
+  delta: number;          // fremd - self, range -1..+1
+  magnitude: 'gering' | 'moderat' | 'hoch';
+  direction: 'höher' | 'niedriger' | 'übereinstimmend';
+};
+
+/**
+ * Computes per-axis discrepancy between self- and fremdbild.
+ * Magnitude thresholds: <0.10 gering, <0.20 moderat, ≥0.20 hoch
+ */
+export function computeAxisDiscrepancies(
+  self: AxisScores,
+  fremd: AxisScores
+): AxisDiscrepancy[] {
+  return AXIS_KEYS.map((axis) => {
+    const selfValue = self[axis];
+    const fremdValue = fremd[axis];
+    const delta = fremdValue - selfValue;
+    const abs = Math.abs(delta);
+    let magnitude: 'gering' | 'moderat' | 'hoch' = 'gering';
+    if (abs >= 0.20) magnitude = 'hoch';
+    else if (abs >= 0.10) magnitude = 'moderat';
+    let direction: 'höher' | 'niedriger' | 'übereinstimmend' = 'übereinstimmend';
+    if (abs >= 0.05) direction = delta > 0 ? 'höher' : 'niedriger';
+    return { axis, selfValue, fremdValue, delta, magnitude, direction };
   });
 }
