@@ -30,7 +30,7 @@ export async function POST(
     return NextResponse.redirect(new URL(`/kontakt?plan=${slug}`, request.url));
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-11-20.acacia' });
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-02-24.acacia' });
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
