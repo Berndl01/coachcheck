@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: 'Wer steht hinter dem Produkt?',
-    a: 'Humatrix — The Mind Club Company aus Wien. Wir bauen Premium-Diagnostik an der Schnittstelle von Mindset, Führung und Teamdynamik. Der Sport Mindset Check ist die Sport-Edition unseres Kern-Frameworks — entwickelt gemeinsam mit Trainern aus Regionalliga bis Bundesliga und international eingesetzt.',
+    a: 'Humatrix — The Mind Club Company aus Tirol. Wir bauen Premium-Diagnostik an der Schnittstelle von Mindset, Führung und Teamdynamik. Der Sport Mindset Check ist die Sport-Edition unseres Kern-Frameworks — entwickelt gemeinsam mit Trainern aus Regionalliga bis Bundesliga und international eingesetzt.',
   },
 ];
 

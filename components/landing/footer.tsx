@@ -6,12 +6,10 @@ export function Footer() {
     <footer className="bg-ink text-muted-dark pt-16 pb-8 px-4 md:px-8">
       <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-[1.3fr_2fr] gap-12 md:gap-16">
         <div>
-          <div style={{ color: 'var(--bone)' }}>
-            <HumatrixLogo color="var(--bone)" size={40} />
-          </div>
+          <HumatrixLogo size={40} variant="inverted" />
           <p className="font-editorial text-base leading-[1.45] text-bone-soft mt-6 max-w-[38ch]">
             Diagnostik für Führung, Team und Mindset.<br />
-            Entwickelt in Wien, eingesetzt international.
+            Made in Tyrol, Austria.
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
