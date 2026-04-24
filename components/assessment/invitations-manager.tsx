@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { copyToClipboard } from '@/lib/utils/clipboard';
 
 type Invitation = {
   id: string;
@@ -94,7 +95,7 @@ export function InvitationsManager({ assessmentId, initialInvitations, appUrl }:
 
   function copyLink(token: string) {
     const url = `${appUrl}/einschaetzung/${token}`;
-    navigator.clipboard.writeText(url);
+    copyToClipboard(url);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);
   }

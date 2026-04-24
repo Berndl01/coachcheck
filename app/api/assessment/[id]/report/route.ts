@@ -453,7 +453,7 @@ export async function POST(
               </p>
             </div>
             <div style="padding: 20px 0; border-top: 1px solid #DBD8D1; font-size: 11px; color: #9A9793; letter-spacing: 1px; text-transform: uppercase;">
-              Humatrix · The Mind Club Company · Vienna
+              Humatrix · The Mind Club Company · Made in Tyrol, Austria
             </div>
           </div>
         `,

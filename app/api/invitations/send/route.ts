@@ -8,7 +8,12 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid request body" }, { status: 400 });
+  }
   const { invitation_id } = body;
   if (!invitation_id) {
     return NextResponse.json({ error: 'invitation_id erforderlich' }, { status: 400 });
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
             </p>
           </div>
           <div style="padding: 20px 0; border-top: 1px solid #DBD8D1; font-size: 11px; color: #9A9793; letter-spacing: 1px; text-transform: uppercase;">
-            Humatrix · The Mind Club Company · Vienna<br>
+            Humatrix · The Mind Club Company · Made in Tyrol, Austria<br>
             Diese E-Mail wurde im Auftrag von ${trainerName} versendet.
           </div>
         </div>

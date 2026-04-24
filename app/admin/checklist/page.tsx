@@ -5,7 +5,7 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 
 // Only accessible to the admin email(s)
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'bernhard.eller@humatrix.cc').split(',').map(s => s.trim());
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'office@humatrix.cc').split(',').map(s => s.trim());
 
 type CheckItem = {
   label: string;

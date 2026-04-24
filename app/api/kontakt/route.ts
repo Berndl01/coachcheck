@@ -2,8 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { sendEmailSafe } from '@/lib/email/resend';
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { name, email, phone, club, plan, message } = body;
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Ungültiges Request-Format' }, { status: 400 });
+  }
+  const { name, email, phone, club, plan, message } = body ?? {};
 
   if (!name || !email || !message) {
     return NextResponse.json({ error: 'Name, E-Mail und Nachricht erforderlich' }, { status: 400 });

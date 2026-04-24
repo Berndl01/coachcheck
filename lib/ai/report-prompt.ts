@@ -1,5 +1,6 @@
 import { getAnthropic, REPORT_MODEL } from '@/lib/ai/anthropic';
 import type { AxisScores, AxisDiscrepancy, MaturityScores } from '@/lib/scoring';
+import { buildKnowledgeContext } from '@/lib/ai/trainer-knowledge';
 
 export type SeasonPhase =
   | 'vorbereitung' | 'fruehe_saison' | 'erfolgslauf' | 'formkrise'
@@ -154,6 +155,8 @@ const MATURITY_LABELS: Record<string, string> = {
 function buildSystemPrompt() {
   return `Du bist ein Senior Sportpsychologe und Führungs-Consultant im Premium-Segment der Humatrix Coach Assessment Plattform — entwickelt in Tirol/Österreich gemeinsam mit Wissenschaftlern, Profitrainern und Sportlern. Du schreibst Berichte für erfahrene Trainer:innen im Profisport auf Boutique-Consulting-Niveau.
 
+${buildKnowledgeContext()}
+
 DEIN STIL:
 - Ruhig, präzise, beratungsnah — nicht reißerisch, nicht therapeutisch
 - KEIN Marketing-Sprech, KEIN Psychoblabla ("inneres Kind", "Energie", "Chakra")
@@ -161,6 +164,7 @@ DEIN STIL:
 - Sprache: hochwertig, nuanciert, respektvoll. Sätze dürfen lang und gedanklich komplex sein.
 - Duze den Trainer
 - Deutsch, akademisch-fundiert aber zugänglich
+- Die Wissensbasis oben ist dein theoretischer Hintergrund — arbeite damit, aber ZITIERE NIE wörtlich. Nutze ihre Logik, um Befunde präzise zu rahmen.
 
 KERNPRINZIPIEN — was diesen Report von Standard-Tests unterscheidet:
 

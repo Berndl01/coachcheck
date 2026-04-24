@@ -94,10 +94,10 @@ export function ContactForm({ defaultPlan }: Props) {
         >
           <option value="">— nicht sicher —</option>
           <option value="schnelltest">Schnelltest (9 €)</option>
-          <option value="selbsttest_premium">Selbsttest Premium (29 €)</option>
+          <option value="selbsttest">Selbsttest (29 €)</option>
           <option value="spiegel_360">360° Spiegel (99 €)</option>
           <option value="teamcheck">TeamCheck (ab 299 €)</option>
-          <option value="saison_begleitung">Saison & Beratung (ab 1.490 €)</option>
+          <option value="saison_beratung">Saison & Beratung (ab 1.490 €)</option>
           <option value="custom">Custom / Individuell</option>
         </select>
       </div>

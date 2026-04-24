@@ -15,7 +15,7 @@ export default async function KontaktPage({
 
   const planLabels: Record<string, string> = {
     teamcheck: 'TeamCheck (ab 299 €)',
-    saison_begleitung: 'Saison & Beratung (ab 1.490 €)',
+    saison_beratung: 'Saison & Beratung (ab 1.490 €)',
   };
 
   const selectedPlan = plan ? planLabels[plan] : null;

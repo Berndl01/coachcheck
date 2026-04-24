@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAnthropic, REPORT_MODEL } from '@/lib/ai/anthropic';
 import { ARCHETYPE_DEEP_DIVES } from '@/lib/archetype-deep-dive';
+import { buildDeepDiveKnowledgeContext } from '@/lib/ai/trainer-knowledge';
 
 export const maxDuration = 60;
 
@@ -25,7 +26,12 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid request body" }, { status: 400 });
+  }
   const { archetype_code, assessment_id } = body;
 
   if (!archetype_code || !assessment_id) {
@@ -70,6 +76,8 @@ export async function POST(request: NextRequest) {
     : null;
 
   const systemPrompt = `Du bist Senior-Sportpsychologe und schreibst für einen Trainer eine persönliche Schicht über seinen Archetyp. Der Archetyp ist "${deepDive.name_de}" — die allgemeine Beschreibung hat der Trainer bereits gelesen. Jetzt brauchst du das, was NUR zu ihm passt, basierend auf seinen konkreten Werten und seinem Kontext.
+
+${buildDeepDiveKnowledgeContext(profile?.training_level ?? undefined)}
 
 KRITISCH:
 - Schreibe im Amateur-/Semi-Profi-Ton, nicht im Consulting-Jargon

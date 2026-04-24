@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { copyToClipboard } from '@/lib/utils/clipboard';
 
 type Cycle = {
   id: string;
@@ -125,7 +126,7 @@ export function SeasonControl({ season, cycles, invitations, appUrl }: Props) {
       .filter((i) => i.status === 'active')
       .map((i, idx) => `${i.label ?? `Spieler ${String(idx + 1).padStart(2, '0')}`}: ${appUrl}/pulse/${i.token}`)
       .join('\n');
-    navigator.clipboard.writeText(lines);
+    copyToClipboard(lines);
     notify('Alle Token-Links kopiert');
   }
 

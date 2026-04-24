@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { copyToClipboard } from '@/lib/utils/clipboard';
 
 type Invitation = {
   id: string;
@@ -86,7 +87,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
 
   function copyLink(inv: Invitation) {
     const url = `${appUrl}/teamcheck/${inv.token}`;
-    navigator.clipboard.writeText(url);
+    copyToClipboard(url);
     setCopiedId(inv.id);
     setTimeout(() => setCopiedId(null), 2000);
   }
@@ -99,7 +100,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
         return `${label}: ${appUrl}/teamcheck/${i.token}`;
       })
       .join('\n');
-    navigator.clipboard.writeText(lines);
+    copyToClipboard(lines);
     setBulkSuccess('Alle Links kopiert');
     setTimeout(() => setBulkSuccess(null), 3000);
   }

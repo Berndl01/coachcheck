@@ -61,6 +61,8 @@ export async function POST(
     },
     // Rechnungsadresse für Rechnungsstellung
     billing_address_collection: 'required',
+    // Promo-Codes / Gutscheine im Checkout aktivieren
+    allow_promotion_codes: true,
     // Automatische Steuerberechnung kann später aktiviert werden
     // automatic_tax: { enabled: true },
     metadata: {

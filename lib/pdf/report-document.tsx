@@ -15,25 +15,84 @@ import {
 import type { AxisScores } from '@/lib/scoring';
 import type { ReportOutput } from '@/lib/ai/report-prompt';
 
-// Register fonts (using Google Fonts CDN - React-PDF supports TTF)
-Font.register({
-  family: 'Fraunces',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/fraunces/v31/6NUh8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnVD1AvKg.ttf', fontWeight: 300 },
-    { src: 'https://fonts.gstatic.com/s/fraunces/v31/6NUh8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnVG1QvKg.ttf', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/fraunces/v31/6NUh8FyLNQOQZAnv9ZwNjucMHVn85Ni7emAe9lKqZTnVF1IvKg.ttf', fontWeight: 500 },
-  ],
-});
+// ============== FONTS ==============
+// TTF files from @expo-google-fonts — bundled locally, no CDN dependency.
+// Registration is lazy so build-time page data collection doesn't fail.
+let fontsRegistered = false;
+function registerFonts() {
+  if (fontsRegistered) return;
+  fontsRegistered = true;
 
-Font.register({
-  family: 'Manrope',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggexSg.ttf', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggOxSg.ttf', fontWeight: 500 },
-    { src: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggKxSg.ttf', fontWeight: 600 },
-    { src: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggaxSg.ttf', fontWeight: 700 },
-  ],
-});
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('node:fs') as typeof import('node:fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('node:path') as typeof import('node:path');
+
+    // Walk up from CWD to find node_modules
+    const findNodeModules = (): string => {
+      let dir = process.cwd();
+      for (let i = 0; i < 6; i++) {
+        const candidate = path.join(dir, 'node_modules');
+        if (fs.existsSync(candidate)) return candidate;
+        dir = path.dirname(dir);
+      }
+      return path.join(process.cwd(), 'node_modules');
+    };
+
+    const nm = findNodeModules();
+    const fraunces = path.join(nm, '@expo-google-fonts', 'fraunces');
+    const manrope = path.join(nm, '@expo-google-fonts', 'manrope');
+
+    // Return path only if file exists
+    const safePath = (p: string): string | null => (fs.existsSync(p) ? p : null);
+
+    const f300 = safePath(path.join(fraunces, '300Light/Fraunces_300Light.ttf'));
+    const f400 = safePath(path.join(fraunces, '400Regular/Fraunces_400Regular.ttf'));
+    const f500 = safePath(path.join(fraunces, '500Medium/Fraunces_500Medium.ttf'));
+    const f300i = safePath(path.join(fraunces, '300Light_Italic/Fraunces_300Light_Italic.ttf'));
+    const f400i = safePath(path.join(fraunces, '400Regular_Italic/Fraunces_400Regular_Italic.ttf'));
+    const f500i = safePath(path.join(fraunces, '500Medium_Italic/Fraunces_500Medium_Italic.ttf'));
+
+    const m400 = safePath(path.join(manrope, '400Regular/Manrope_400Regular.ttf'));
+    const m500 = safePath(path.join(manrope, '500Medium/Manrope_500Medium.ttf'));
+    const m600 = safePath(path.join(manrope, '600SemiBold/Manrope_600SemiBold.ttf'));
+    const m700 = safePath(path.join(manrope, '700Bold/Manrope_700Bold.ttf'));
+
+    if (f400 && f400i && m400) {
+      Font.register({
+        family: 'Fraunces',
+        fonts: [
+          ...(f300 ? [{ src: f300, fontWeight: 300 as const, fontStyle: 'normal' as const }] : []),
+          { src: f400, fontWeight: 400, fontStyle: 'normal' as const },
+          ...(f500 ? [{ src: f500, fontWeight: 500 as const, fontStyle: 'normal' as const }] : []),
+          ...(f300i ? [{ src: f300i, fontWeight: 300 as const, fontStyle: 'italic' as const }] : []),
+          { src: f400i, fontWeight: 400, fontStyle: 'italic' as const },
+          ...(f500i ? [{ src: f500i, fontWeight: 500 as const, fontStyle: 'italic' as const }] : []),
+        ],
+      });
+
+      Font.register({
+        family: 'Manrope',
+        fonts: [
+          { src: m400, fontWeight: 400, fontStyle: 'normal' as const },
+          ...(m500 ? [{ src: m500, fontWeight: 500 as const, fontStyle: 'normal' as const }] : []),
+          ...(m600 ? [{ src: m600, fontWeight: 600 as const, fontStyle: 'normal' as const }] : []),
+          ...(m700 ? [{ src: m700, fontWeight: 700 as const, fontStyle: 'normal' as const }] : []),
+          // Manrope has no true italic in this package — reuse regular glyphs
+          { src: m400, fontWeight: 400, fontStyle: 'italic' as const },
+          ...(m500 ? [{ src: m500, fontWeight: 500 as const, fontStyle: 'italic' as const }] : []),
+        ],
+      });
+    } else {
+      console.warn('[PDF] Custom fonts not found, using built-in fallbacks');
+    }
+  } catch (err) {
+    console.warn('[PDF] Font registration failed:', err instanceof Error ? err.message : err);
+  }
+}
+
+
 
 // ============== COLOR SYSTEM ==============
 const COLORS = {
@@ -545,6 +604,8 @@ export type ReportProps = {
 };
 
 export function ReportDocument(props: ReportProps) {
+  registerFonts();
+
   const {
     traineeName, sport, productName, productTier, date,
     primaryArchetype, secondaryArchetype, axisScores, texts,
@@ -613,7 +674,7 @@ export function ReportDocument(props: ReportProps) {
             </View>
             <View style={[styles.coverFooter, { marginTop: 60 }]}>
               <Text>© Humatrix · The Mind Club Company</Text>
-              <Text>Vienna · Austria</Text>
+              <Text>Made in Tyrol, Austria</Text>
             </View>
           </View>
         </View>
@@ -1069,7 +1130,7 @@ export function ReportDocument(props: ReportProps) {
       )}
 
       {/* MODULE INTERPRETATIONS */}
-      {showAllModules && (
+      {showAllModules && texts.modul_interpretationen && Object.keys(texts.modul_interpretationen).length > 0 && (
         <Page size="A4" style={styles.page}>
           <Text style={styles.kicker}>04 — Deine Sieben Module</Text>
           <Text style={styles.h1}>Die Architektur deiner Führung.</Text>
@@ -1088,7 +1149,7 @@ export function ReportDocument(props: ReportProps) {
         </Page>
       )}
 
-      {showAllModules && (
+      {showAllModules && texts.modul_interpretationen && Object.keys(texts.modul_interpretationen).length > 4 && (
         <Page size="A4" style={styles.page}>
           <Text style={styles.kicker}>04 — Deine Sieben Module (Fortsetzung)</Text>
           <View style={styles.dividerGold} />
@@ -1144,7 +1205,7 @@ export function ReportDocument(props: ReportProps) {
       </Page>
 
       {/* DISCUSSION GUIDE */}
-      {productTier >= 2 && (
+      {productTier >= 2 && texts.gespraechsleitfaden && texts.gespraechsleitfaden.length > 0 && (
         <Page size="A4" style={styles.page}>
           <Text style={styles.kicker}>06 — Gesprächsleitfaden</Text>
           <Text style={styles.h1}>Fragen, die zu deinem{'\n'}Profil passen.</Text>
@@ -1168,7 +1229,7 @@ export function ReportDocument(props: ReportProps) {
       )}
 
       {/* 30 DAYS */}
-      {productTier >= 2 && (
+      {productTier >= 2 && texts.naechste_30_tage && texts.naechste_30_tage.length > 0 && (
         <Page size="A4" style={styles.page}>
           <Text style={styles.kicker}>07 — Die Nächsten 30 Tage</Text>
           <Text style={styles.h1}>Konkrete Schritte,{'\n'}kein Warten.</Text>
@@ -1205,7 +1266,7 @@ export function ReportDocument(props: ReportProps) {
             </Text>
           </View>
           <View style={styles.coverFooter}>
-            <Text>© Humatrix · The Mind Club Company · Vienna</Text>
+            <Text>© Humatrix · The Mind Club Company · Made in Tyrol, Austria</Text>
             <Text>coachcheck.humatrix.cc</Text>
           </View>
         </View>
