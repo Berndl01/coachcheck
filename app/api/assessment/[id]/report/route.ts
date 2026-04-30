@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateReportTexts, type ReportInput } from '@/lib/ai/report-prompt';
 import { ReportDocument } from '@/lib/pdf/report-document';
 import { uploadReportPDF, getReportSignedUrl } from '@/lib/pdf/storage';
-import { getResend, FROM_EMAIL } from '@/lib/email/resend';
+import { sendEmailSafe } from '@/lib/email/resend';
 import {
   computeFremdbildAxisScores,
   computeAxisDiscrepancies,
@@ -433,11 +433,10 @@ export async function POST(
            </p>`
         : '';
 
-      const resend = getResend();
-      await resend.emails.send({
-        from: FROM_EMAIL,
+      await sendEmailSafe({
         to: user.email,
         subject: `Dein Humatrix Coach Report ist bereit — ${assessment.product.name_de}`,
+        category: 'report-ready',
         html: `
           <div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; color: #1B1C1E;">
             <div style="padding: 32px 0; border-bottom: 1px solid #DBD8D1;">

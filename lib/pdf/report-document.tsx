@@ -522,7 +522,9 @@ const MODULE_TITLES: Record<string, string> = {
 
 function AxisBar({ axis, value }: { axis: keyof AxisScores; value: number }) {
   const labels = AXIS_LABELS[axis];
-  const pct = Math.round(value * 100);
+  // NaN-Guard: ungültige Werte → 50 % (Mittelpunkt), damit SVG nie crasht
+  const safe = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.5;
+  const pct = Math.round(safe * 100);
   return (
     <View style={styles.axisRow}>
       <View style={styles.axisLabels}>
@@ -532,10 +534,20 @@ function AxisBar({ axis, value }: { axis: keyof AxisScores; value: number }) {
       </View>
       <Svg height={8} width="100%">
         <Rect x={0} y={3} width="100%" height={2} fill={COLORS.boneLine} rx={1} />
-        <Circle cx={`${value * 100}%`} cy={4} r={3.5} fill={COLORS.gold} />
+        <Circle cx={`${pct}%`} cy={4} r={3.5} fill={COLORS.gold} />
       </Svg>
     </View>
   );
+}
+
+/**
+ * Wandelt einen 0..1-Wert sicher in einen Prozent-String für SVG-Koordinaten um.
+ * NaN/undefined → 50% (Mittelpunkt), out-of-range wird geclampt.
+ */
+function safePct(value: number | null | undefined): string {
+  const v = typeof value === 'number' && Number.isFinite(value) ? value : 0.5;
+  const clamped = Math.max(0, Math.min(1, v));
+  return `${Math.round(clamped * 100)}%`;
 }
 
 function PageFooter({ pageNum, productName }: { pageNum: number; productName: string }) {
@@ -850,12 +862,12 @@ export function ReportDocument(props: ReportProps) {
                     {MATURITY_LABELS_PDF[key] ?? key}
                   </Text>
                   <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>
-                    {Math.round(val * 100)} %
+                    {Math.round((Number.isFinite(val) ? val : 0.5) * 100)} %
                   </Text>
                 </View>
                 <Svg height={8} width="100%">
                   <Rect x={0} y={3} width="100%" height={2} fill={COLORS.boneLine} rx={1} />
-                  <Circle cx={`${val * 100}%`} cy={4} r={4} fill={COLORS.gold} />
+                  <Circle cx={safePct(val)} cy={4} r={4} fill={COLORS.gold} />
                 </Svg>
               </View>
             ))}
@@ -987,9 +999,9 @@ export function ReportDocument(props: ReportProps) {
                   <Svg height={14} width="100%">
                     <Rect x={0} y={6} width="100%" height={2} fill={COLORS.boneLine} rx={1} />
                     {/* Self marker (open circle) */}
-                    <Circle cx={`${d.selfValue * 100}%`} cy={7} r={4} fill={COLORS.bone} stroke={COLORS.ink} strokeWidth={1.5} />
+                    <Circle cx={safePct(d.selfValue)} cy={7} r={4} fill={COLORS.bone} stroke={COLORS.ink} strokeWidth={1.5} />
                     {/* Fremd marker (filled gold) */}
-                    <Circle cx={`${d.fremdValue * 100}%`} cy={7} r={4} fill={COLORS.gold} />
+                    <Circle cx={safePct(d.fremdValue)} cy={7} r={4} fill={COLORS.gold} />
                   </Svg>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 3, fontSize: 7.5, color: COLORS.muted }}>
                     <Text>○ Selbst {selfPct}%</Text>
@@ -1100,7 +1112,7 @@ export function ReportDocument(props: ReportProps) {
                 </View>
                 <Svg height={8} width="100%">
                   <Rect x={0} y={3} width="100%" height={2} fill={COLORS.boneLine} rx={1} />
-                  <Circle cx={`${val * 100}%`} cy={4} r={4} fill={COLORS.gold} />
+                  <Circle cx={safePct(val)} cy={4} r={4} fill={COLORS.gold} />
                 </Svg>
               </View>
             ))}

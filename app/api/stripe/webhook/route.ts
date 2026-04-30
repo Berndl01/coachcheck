@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
             appUrl,
             assessmentId: assessment.id,
           }),
+          category: 'welcome',
         });
       }
     } catch (err) {
