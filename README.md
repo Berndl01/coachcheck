@@ -136,3 +136,30 @@ Der 24-seitige Premium-Report pro Paket:
 - React-PDF rendert das Ergebnis als edles Dokument
 - Gespeichert in Supabase Storage
 - Download-Link an User via Resend-Mail
+
+---
+
+## 🔴 Go-Live Pflichtchecks nach Fix 10
+
+1. **Alle Migrationen ausführen**
+   - Wichtig: nicht nur 01-03, sondern `01_schema.sql` bis `10_context_schema_repair.sql`.
+   - Migration 10 behebt fehlende Premium-Kontextfelder und leert den Supabase/PostgREST Schema-Cache.
+
+2. **Storage Bucket prüfen**
+   - Supabase Storage Bucket `reports` muss existieren und privat sein.
+   - Falls PDFs beim Speichern fehlschlagen: Migration `04_storage_bucket.sql` erneut ausführen.
+
+3. **PDF-Report Voraussetzungen**
+   - `ANTHROPIC_API_KEY` muss gesetzt sein.
+   - `SUPABASE_SERVICE_ROLE_KEY` muss gesetzt sein.
+   - `NEXT_PUBLIC_APP_URL` muss auf die echte Domain zeigen.
+
+4. **E-Mail über Resend**
+   - App-Mails laufen über `RESEND_API_KEY` und `RESEND_FROM_EMAIL`.
+   - Signup-Bestätigung und Passwort-Reset kommen von Supabase Auth. Damit auch diese über Resend laufen, Resend in Supabase unter Authentication → SMTP als SMTP-Anbieter eintragen.
+
+5. **Stripe Webhook**
+   - Endpoint: `/api/stripe/webhook`
+   - Event: `checkout.session.completed`
+   - Webhook-Secret als `STRIPE_WEBHOOK_SECRET` setzen.
+   - Der Webhook ist idempotent; doppelte Stripe-Zustellungen erzeugen kein zweites Assessment mehr.

@@ -17,6 +17,8 @@ import {
   type MaturityScores,
 } from '@/lib/scoring';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 export async function POST(
@@ -289,17 +291,24 @@ export async function POST(
     }
   }
 
-  // Context from assessment + profile
-  const hasAssessmentContext = !!(assessment.context_season_phase || assessment.context_team_maturity || assessment.context_conflict_state);
+  // Context from assessment + profile. Premium-Kontext liegt bevorzugt in eigenen Spalten,
+  // zusätzlich aber als Fallback in metadata.context, damit ältere DB-Stände nicht brechen.
+  const metadataContext = ((assessment.metadata as any)?.context ?? {}) as Record<string, any>;
+  const seasonPhase = assessment.context_season_phase ?? metadataContext.seasonPhase ?? null;
+  const teamMaturity = assessment.context_team_maturity ?? metadataContext.teamMaturity ?? null;
+  const conflictState = assessment.context_conflict_state ?? metadataContext.conflictState ?? null;
+  const ageRange = assessment.context_age_range ?? metadataContext.ageRange ?? null;
+  const notes = assessment.context_notes ?? metadataContext.notes ?? null;
+  const hasAssessmentContext = !!(seasonPhase || teamMaturity || conflictState || ageRange || notes);
   const hasProfileContext = !!(profile?.training_level || profile?.age_group || profile?.club_type);
 
   const context = (hasAssessmentContext || hasProfileContext)
     ? {
-        seasonPhase: assessment.context_season_phase ?? null,
-        teamMaturity: assessment.context_team_maturity ?? null,
-        conflictState: assessment.context_conflict_state ?? null,
-        ageRange: assessment.context_age_range ?? null,
-        notes: assessment.context_notes ?? null,
+        seasonPhase,
+        teamMaturity,
+        conflictState,
+        ageRange,
+        notes,
         trainingLevel: profile?.training_level ?? null,
         ageGroup: profile?.age_group ?? null,
         clubType: profile?.club_type ?? null,

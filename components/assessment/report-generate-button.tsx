@@ -8,6 +8,20 @@ type Props = {
   productTier: number;
 };
 
+function friendlyReportError(message: string) {
+  const m = message.toLowerCase();
+  if (m.includes('anthropic') || m.includes('ai generation') || m.includes('api_key')) {
+    return 'Der KI-Reportdienst ist gerade nicht vollständig konfiguriert. Bitte prüfe ANTHROPIC_API_KEY und versuche es danach erneut.';
+  }
+  if (m.includes('pdf render') || m.includes('font')) {
+    return 'Das PDF konnte gerade nicht erzeugt werden. Bitte prüfe die PDF-Konfiguration und versuche es danach erneut.';
+  }
+  if (m.includes('upload') || m.includes('storage') || m.includes('bucket')) {
+    return 'Das PDF wurde erzeugt, konnte aber nicht gespeichert werden. Bitte prüfe den Supabase Storage Bucket reports.';
+  }
+  return message || 'Der Report konnte gerade nicht erstellt werden.';
+}
+
 export function ReportGenerateButton({ assessmentId, existingReportUrl, productTier }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +33,7 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
     try {
       const res = await fetch(`/api/assessment/${assessmentId}/report`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Fehler beim Erstellen');
+      if (!res.ok) throw new Error(friendlyReportError(data.error ?? 'Fehler beim Erstellen'));
       setUrl(data.signedUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -60,7 +74,7 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
         {loading ? (
           <>
             <span className="inline-block w-3 h-3 rounded-full bg-gold animate-pulse" />
-            KI erstellt deinen Report · ~30 Sek
+            KI erstellt deinen Report · 30-90 Sek
           </>
         ) : (
           <>Premium-Report jetzt generieren <span className="font-mono">→</span></>
@@ -77,10 +91,15 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
           {error}
         </div>
       )}
-      <div className="font-mono text-xs uppercase tracking-[0.12em] text-muted mt-2">
-        {productTier === 1 ? '7 Seiten · Executive Summary + Axis-Profil + Stärken/Risiken' :
-         productTier === 2 ? '11 Seiten · Alle 7 Module + 30-Tage-Plan + Gesprächsleitfaden' :
-         '24 Seiten · Vollreport mit 360°-Diskrepanz-Analyse'}
+      <div className="grid gap-2 font-mono text-xs uppercase tracking-[0.12em] text-muted mt-2 max-w-[62ch]">
+        <div>
+          Bitte erst starten, wenn du ungestört bist und den Kontext oben gespeichert hast. Die Erstellung kann je nach Paket 30-90 Sekunden dauern.
+        </div>
+        <div>
+          {productTier === 1 ? '7 Seiten · Executive Summary + Axis-Profil + Stärken/Risiken' :
+           productTier === 2 ? '11 Seiten · Alle 7 Module + 30-Tage-Plan + Gesprächsleitfaden' :
+           '24 Seiten · Vollreport mit 360°-Diskrepanz-Analyse'}
+        </div>
       </div>
     </div>
   );

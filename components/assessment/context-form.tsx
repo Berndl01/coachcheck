@@ -65,11 +65,12 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Fehler');
+      if (!res.ok) throw new Error(data.error ?? 'Der Kontext konnte gerade nicht gespeichert werden.');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
+      const message = e instanceof Error ? e.message : 'Der Kontext konnte gerade nicht gespeichert werden.';
+      setError(message.includes('schema cache') || message.includes('context_') ? 'Der Kontext konnte gerade nicht gespeichert werden. Die Datenbankstruktur muss aktualisiert werden.' : message);
     } finally {
       setSaving(false);
     }
@@ -83,10 +84,18 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
       <h3 className="font-display text-2xl tracking-[-0.02em] mb-2">
         Wo stehst du <em className="font-editorial">gerade?</em>
       </h3>
-      <p className="text-muted text-sm mb-6 max-w-[55ch] leading-[1.5]">
-        Derselbe Führungsstil wirkt in unterschiedlichen Phasen ganz anders.
-        Wenn du uns den aktuellen Kontext mitgibst, schärft der Report seine Interpretation konkret auf deine Situation.
-      </p>
+      <div className="grid gap-3 mb-6 max-w-[68ch]">
+        <p className="text-muted text-sm leading-[1.5]">
+          Nimm dir bitte zwei ruhige Minuten, bevor du den Report generierst.
+          Je ehrlicher du die aktuelle Lage einordnest, desto konkreter kann die Interpretation
+          zwischen deinem Führungsstil, deinem Team und der Saisonphase unterscheiden.
+        </p>
+        <p className="text-muted text-sm leading-[1.5]">
+          Es geht hier nicht um eine Bewertung deiner Arbeit, sondern um den Kontext: dieselbe
+          Führungswirkung kann in einer stabilen Phase, im Umbruch oder unter Ergebnisdruck
+          völlig anders wahrgenommen werden.
+        </p>
+      </div>
 
       <div className="grid gap-4">
         <div>
@@ -178,7 +187,7 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
             {saving ? 'Speichert …' : saved ? '✓ Gespeichert' : 'Kontext speichern'}
           </button>
           <span className="text-xs text-muted">
-            Wirkt beim nächsten Report-Generieren.
+            Wirkt beim nächsten Report-Generieren. Bitte vor dem PDF speichern.
           </span>
         </div>
       </div>

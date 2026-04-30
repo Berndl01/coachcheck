@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   // Load assessment
   const { data: ax } = await supabase
     .from('assessments')
-    .select('id, axis_scores, maturity_scores, context_season_phase, context_team_maturity, user_id, product:products(tier)')
+    .select('*, product:products(tier)')
     .eq('id', assessment_id)
     .eq('user_id', user.id)
     .single();
@@ -74,6 +74,9 @@ export async function POST(request: NextRequest) {
   const maturityLines = maturity
     ? Object.entries(maturity).map(([k, v]) => `- ${k}: ${Math.round(v * 100)}%`).join('\n')
     : null;
+  const metadataContext = ((ax.metadata as any)?.context ?? {}) as Record<string, any>;
+  const seasonPhase = ax.context_season_phase ?? metadataContext.seasonPhase ?? null;
+  const teamMaturity = ax.context_team_maturity ?? metadataContext.teamMaturity ?? null;
 
   const systemPrompt = `Du bist Senior-Sportpsychologe und schreibst für einen Trainer eine persönliche Schicht über seinen Archetyp. Der Archetyp ist "${deepDive.name_de}" — die allgemeine Beschreibung hat der Trainer bereits gelesen. Jetzt brauchst du das, was NUR zu ihm passt, basierend auf seinen konkreten Werten und seinem Kontext.
 
@@ -94,8 +97,8 @@ ${axisLines}
 
 ${maturityLines ? `# Seine Führungsreife\n${maturityLines}\n` : ''}
 
-${ax.context_season_phase ? `Saisonphase: ${ax.context_season_phase}\n` : ''}
-${ax.context_team_maturity ? `Team-Reife: ${ax.context_team_maturity}\n` : ''}
+${seasonPhase ? `Saisonphase: ${seasonPhase}\n` : ''}
+${teamMaturity ? `Team-Reife: ${teamMaturity}\n` : ''}
 
 Erstelle folgendes JSON:
 

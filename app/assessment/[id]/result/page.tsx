@@ -98,6 +98,7 @@ export default async function ResultPage({
   const secondary = assessment.secondary as any;
   const axisScores = assessment.axis_scores as Record<string, number>;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://coachcheck.humatrix.cc';
+  const metadataContext = ((assessment as any).metadata?.context ?? {}) as Record<string, any>;
 
   return (
     <>
@@ -207,11 +208,11 @@ export default async function ResultPage({
               <ContextForm
                 assessmentId={id}
                 initialContext={{
-                  seasonPhase: (assessment as any).context_season_phase,
-                  teamMaturity: (assessment as any).context_team_maturity,
-                  conflictState: (assessment as any).context_conflict_state,
-                  ageRange: (assessment as any).context_age_range,
-                  notes: (assessment as any).context_notes,
+                  seasonPhase: (assessment as any).context_season_phase ?? metadataContext.seasonPhase,
+                  teamMaturity: (assessment as any).context_team_maturity ?? metadataContext.teamMaturity,
+                  conflictState: (assessment as any).context_conflict_state ?? metadataContext.conflictState,
+                  ageRange: (assessment as any).context_age_range ?? metadataContext.ageRange,
+                  notes: (assessment as any).context_notes ?? metadataContext.notes,
                 }}
               />
             </div>

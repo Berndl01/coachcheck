@@ -111,15 +111,17 @@ export default async function AdminChecklistPage() {
   let userCount = 0;
   let assessmentCount = 0;
   let reportCount = 0;
+  let contextSchemaOk = false;
 
   try {
-    const [prodRes, itemRes, archRes, userRes, axRes, reportRes] = await Promise.all([
+    const [prodRes, itemRes, archRes, userRes, axRes, reportRes, contextRes] = await Promise.all([
       supabase.from('products').select('id', { count: 'exact', head: true }),
       supabase.from('items').select('id', { count: 'exact', head: true }),
       supabase.from('archetypes').select('id', { count: 'exact', head: true }),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       supabase.from('assessments').select('id', { count: 'exact', head: true }),
       supabase.from('reports').select('id', { count: 'exact', head: true }),
+      supabase.from('assessments').select('context_age_range', { count: 'exact', head: true }),
     ]);
     productCount = prodRes.count ?? 0;
     itemCount = itemRes.count ?? 0;
@@ -127,6 +129,7 @@ export default async function AdminChecklistPage() {
     userCount = userRes.count ?? 0;
     assessmentCount = axRes.count ?? 0;
     reportCount = reportRes.count ?? 0;
+    contextSchemaOk = !contextRes.error;
   } catch {}
 
   checks.push({
@@ -143,6 +146,12 @@ export default async function AdminChecklistPage() {
     label: 'DB · Items (Self + Spieler + Pulse)',
     status: itemCount >= 65 ? 'ok' : itemCount >= 40 ? 'warn' : 'err',
     detail: `${itemCount} Items — erwartet ≥ 65 (nach allen Migrationen)`,
+  });
+
+  checks.push({
+    label: 'DB · Premium-Kontext-Spalten',
+    status: contextSchemaOk ? 'ok' : 'err',
+    detail: contextSchemaOk ? '✓ context_age_range/schema cache verfügbar' : 'Fehlt oder Schema-Cache alt — Migration 10 ausführen',
   });
 
   const colorClass = (s: CheckItem['status']) =>

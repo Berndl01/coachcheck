@@ -9,7 +9,8 @@ import { HumatrixLogo } from '@/components/logo';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
+  const redirectParam = searchParams.get('redirectTo') ?? '/dashboard';
+  const redirectTo = redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : '/dashboard';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

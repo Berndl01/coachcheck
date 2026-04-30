@@ -15,16 +15,45 @@ function PasswortNeuForm() {
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    // Supabase setzt über den URL-Hash eine recovery-Session. Wir prüfen kurz ob sie da ist.
+    let mounted = true;
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+
+    async function prepareRecoverySession() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+
+      // Supabase kann Recovery-Links je nach Auth-Flow als ?code=... oder als URL-Hash liefern.
+      // Für den PKCE-Flow muss der Code aktiv gegen eine Session getauscht werden.
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError && mounted) {
+          setError('Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.');
+          return;
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
       if (session) {
         setSessionReady(true);
       } else {
-        // User ist nicht über einen gültigen Reset-Link gekommen
         setError('Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.');
       }
+    }
+
+    prepareRecoverySession();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session && mounted) {
+        setSessionReady(true);
+        setError(null);
+      }
     });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {

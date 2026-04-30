@@ -36,7 +36,7 @@ export default async function ArchetypePage({
   // Check tier access via user's assessments
   const { data: assessments } = await supabase
     .from('assessments')
-    .select('id, status, product:products(tier), axis_scores, primary_archetype_id, context_season_phase, context_team_maturity')
+    .select('*, product:products(tier)')
     .eq('user_id', user.id)
     .eq('status', 'report_ready');
 
@@ -48,7 +48,7 @@ export default async function ArchetypePage({
   if (assessmentId) {
     const { data: ax } = await supabase
       .from('assessments')
-      .select('id, axis_scores, maturity_scores, context_season_phase, context_team_maturity, primary_archetype_id, product:products(tier)')
+      .select('*, product:products(tier)')
       .eq('id', assessmentId)
       .eq('user_id', user.id)
       .single();

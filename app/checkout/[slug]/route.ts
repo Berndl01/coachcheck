@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/lib/supabase/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -29,8 +32,12 @@ export async function POST(
     return NextResponse.redirect(new URL(`/kontakt?plan=${slug}`, request.url));
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-02-24.acacia',
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.NEXT_PUBLIC_APP_URL) {
+    return NextResponse.json({ error: 'Stripe/App-URL nicht konfiguriert' }, { status: 500 });
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-02-24.acacia' as any,
   });
 
   const session = await stripe.checkout.sessions.create({

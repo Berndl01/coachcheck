@@ -5,7 +5,7 @@ import { sendEmailSafe } from '@/lib/email/resend';
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2025-02-24.acacia' as any,
   });
 }
 
@@ -62,6 +62,9 @@ function welcomeEmailHtml(params: {
 `;
 }
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
   const body = await request.text();
@@ -86,6 +89,18 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Stripe Webhooks können mehrfach zugestellt werden. Deshalb zuerst prüfen,
+    // ob diese Checkout-Session bereits aktiviert wurde, bevor ein neues Assessment entsteht.
+    const { data: existingPurchase } = await admin
+      .from('purchases')
+      .select('assessment_id')
+      .eq('stripe_session_id', session.id)
+      .maybeSingle();
+
+    if (existingPurchase?.assessment_id) {
+      return NextResponse.json({ received: true, already_processed: true });
+    }
+
     const { data: assessment, error: aErr } = await admin
       .from('assessments')
       .insert({
@@ -101,7 +116,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Assessment creation failed' }, { status: 500 });
     }
 
-    await admin.from('purchases').insert({
+    const { error: purchaseError } = await admin.from('purchases').insert({
       user_id: userId,
       product_id: parseInt(productId),
       assessment_id: assessment.id,
@@ -111,7 +126,16 @@ export async function POST(request: NextRequest) {
       currency: session.currency ?? 'eur',
       status: 'paid',
       paid_at: new Date().toISOString(),
+      metadata: {
+        stripe_customer_email: session.customer_email ?? session.customer_details?.email ?? null,
+        payment_status: session.payment_status,
+      },
     });
+
+    if (purchaseError) {
+      console.error('Purchase create error:', purchaseError);
+      return NextResponse.json({ error: 'Purchase creation failed' }, { status: 500 });
+    }
 
     // Welcome-Email versenden (fehlerrobust — blockiert nicht)
     try {

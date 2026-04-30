@@ -93,6 +93,10 @@ function registerFonts() {
 }
 
 
+// Robuste PDF-Fonts: Standard-PDF-Fonts verhindern Produktionsabbrüche,
+// falls Google-Font-Dateien im Server-Bundle fehlen oder nicht lesbar sind.
+const PDF_SANS = 'Helvetica';
+const PDF_DISPLAY = 'Helvetica';
 
 // ============== COLOR SYSTEM ==============
 const COLORS = {
@@ -111,7 +115,7 @@ const COLORS = {
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Manrope',
+    fontFamily: PDF_SANS,
     fontSize: 10,
     color: COLORS.ink,
     paddingTop: 60,
@@ -121,14 +125,14 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
   },
   pageDark: {
-    fontFamily: 'Manrope',
+    fontFamily: PDF_SANS,
     fontSize: 10,
     color: COLORS.bone,
     padding: 0,
     backgroundColor: COLORS.ink,
   },
   pagePetrol: {
-    fontFamily: 'Manrope',
+    fontFamily: PDF_SANS,
     fontSize: 10,
     color: COLORS.bone,
     paddingTop: 60,
@@ -139,7 +143,7 @@ const styles = StyleSheet.create({
 
   // Typography
   kicker: {
-    fontFamily: 'Manrope',
+    fontFamily: PDF_SANS,
     fontSize: 8,
     color: COLORS.muted,
     letterSpacing: 2,
@@ -147,7 +151,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   kickerDark: {
-    fontFamily: 'Manrope',
+    fontFamily: PDF_SANS,
     fontSize: 8,
     color: COLORS.gold,
     letterSpacing: 2,
@@ -155,15 +159,15 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   h1: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 36,
-    fontWeight: 300,
+    fontWeight: 400,
     letterSpacing: -0.8,
     lineHeight: 1.05,
     marginBottom: 14,
   },
   h2: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 22,
     fontWeight: 400,
     letterSpacing: -0.4,
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   h3: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 16,
     fontWeight: 500,
     letterSpacing: -0.3,
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
   },
   quote: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 13,
     fontStyle: 'italic',
     lineHeight: 1.5,
@@ -204,7 +208,7 @@ const styles = StyleSheet.create({
     marginBottom: 9,
   },
   quoteLight: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 13,
     fontStyle: 'italic',
     lineHeight: 1.5,
@@ -252,27 +256,27 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.inkSoft,
   },
   coverLogo: {
-    fontFamily: 'Manrope',
+    fontFamily: PDF_SANS,
     fontSize: 11,
     letterSpacing: 4.5,
     color: COLORS.bone,
-    fontWeight: 300,
+    fontWeight: 400,
     textTransform: 'uppercase',
   },
   coverTitle: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 52,
     color: COLORS.bone,
     letterSpacing: -1.2,
     lineHeight: 1,
-    fontWeight: 300,
+    fontWeight: 400,
   },
   coverTitleGold: {
     color: COLORS.gold,
     fontStyle: 'italic',
   },
   coverSubtitle: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 20,
     color: COLORS.mutedDark,
     fontStyle: 'italic',
@@ -291,7 +295,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   coverMetaValue: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 14,
     color: COLORS.bone,
     marginBottom: 16,
@@ -321,7 +325,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   archetypeName: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 42,
     color: COLORS.bone,
     letterSpacing: -0.8,
@@ -338,7 +342,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   archetypeKernmuster: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 15,
     color: COLORS.bone,
     fontStyle: 'italic',
@@ -360,7 +364,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   secondaryName: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 18,
     color: COLORS.bone,
     letterSpacing: -0.3,
@@ -444,7 +448,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   moduleTitle: {
-    fontFamily: 'Fraunces',
+    fontFamily: PDF_DISPLAY,
     fontSize: 15,
     fontWeight: 500,
     color: COLORS.ink,
@@ -715,7 +719,7 @@ export function ReportDocument(props: ReportProps) {
 
         <View style={{ marginTop: 50 }}>
           <Text style={styles.secondaryLabel}>Interpretation</Text>
-          <Text style={{ ...styles.bodyLight, marginTop: 10, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 12, lineHeight: 1.55, opacity: 0.92 }}>
+          <Text style={{ ...styles.bodyLight, marginTop: 10, fontFamily: PDF_DISPLAY, fontStyle: 'italic', fontSize: 12, lineHeight: 1.55, opacity: 0.92 }}>
             {texts.archetyp_interpretation}
           </Text>
         </View>
@@ -744,10 +748,10 @@ export function ReportDocument(props: ReportProps) {
           <Text style={{ ...styles.kickerDark, color: COLORS.gold }}>Premium · Signature Portrait</Text>
           <Text style={{ ...styles.h1, color: COLORS.bone }}>
             Coach{'\n'}
-            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic', color: COLORS.gold }}>Signature.</Text>
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic', color: COLORS.gold }}>Signature.</Text>
           </Text>
           <View style={{ ...styles.dividerGold, backgroundColor: COLORS.gold }} />
-          <Text style={{ ...styles.bodyLight, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 13, lineHeight: 1.55 }}>
+          <Text style={{ ...styles.bodyLight, fontFamily: PDF_DISPLAY, fontStyle: 'italic', fontSize: 13, lineHeight: 1.55 }}>
             {texts.coach_signature_portrait}
           </Text>
           {texts.fuehrungsenergie && (
@@ -755,7 +759,7 @@ export function ReportDocument(props: ReportProps) {
               <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.goldLight, textTransform: 'uppercase', marginBottom: 6 }}>
                 Führungsenergie
               </Text>
-              <Text style={{ fontSize: 14, color: COLORS.bone, fontFamily: 'Fraunces', fontStyle: 'italic' }}>
+              <Text style={{ fontSize: 14, color: COLORS.bone, fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>
                 {texts.fuehrungsenergie}
               </Text>
             </View>
@@ -777,10 +781,10 @@ export function ReportDocument(props: ReportProps) {
               </Text>
               {texts.paradoxien.map((p, i) => (
                 <View key={i} style={{ marginBottom: 10, paddingLeft: 18, position: 'relative' }}>
-                  <Text style={{ position: 'absolute', left: 0, top: 0, color: COLORS.gold, fontFamily: 'Manrope', fontSize: 10 }}>
+                  <Text style={{ position: 'absolute', left: 0, top: 0, color: COLORS.gold, fontFamily: PDF_SANS, fontSize: 10 }}>
                     {String(i + 1).padStart(2, '0')}
                   </Text>
-                  <Text style={{ ...styles.body, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 12 }}>
+                  <Text style={{ ...styles.body, fontFamily: PDF_DISPLAY, fontStyle: 'italic', fontSize: 12 }}>
                     {p}
                   </Text>
                 </View>
@@ -833,7 +837,7 @@ export function ReportDocument(props: ReportProps) {
           <Text style={styles.kicker}>Premium · Führungsreife</Text>
           <Text style={styles.h1}>
             Stil ist das eine.{'\n'}
-            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic' }}>Reife</Text> ist etwas anderes.
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>Reife</Text> ist etwas anderes.
           </Text>
           <View style={styles.dividerGold} />
           <Text style={styles.body}>{texts.fuehrungsreife_interpretation}</Text>
@@ -842,10 +846,10 @@ export function ReportDocument(props: ReportProps) {
             {Object.entries(maturityScores).map(([key, val]) => (
               <View key={key} style={{ marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.ink }}>
+                  <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.ink }}>
                     {MATURITY_LABELS_PDF[key] ?? key}
                   </Text>
-                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>
+                  <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>
                     {Math.round(val * 100)} %
                   </Text>
                 </View>
@@ -899,7 +903,7 @@ export function ReportDocument(props: ReportProps) {
           <Text style={styles.kicker}>Premium · Warnhinweise</Text>
           <Text style={styles.h1}>
             Was du{'\n'}
-            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic' }}>nicht</Text> tun solltest.
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>nicht</Text> tun solltest.
           </Text>
           <View style={styles.dividerGold} />
           <Text style={{ ...styles.body, fontStyle: 'italic', color: COLORS.muted, marginBottom: 18 }}>
@@ -909,7 +913,7 @@ export function ReportDocument(props: ReportProps) {
 
           {texts.no_go_warnungen.map((warn, i) => (
             <View key={i} style={{ marginBottom: 12, paddingLeft: 24, position: 'relative' }}>
-              <Text style={{ position: 'absolute', left: 0, top: 1, color: COLORS.gold, fontFamily: 'Manrope', fontSize: 11, fontWeight: 700 }}>
+              <Text style={{ position: 'absolute', left: 0, top: 1, color: COLORS.gold, fontFamily: PDF_SANS, fontSize: 11, fontWeight: 700 }}>
                 ⌀
               </Text>
               <Text style={{ ...styles.body, fontSize: 10.5 }}>{warn}</Text>
@@ -921,7 +925,7 @@ export function ReportDocument(props: ReportProps) {
               <Text style={{ fontSize: 8, letterSpacing: 2, color: COLORS.muted, textTransform: 'uppercase', marginBottom: 4 }}>
                 Beratungswürdigkeit dieses Profils
               </Text>
-              <Text style={{ fontFamily: 'Fraunces', fontSize: 18, color: COLORS.goldDeep, textTransform: 'uppercase', letterSpacing: 2 }}>
+              <Text style={{ fontFamily: PDF_DISPLAY, fontSize: 18, color: COLORS.goldDeep, textTransform: 'uppercase', letterSpacing: 2 }}>
                 {texts.beratungswuerdigkeit}
               </Text>
             </View>
@@ -935,11 +939,11 @@ export function ReportDocument(props: ReportProps) {
           <Text style={{ ...styles.kickerDark, color: COLORS.gold }}>03 — 360° Spiegel</Text>
           <Text style={{ ...styles.h1, color: COLORS.bone }}>
             Wie dein Team{'\n'}
-            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic', color: COLORS.gold }}>dich wirklich</Text>{'\n'}
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic', color: COLORS.gold }}>dich wirklich</Text>{'\n'}
             erlebt.
           </Text>
           <View style={{ ...styles.dividerGold, backgroundColor: COLORS.gold }} />
-          <Text style={{ ...styles.bodyLight, opacity: 0.92, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 12 }}>
+          <Text style={{ ...styles.bodyLight, opacity: 0.92, fontFamily: PDF_DISPLAY, fontStyle: 'italic', fontSize: 12 }}>
             {texts.fremdbild_summary}
           </Text>
 
@@ -1051,11 +1055,11 @@ export function ReportDocument(props: ReportProps) {
           <Text style={{ ...styles.kickerDark, color: COLORS.gold }}>05 — TeamCheck</Text>
           <Text style={{ ...styles.h1, color: COLORS.bone }}>
             Was dein{'\n'}
-            <Text style={{ fontFamily: 'Fraunces', fontStyle: 'italic', color: COLORS.gold }}>Team</Text>{'\n'}
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic', color: COLORS.gold }}>Team</Text>{'\n'}
             wirklich erlebt.
           </Text>
           <View style={{ ...styles.dividerGold, backgroundColor: COLORS.gold }} />
-          <Text style={{ ...styles.bodyLight, opacity: 0.92, fontFamily: 'Fraunces', fontStyle: 'italic', fontSize: 12 }}>
+          <Text style={{ ...styles.bodyLight, opacity: 0.92, fontFamily: PDF_DISPLAY, fontStyle: 'italic', fontSize: 12 }}>
             {texts.teamcheck_summary}
           </Text>
 
@@ -1087,8 +1091,8 @@ export function ReportDocument(props: ReportProps) {
             ] as const).map(([key, val, title, low, high]) => (
               <View key={key} style={{ marginBottom: 18 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.ink }}>{title}</Text>
-                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>{Math.round(val * 100)} %</Text>
+                  <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.ink }}>{title}</Text>
+                  <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>{Math.round(val * 100)} %</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, fontSize: 8, color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 1.4 }}>
                   <Text>{low}</Text>
@@ -1118,7 +1122,7 @@ export function ReportDocument(props: ReportProps) {
             {texts.team_handlungsempfehlungen.map((step, i) => (
               <View key={i} style={styles.moduleCard}>
                 <View style={styles.moduleHeader}>
-                  <Text style={{ ...styles.moduleCode, fontFamily: 'Fraunces', fontSize: 20, color: COLORS.gold, letterSpacing: 0 }}>
+                  <Text style={{ ...styles.moduleCode, fontFamily: PDF_DISPLAY, fontSize: 20, color: COLORS.gold, letterSpacing: 0 }}>
                     {String(i + 1).padStart(2, '0')}
                   </Text>
                 </View>
@@ -1238,7 +1242,7 @@ export function ReportDocument(props: ReportProps) {
             {texts.naechste_30_tage.map((step, i) => (
               <View key={i} style={styles.moduleCard}>
                 <View style={styles.moduleHeader}>
-                  <Text style={{ ...styles.moduleCode, fontFamily: 'Fraunces', fontSize: 20, color: COLORS.gold, letterSpacing: 0 }}>
+                  <Text style={{ ...styles.moduleCode, fontFamily: PDF_DISPLAY, fontSize: 20, color: COLORS.gold, letterSpacing: 0 }}>
                     {String(i + 1).padStart(2, '0')}
                   </Text>
                 </View>
