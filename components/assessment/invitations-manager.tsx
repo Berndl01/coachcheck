@@ -137,8 +137,8 @@ export function InvitationsManager({ assessmentId, initialInvitations, appUrl }:
         </h3>
         <p className="text-bone-soft text-sm mb-4 leading-[1.5] max-w-[55ch]">
           Spieler, Co-Trainer, Sportdirektor, Vertrauenspersonen — wer dich kennt
-          und ehrlich antworten würde. Antworten sind <strong className="text-gold">100% anonym</strong>,
-          du siehst nie wer was geantwortet hat.
+          und ehrlich antworten würde. Antworten werden <strong className="text-gold">anonymisiert</strong> ausgewertet
+          (ab 3 Einschätzungen), du siehst nie einzelne Antworten — nur den aggregierten Vergleich.
         </p>
         <div className="flex flex-wrap gap-2">
           <input

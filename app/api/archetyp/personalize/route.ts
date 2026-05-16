@@ -4,6 +4,9 @@ import { getAnthropic, REPORT_MODEL } from '@/lib/ai/anthropic';
 import { ARCHETYPE_DEEP_DIVES } from '@/lib/archetype-deep-dive';
 import { buildDeepDiveKnowledgeContext } from '@/lib/ai/trainer-knowledge';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export const maxDuration = 60;
 
 const LEVEL_LABELS: Record<string, string> = {

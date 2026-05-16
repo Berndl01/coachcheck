@@ -5,6 +5,12 @@ export const metadata = {
   title: 'Impressum · Humatrix Coach',
 };
 
+// TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss
+// die Seite dynamisch gerendert werden, sonst hängt der Build im
+// "Collecting page data"-Schritt.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function ImpressumPage() {
   return (
     <>

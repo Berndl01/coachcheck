@@ -98,7 +98,8 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
         <div>
           {productTier === 1 ? '7 Seiten · Executive Summary + Axis-Profil + Stärken/Risiken' :
            productTier === 2 ? '11 Seiten · Alle 7 Module + 30-Tage-Plan + Gesprächsleitfaden' :
-           '24 Seiten · Vollreport mit 360°-Diskrepanz-Analyse'}
+           productTier === 3 ? '14 Seiten · Vollreport mit 360°-Diskrepanz-Analyse' :
+           '16-18 Seiten · Vollreport mit 360° + TeamCheck'}
         </div>
       </div>
     </div>

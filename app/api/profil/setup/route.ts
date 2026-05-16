@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const VALID_LEVELS = ['amateur_hobby', 'amateur_ambitioniert', 'semi_profi', 'profi'];
 const VALID_AGES = ['kids_u12', 'jugend_u16', 'jugend_u18', 'erwachsene', 'gemischt'];
 const VALID_CLUBS = ['dorfverein', 'stadtverein', 'leistungszentrum', 'akademie', 'sonstige'];

@@ -89,16 +89,40 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Stripe Webhooks können mehrfach zugestellt werden. Deshalb zuerst prüfen,
-    // ob diese Checkout-Session bereits aktiviert wurde, bevor ein neues Assessment entsteht.
-    const { data: existingPurchase } = await admin
-      .from('purchases')
-      .select('assessment_id')
-      .eq('stripe_session_id', session.id)
-      .maybeSingle();
+    // Stripe Webhooks können mehrfach (auch nahezu gleichzeitig) zugestellt
+    // werden. Wir nutzen den UNIQUE-Constraint auf purchases.stripe_session_id
+    // als atomare Idempotenz-Klammer: zuerst die Purchase einfügen (ohne
+    // assessment_id), dann das Assessment, dann verlinken. Verliert ein
+    // gleichzeitiger Redelivery die Race, scheitert er beim Purchase-Insert
+    // mit 23505 und legt KEIN Assessment an.
 
-    if (existingPurchase?.assessment_id) {
-      return NextResponse.json({ received: true, already_processed: true });
+    const { data: purchase, error: purchaseError } = await admin
+      .from('purchases')
+      .insert({
+        user_id: userId,
+        product_id: parseInt(productId),
+        assessment_id: null,
+        stripe_session_id: session.id,
+        stripe_payment_intent: session.payment_intent as string,
+        amount_cents: session.amount_total ?? 0,
+        currency: session.currency ?? 'eur',
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        metadata: {
+          stripe_customer_email: session.customer_email ?? session.customer_details?.email ?? null,
+          payment_status: session.payment_status,
+        },
+      })
+      .select('id, assessment_id')
+      .single();
+
+    if (purchaseError) {
+      // 23505 = unique_violation auf stripe_session_id → bereits prozessiert
+      if ((purchaseError as { code?: string }).code === '23505') {
+        return NextResponse.json({ received: true, already_processed: true });
+      }
+      console.error('Purchase create error:', purchaseError);
+      return NextResponse.json({ error: 'Purchase creation failed' }, { status: 500 });
     }
 
     const { data: assessment, error: aErr } = await admin
@@ -116,25 +140,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Assessment creation failed' }, { status: 500 });
     }
 
-    const { error: purchaseError } = await admin.from('purchases').insert({
-      user_id: userId,
-      product_id: parseInt(productId),
-      assessment_id: assessment.id,
-      stripe_session_id: session.id,
-      stripe_payment_intent: session.payment_intent as string,
-      amount_cents: session.amount_total ?? 0,
-      currency: session.currency ?? 'eur',
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      metadata: {
-        stripe_customer_email: session.customer_email ?? session.customer_details?.email ?? null,
-        payment_status: session.payment_status,
-      },
-    });
+    const { error: linkErr } = await admin
+      .from('purchases')
+      .update({ assessment_id: assessment.id })
+      .eq('id', purchase.id);
 
-    if (purchaseError) {
-      console.error('Purchase create error:', purchaseError);
-      return NextResponse.json({ error: 'Purchase creation failed' }, { status: 500 });
+    if (linkErr) {
+      console.error('Purchase/assessment link error:', linkErr);
+      // Nicht abbrechen — der User bekommt sein Assessment trotzdem,
+      // die Verlinkung kann nachträglich repariert werden.
     }
 
     // Welcome-Email versenden (fehlerrobust — blockiert nicht)

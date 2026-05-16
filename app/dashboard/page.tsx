@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 
+export const dynamic = 'force-dynamic';
+
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Bereit zum Start',
   in_progress: 'Läuft',

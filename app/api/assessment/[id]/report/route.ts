@@ -12,6 +12,7 @@ import {
   computeAxisDiscrepancies,
   computeMaturityScores,
   computeDispersion,
+  axisDistance,
   type AxisScores,
   type FremdbildAggregateRow,
   type MaturityScores,
@@ -315,6 +316,14 @@ export async function POST(
       }
     : null;
 
+  // Distanz-Differenz Primär vs Sekundär — flagged Mischtypen für AI-Prompt
+  let archetypeDistanceDelta: number | null = null;
+  if (primary?.axis_profile && secondary?.axis_profile) {
+    const dPrimary = axisDistance(assessment.axis_scores as AxisScores, primary.axis_profile);
+    const dSecondary = axisDistance(assessment.axis_scores as AxisScores, secondary.axis_profile);
+    archetypeDistanceDelta = Math.abs(dSecondary - dPrimary);
+  }
+
   const reportInput: ReportInput = {
     productTier,
     productName: assessment.product.name_de,
@@ -332,6 +341,7 @@ export async function POST(
       name_de: secondary.name_de,
       short_trait: secondary.short_trait,
     },
+    archetypeDistanceDelta,
     axisScores: assessment.axis_scores as AxisScores,
     moduleAverages,
     maturityScores,
@@ -406,7 +416,7 @@ export async function POST(
     pages: productTier >= 4 && teamcheckSection
       ? (fremdbildSection ? 18 : 16)
       : productTier >= 3 && fremdbildSection ? 14 : productTier >= 2 ? 11 : 7,
-    generation_model: 'claude-opus-4',
+    generation_model: 'claude-opus-4-7',
     metadata: {
       has_360: !!fremdbildSection,
       fremdbild_count: pdfResponseCount,

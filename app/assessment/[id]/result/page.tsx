@@ -9,6 +9,8 @@ import { TeamcheckManager } from '@/components/assessment/teamcheck-manager';
 import { ContextForm } from '@/components/assessment/context-form';
 import { getReportSignedUrl } from '@/lib/pdf/storage';
 
+export const dynamic = 'force-dynamic';
+
 const AXIS_LABELS: Record<string, { low: string; high: string }> = {
   struktur_intuition: { low: 'Intuitiv', high: 'Strukturiert' },
   autoritaet_beteiligung: { low: 'Beteiligend', high: 'Autoritär' },
@@ -165,8 +167,9 @@ export default async function ResultPage({
               </h2>
               <p className="text-muted mb-8 max-w-[55ch] leading-[1.5]">
                 Lade 5–10 Personen ein, die dich kennen. Sie füllen denselben Test
-                aus dem Fremdbild aus — komplett anonym. Sobald 3+ Antworten da sind,
-                vergleicht der Premium-Report dein Selbstbild mit dem Team-Bild.
+                aus dem Fremdbild aus — anonymisiert und ausschließlich aggregiert ausgewertet;
+                Einzelantworten sind für dich als Trainer nicht abrufbar. Sobald 3+ Antworten
+                da sind, vergleicht der Premium-Report dein Selbstbild mit dem Team-Bild.
               </p>
               <InvitationsManager
                 assessmentId={id}
@@ -188,9 +191,10 @@ export default async function ResultPage({
                 Lass dein <em className="font-editorial">Team selbst sprechen.</em>
               </h2>
               <p className="text-muted mb-8 max-w-[55ch] leading-[1.5]">
-                Lade alle Spieler anonym ein. Sie beantworten 12 ehrliche Fragen zu Coach-Impact,
-                Teamklima, psychologischer Sicherheit und Druck-Erleben. Aggregierte Auswertung
-                ab 5 Antworten — keine Einzelpersonen identifizierbar.
+                Lade alle Spieler über anonyme Token-Links ein. Sie beantworten 12 ehrliche Fragen zu Coach-Impact,
+                Teamklima, psychologischer Sicherheit und Druck-Erleben. Antworten werden anonymisiert
+                und ausschließlich aggregiert ausgewertet — Einzelantworten sind für dich nicht abrufbar.
+                Auswertung ab 5 vollständigen Antworten.
               </p>
               <TeamcheckManager
                 assessmentId={id}

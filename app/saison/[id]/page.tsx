@@ -5,6 +5,8 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { SeasonControl } from './season-control';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SeasonDetailPage({
   params,
 }: {

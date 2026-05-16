@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { ItemRenderer, type Item, type AnswerValue } from '@/components/assessment/item-renderer';
 import { HumatrixLogo } from '@/components/logo';
 
 type Props = {
   token: string;
-  invitationId: string;
   items: Item[];
   existingAnswers: Record<number, AnswerValue>;
   trainerName: string;
@@ -33,7 +31,7 @@ function rephraseForFremdbild(text: string, trainerName: string): string {
 }
 
 export function EinschaetzungRunner({
-  token, invitationId, items, existingAnswers, trainerName, sport,
+  token, items, existingAnswers, trainerName, sport,
 }: Props) {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
@@ -59,29 +57,27 @@ export function EinschaetzungRunner({
   // Mark as opened on start
   useEffect(() => {
     if (started) {
-      const supabase = createClient();
-      supabase
-        .from('invitations')
-        .update({ status: 'opened' })
-        .eq('id', invitationId)
-        .then(() => {});
+      fetch(`/api/invitations/${encodeURIComponent(token)}/open`, {
+        method: 'POST',
+      }).catch(() => {/* nicht blockierend */});
     }
-  }, [started, invitationId]);
+  }, [started, token]);
 
   async function persistAnswer(itemId: number, value: AnswerValue) {
-    const supabase = createClient();
-    const payload = {
-      invitation_id: invitationId,
-      item_id: itemId,
-      value_numeric: value.value_numeric ?? null,
-      value_choice: value.value_choice ?? null,
-      value_position: value.value_position ?? null,
-    };
-    // upsert
-    const { error: e1 } = await supabase
-      .from('invitation_answers')
-      .upsert(payload, { onConflict: 'invitation_id,item_id' });
-    if (e1) throw e1;
+    const res = await fetch(`/api/invitations/${encodeURIComponent(token)}/answer`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        item_id: itemId,
+        value_numeric: value.value_numeric ?? null,
+        value_choice: value.value_choice ?? null,
+        value_position: value.value_position ?? null,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error ?? 'Fehler beim Speichern');
+    }
   }
 
   async function handleNext() {
@@ -94,11 +90,13 @@ export function EinschaetzungRunner({
 
       if (isLast) {
         // Finalize
-        const supabase = createClient();
-        await supabase
-          .from('invitations')
-          .update({ status: 'completed', completed_at: new Date().toISOString() })
-          .eq('id', invitationId);
+        const res = await fetch(`/api/invitations/${encodeURIComponent(token)}/complete`, {
+          method: 'POST',
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error ?? 'Fehler beim Abschließen');
+        }
         setFinished(true);
       } else {
         setIndex(index + 1);
@@ -136,8 +134,8 @@ export function EinschaetzungRunner({
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">01</span>
                 <div>
-                  <div className="font-medium">100% anonym</div>
-                  <div className="text-sm text-muted">{firstName} sieht nie, wer was geantwortet hat. Nur aggregierte Werte (ab 3 Antworten).</div>
+                  <div className="font-medium">Anonymisierte Auswertung</div>
+                  <div className="text-sm text-muted">{firstName} sieht nie einzelne Antworten. Nur aggregierte Werte ab 3 abgegebenen Einschätzungen.</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
@@ -150,8 +148,8 @@ export function EinschaetzungRunner({
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">03</span>
                 <div>
-                  <div className="font-medium">Keine Daten von dir</div>
-                  <div className="text-sm text-muted">Wir speichern keinen Namen, keine E-Mail. Nur die Einschätzung selbst.</div>
+                  <div className="font-medium">Aggregiert, nicht einzeln</div>
+                  <div className="text-sm text-muted">Auf dieser Antwortseite fragen wir keinen Namen ab. Wenn du per E-Mail eingeladen wurdest, wird die Versandadresse getrennt zur Einladung verarbeitet — nicht zusammen mit deinen Antworten. {firstName} sieht keine einzelne Antwort, sondern nur aggregierte Ergebnisse ab Mindestanzahl.</div>
                 </div>
               </div>
             </div>
@@ -180,7 +178,7 @@ export function EinschaetzungRunner({
             Danke. Wirklich.
           </h1>
           <p className="font-editorial italic text-xl text-bone-soft leading-[1.5]">
-            Deine Einschätzung ist anonym eingegangen. Sobald genug Stimmen aus dem Team da sind, fließen sie in {firstName}s Premium-Report ein.
+            Deine Einschätzung ist eingegangen. Sie wird anonymisiert und nur aggregiert ausgewertet — {firstName} sieht keine einzelne Antwort, sondern erst ab mindestens 3 vollständigen Einschätzungen die zusammengefassten Werte.
           </p>
           <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold-light mt-10">
             Du kannst diese Seite jetzt schließen.

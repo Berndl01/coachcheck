@@ -13,9 +13,9 @@ export async function TopNav() {
           <HumatrixLogo />
         </Link>
         <nav className="hidden md:flex gap-7 font-mono text-xs uppercase tracking-[0.14em] text-muted">
-          <a href="/#products" className="hover:text-ink transition">Pakete</a>
-          <a href="/#architecture" className="hover:text-ink transition">Architektur</a>
-          <a href="/#archetypes" className="hover:text-ink transition">12 Typen</a>
+          <Link href="/#products" className="hover:text-ink transition">Pakete</Link>
+          <Link href="/#architecture" className="hover:text-ink transition">Architektur</Link>
+          <Link href="/#archetypes" className="hover:text-ink transition">12 Typen</Link>
         </nav>
         {user ? (
           <Link

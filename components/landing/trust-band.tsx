@@ -6,15 +6,15 @@ export function TrustBand() {
     },
     {
       num: <>25<em className="font-editorial italic">min</em></>,
-      lbl: 'Vom ersten Premium-Item bis zum 24-Seiten-Report',
+      lbl: 'Vom ersten Premium-Item bis zum ausführlichen Report',
     },
     {
-      num: <>100<sup className="font-mono text-[0.28em] text-gold-deep align-super font-medium tracking-normal">%</sup></>,
-      lbl: 'Anonyme Spielerbefragung — keine Namen, keine Daten',
+      num: <>Anon<em className="font-editorial italic">·</em></>,
+      lbl: 'Anonymisierte Spieler-Aggregation ab 3 Antworten',
     },
     {
       num: <>AT<em className="font-editorial italic">·</em></>,
-      lbl: 'Entwickelt in Tirol · Wissenschaftler × Trainer × Sportler',
+      lbl: 'Entwickelt in Tirol · praxisnah, wissenschaftlich anschlussfähig',
     },
   ];
 

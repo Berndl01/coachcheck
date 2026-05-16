@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { sendEmailSafe } from '@/lib/email/resend';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   let body: any;
   try {

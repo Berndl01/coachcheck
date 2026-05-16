@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { EinschaetzungRunner } from './runner';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default async function EinschaetzungPage({
   params,
 }: {
@@ -97,7 +100,6 @@ export default async function EinschaetzungPage({
   return (
     <EinschaetzungRunner
       token={token}
-      invitationId={invitation.id}
       items={(items ?? []) as any}
       existingAnswers={existing}
       trainerName={trainerName}

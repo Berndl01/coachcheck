@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 
+export const dynamic = 'force-dynamic';
+
 // Only accessible to the admin email(s)
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'office@humatrix.cc').split(',').map(s => s.trim());
 

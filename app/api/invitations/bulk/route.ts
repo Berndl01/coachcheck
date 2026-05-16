@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 /**
  * Bulk-create invitations for TeamCheck.
  * Supports two modes:
@@ -43,23 +46,15 @@ export async function POST(request: NextRequest) {
     }, { status: 403 });
   }
 
-  // Build list of records
+  // Build list of records.
+  // WICHTIG: TeamCheck-Bulk-Einladungen sind anonym. Spieler-E-Mails werden
+  // bewusst NICHT gespeichert — die Anonymitäts-Zusage gegenüber Spielern
+  // hält nur dann, wenn keine PII pro Token in der DB landet.
+  // Wer Spielern einen Link schicken will, kopiert den Token-Link selbst
+  // (WhatsApp, QR, Slack, Aushang).
   let records: { parent_assessment_id: string; invited_email: string | null; invitation_type: string; status: string }[] = [];
 
-  if (mode === 'emails' && Array.isArray(emails)) {
-    const cleanEmails = emails
-      .map((e: string) => String(e).trim())
-      .filter((e) => e.length > 0 && e.includes('@'));
-    if (cleanEmails.length === 0) {
-      return NextResponse.json({ error: 'Keine gültigen E-Mail-Adressen' }, { status: 400 });
-    }
-    records = cleanEmails.map((email) => ({
-      parent_assessment_id: assessment_id,
-      invited_email: email,
-      invitation_type: 'spieler',
-      status: 'pending',
-    }));
-  } else if (mode === 'tokens') {
+  if (mode === 'tokens') {
     const n = Math.min(Math.max(parseInt(count ?? 0, 10), 1), 50);
     if (!n) {
       return NextResponse.json({ error: 'count > 0 erforderlich' }, { status: 400 });
@@ -70,9 +65,18 @@ export async function POST(request: NextRequest) {
       invitation_type: 'spieler',
       status: 'pending',
     }));
+  } else if (mode === 'emails') {
+    // Explizit nicht mehr unterstützt — Datenschutz-Garantie für Spieler.
+    // emails-Parameter wird verworfen, falls jemand ihn direkt schickt.
+    return NextResponse.json({
+      error: 'E-Mail-Modus für Spieler-Einladungen deaktiviert. TeamCheck-Einladungen sind anonym; bitte mode="tokens" verwenden.',
+    }, { status: 400 });
   } else {
-    return NextResponse.json({ error: 'mode muss "emails" oder "tokens" sein' }, { status: 400 });
+    return NextResponse.json({ error: 'mode muss "tokens" sein' }, { status: 400 });
   }
+
+  // Vorsorglich: emails-Parameter ignorieren, falls vorhanden.
+  void emails;
 
   const { data: invitations, error } = await supabase
     .from('invitations')

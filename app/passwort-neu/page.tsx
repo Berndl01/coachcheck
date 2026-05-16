@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { HumatrixLogo } from '@/components/logo';
 
+export const dynamic = 'force-dynamic';
+
 function PasswortNeuForm() {
   const router = useRouter();
   const [password, setPassword] = useState('');

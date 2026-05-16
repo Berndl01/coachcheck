@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; cycleId: string }> }

@@ -4,6 +4,8 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ProfileSetupForm } from './setup-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfileSetupPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmailSafe } from '@/lib/email/resend';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -76,8 +79,8 @@ export async function POST(request: NextRequest) {
           und möchte verstehen, wie du ${escapeHtml(trainerName.split(' ')[0])} als Trainer wirklich erlebst.
         </p>
         <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 28px;">
-          Deine Einschätzung ist <strong style="color: #1B1C1E;">100% anonym</strong>. ${escapeHtml(trainerName.split(' ')[0])} sieht nie, wer was geantwortet hat —
-          nur den aggregierten Vergleich zwischen Selbstbild und Fremdbild aus dem Team. Es dauert ca. 10 Minuten.
+          Deine Einschätzung wird <strong style="color: #1B1C1E;">anonymisiert ausgewertet</strong>. ${escapeHtml(trainerName.split(' ')[0])} sieht nie einzelne Antworten —
+          nur den aggregierten Vergleich zwischen Selbstbild und Fremdbild aus dem Team (ab mindestens 3 Einschätzungen). Es dauert ca. 10 Minuten.
         </p>
         <a href="${link}" style="display: inline-block; padding: 14px 28px; background: #1B1C1E; color: #FAFAF8; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px;">
           Jetzt Einschätzung abgeben →

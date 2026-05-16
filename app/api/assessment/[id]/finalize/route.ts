@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { computeAxisScores, determineArchetypes, buildSignature, type RawAnswer, type Archetype } from '@/lib/scoring';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

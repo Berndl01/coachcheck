@@ -53,6 +53,12 @@ export type ReportInput = {
     name_de: string;
     short_trait: string;
   };
+  /**
+   * Distanz-Differenz zwischen Primär- und Sekundär-Archetyp.
+   * < 0.05 → beide Archetypen gleichwertig nah, Profil ist Mischtyp.
+   * Wird genutzt um den Report-Ton von "Du BIST X" zu "Tendenz zu X mit Y" zu shiften.
+   */
+  archetypeDistanceDelta?: number | null;
   axisScores: AxisScores;
   moduleAverages: Record<string, number>;
 
@@ -394,6 +400,9 @@ Hebel: ${input.primaryArchetype.entwicklungshebel.join(', ')}
 
 # Sekundärer Archetyp
 ${input.secondaryArchetype.name_de} — ${input.secondaryArchetype.short_trait}
+${input.archetypeDistanceDelta != null && input.archetypeDistanceDelta < 0.05 ? `
+⚠ MISCHTYP-HINWEIS: Distanz-Differenz zwischen Primär und Sekundär ist nur ${input.archetypeDistanceDelta.toFixed(3)}. Schreibe NICHT "Du bist [Primär]", sondern formuliere es als Tendenz mit starker Zweitausprägung. Beispiel: "Dein Profil pendelt zwischen [Primär] und [Sekundär] — beide Archetypen sind nahezu gleich präsent." Behandle die Person als hybriden Typ, nicht als reinen Vertreter eines Archetyps.
+` : ''}
 
 # Selbstbild-Achsen (6 Kernachsen, 0–100%)
 ${axes}

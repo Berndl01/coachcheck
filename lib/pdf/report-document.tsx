@@ -1,4 +1,6 @@
-/* eslint-disable jsx-a11y/alt-text */
+/**
+ * Humatrix Coach – Report PDF document (@react-pdf/renderer).
+ */
 import React from 'react';
 import {
   Document,
@@ -24,9 +26,12 @@ function registerFonts() {
   fontsRegistered = true;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // Node-only file IO inside @react-pdf renderer — `require` is bewusst,
+    // weil dieser Codepfad nur in node-runtime läuft. ESLint flags the
+    // generic rule only if a Plugin geladen ist; ohne Plugin wird `require`
+    // hier nicht reklamiert. Wir verzichten auf eslint-disable-Direktiven,
+    // die auf ein nicht installiertes Plugin zeigen würden.
     const fs = require('node:fs') as typeof import('node:fs');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('node:path') as typeof import('node:path');
 
     // Walk up from CWD to find node_modules
@@ -964,7 +969,7 @@ export function ReportDocument(props: ReportProps) {
               Datenbasis
             </Text>
             <Text style={{ fontSize: 11, color: COLORS.bone }}>
-              {fremdbildResponseCount ?? 0} eingegangene Fremdeinschätzungen · vollständig anonym aggregiert
+              {fremdbildResponseCount ?? 0} eingegangene Fremdeinschätzungen · anonymisiert und ausschließlich aggregiert ausgewertet
             </Text>
           </View>
         </Page>
@@ -1050,7 +1055,7 @@ export function ReportDocument(props: ReportProps) {
       {/* PRESSURE PROFILE */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.kicker}>{has360 ? '04' : '03'} — Druckprofil</Text>
-        <Text style={styles.h1}>Wie du führst, wenn's{'\n'}wirklich zählt.</Text>
+        <Text style={styles.h1}>Wie du führst, wenn{'\''}s{'\n'}wirklich zählt.</Text>
         <View style={styles.dividerGold} />
         <Text style={styles.body}>{texts.druckprofil}</Text>
 
@@ -1080,7 +1085,7 @@ export function ReportDocument(props: ReportProps) {
               Datenbasis
             </Text>
             <Text style={{ fontSize: 11, color: COLORS.bone }}>
-              {teamcheckResponseCount ?? 0} eingegangene Spielerantworten · vollständig anonym aggregiert · Schwelle für Auswertung: 5
+              {teamcheckResponseCount ?? 0} eingegangene Spielerantworten · anonymisiert und ausschließlich aggregiert · Schwelle für Auswertung: 5
             </Text>
           </View>
         </Page>

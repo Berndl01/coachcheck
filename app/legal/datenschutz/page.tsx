@@ -5,6 +5,12 @@ export const metadata = {
   title: 'Datenschutz · Humatrix Coach',
 };
 
+// TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss
+// die Seite dynamisch gerendert werden, sonst hängt der Build im
+// "Collecting page data"-Schritt.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function DatenschutzPage() {
   return (
     <>
@@ -16,9 +22,11 @@ export default function DatenschutzPage() {
         <h1 className="font-display text-5xl tracking-[-0.03em] mb-12">Datenschutzerklärung</h1>
 
         <p className="font-editorial italic text-lg text-muted mb-12 leading-[1.5]">
-          Kurz & ehrlich: Wir wollen kein Datenvermögen aufbauen. Wir speichern nur was wir brauchen,
-          um dir einen Coach-Report zu liefern. Anonyme Fremdeinschätzungen können wir technisch
-          nicht auf Einzelpersonen zurückführen.
+          Kurz &amp; ehrlich: Wir wollen kein Datenvermögen aufbauen. Wir speichern nur was wir brauchen,
+          um dir einen Coach-Report zu liefern. Fremdeinschätzungen werden dem Trainer ausschließlich
+          aggregiert angezeigt — Einzelantworten sind für Trainer nicht abrufbar. Zur sicheren Einladung
+          und Zuordnung werden technische Einmal-Tokens verarbeitet; administrative Zugriffe auf
+          Rohdaten sind technisch und organisatorisch beschränkt.
         </p>
 
         <div className="space-y-10 text-ink leading-[1.6]">
@@ -48,14 +56,21 @@ export default function DatenschutzPage() {
             <h3 className="font-mono text-xs uppercase tracking-[0.1em] text-muted mt-4 mb-2">360°-Fremdeinschätzungen</h3>
             <p>
               Antworten von Personen, denen du einen Einladungslink geschickt hast. Diese werden
-              <strong> nicht personalisiert gespeichert</strong> — nur anonymisiert und nur ab mindestens
-              3 Einschätzungen aggregiert ausgewertet.
+              <strong> anonymisiert und ausschließlich aggregiert</strong> ausgewertet — und erst
+              ab mindestens 3 vollständigen Einschätzungen sichtbar. Der eingeloggte Trainer
+              sieht zu keiner Zeit eine einzelne Antwort. Zur sicheren Zuordnung der Einladung
+              wird ein technischer Einmal-Token verarbeitet; er wird nicht mit dem
+              Aggregat-Output verknüpft.
             </p>
 
-            <h3 className="font-mono text-xs uppercase tracking-[0.1em] text-muted mt-4 mb-2">TeamCheck & Pulse-Umfragen</h3>
+            <h3 className="font-mono text-xs uppercase tracking-[0.1em] text-muted mt-4 mb-2">TeamCheck &amp; Pulse-Umfragen</h3>
             <p>
-              Antworten von Spielern sind anonym und werden nur ab mindestens 5 Antworten aggregiert
-              ausgewertet. Kein Name, keine IP, keine E-Mail der Spieler wird gespeichert.
+              Antworten von Spielern werden <strong>anonymisiert und nur aggregiert</strong>
+              {' '}ausgewertet (ab mindestens 5 vollständigen Antworten). Die App speichert
+              keine Spieler-E-Mail-Adressen — Spieler erhalten ihren Link über vom Trainer
+              selbst gewählte Wege (QR, WhatsApp, Slack, Aushang). Zur sicheren Zuordnung
+              wird ein technischer Token pro Antwort verarbeitet; einzelne Antwortzeilen
+              sind für den Trainer technisch nicht abrufbar.
             </p>
 
             <h3 className="font-mono text-xs uppercase tracking-[0.1em] text-muted mt-4 mb-2">Zahlungsdaten</h3>
@@ -118,7 +133,8 @@ export default function DatenschutzPage() {
             <p>
               <strong>Account + Reports:</strong> Solange dein Account besteht, plus 30 Tage nach Löschung.<br />
               <strong>Rechnungen:</strong> 7 Jahre (gesetzlich verpflichtend).<br />
-              <strong>Anonyme Fremdeinschätzungen:</strong> Unbegrenzt, da anonym.<br />
+              <strong>Aggregierte Reports/Snapshots:</strong> solange der Account besteht.<br />
+              <strong>Tokenbasierte Rohantworten (360°/TeamCheck/Pulse):</strong> nur solange für Auswertung, Support und Missbrauchsschutz erforderlich.<br />
               <strong>Technische Logs:</strong> 14 Tage.
             </p>
           </section>

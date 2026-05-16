@@ -3,12 +3,12 @@ export function HowItWorks() {
     {
       n: '01',
       title: 'Fragebogen ausfüllen',
-      text: '92 hybride Premium-Items — Skalen, Forced Choice, Szenarien, Spannungsfelder, Dilemmata. 25 Minuten auf jedem Gerät.',
+      text: '64 hybride Premium-Items — Skalen, Forced Choice, Szenarien, Spannungsfelder, Dilemmata. 20 Minuten auf jedem Gerät.',
     },
     {
       n: '02',
       title: 'Sofort auswerten',
-      text: 'Haupt- und Sekundärtyp aus 12. Funktionale Signatur, Druckprofil, Blind Spots. 24-seitiger Premium-Report auf Consulting-Niveau.',
+      text: 'Haupt- und Sekundärtyp aus 12. Funktionale Signatur, Druckprofil, Blind Spots. Ausführlicher Premium-Report mit konkreten Entwicklungshebeln.',
     },
     {
       n: '03',
@@ -21,7 +21,7 @@ export function HowItWorks() {
     <section className="bg-bone-soft py-16 md:py-28 px-4 md:px-8">
       <div className="max-w-[1440px] mx-auto">
         <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-6 flex items-center gap-3">
-          <span className="w-10 h-px bg-ink" /> 06 — So funktioniert's
+          <span className="w-10 h-px bg-ink" /> 06 — So funktioniert&apos;s
         </div>
         <h2 className="font-display font-light text-[clamp(2rem,5vw,3.6rem)] leading-[1.02] tracking-[-0.03em] max-w-[18ch] mb-10 md:mb-16">
           Drei Schritte. <em className="font-editorial">Null Aufwand.</em>

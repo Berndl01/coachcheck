@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { AssessmentRunner } from '@/components/assessment/runner';
 import type { Item, AnswerValue } from '@/components/assessment/item-renderer';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AssessmentPage({
   params,
 }: {

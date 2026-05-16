@@ -20,7 +20,7 @@ const SUBTITLE_MAP: Record<string, string[]> = {
 
 const NOTE_MAP: Record<string, string> = {
   schnelltest: 'einmalig · sofort',
-  selbsttest: 'Premium-PDF · 18 Seiten',
+  selbsttest: 'Premium-PDF · 11 Seiten',
   spiegel_360: 'Selbsttest + 5 Perspektiven',
   teamcheck: 'pro Team · einmalig',
   saison_beratung: '6 Monate · Consulting inkl.',
@@ -53,7 +53,7 @@ export async function ProductsSection() {
           Vom Schnelltest bis zur <em className="font-editorial text-gold">vollen Begleitung.</em>
         </h2>
         <p className="font-editorial text-xl text-bone-soft max-w-[50ch] mb-12 md:mb-16">
-          Fünf abgestufte Pakete — vom 8-Minuten-Schnelltest über Selbst- und
+          Fünf abgestufte Pakete — vom 6-Minuten-Schnelltest über Selbst- und
           Fremdbild bis zum kompletten TeamCheck und der laufenden Saisonbegleitung.
         </p>
 

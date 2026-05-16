@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 /**
  * DEV ONLY — allows authenticated users to create a test assessment
  * for any package without going through Stripe.

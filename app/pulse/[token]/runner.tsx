@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { HumatrixLogo } from '@/components/logo';
 
 type PulseItem = {
@@ -14,7 +13,6 @@ type PulseItem = {
 
 type Props = {
   token: string;
-  cycleId: string;
   cycleNumber: number;
   items: PulseItem[];
   existingResponses: Record<number, number>;
@@ -22,7 +20,7 @@ type Props = {
 };
 
 export function PulseRunner({
-  token, cycleId, cycleNumber, items, existingResponses, seasonName,
+  token, cycleNumber, items, existingResponses, seasonName,
 }: Props) {
   const [responses, setResponses] = useState<Record<number, number>>(existingResponses);
   const [submitting, setSubmitting] = useState(false);
@@ -40,17 +38,19 @@ export function PulseRunner({
     setSubmitting(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const records = Object.entries(responses).map(([itemId, val]) => ({
-        pulse_cycle_id: cycleId,
+      const payload = Object.entries(responses).map(([itemId, val]) => ({
         pulse_item_id: parseInt(itemId, 10),
         value_numeric: val,
-        respondent_token: token,
       }));
-      const { error: e1 } = await supabase
-        .from('pulse_responses')
-        .upsert(records, { onConflict: 'pulse_cycle_id,pulse_item_id,respondent_token' });
-      if (e1) throw e1;
+      const res = await fetch(`/api/pulse/${encodeURIComponent(token)}/submit`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ responses: payload }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? 'Fehler');
+      }
       setDone(true);
     } catch (e: any) {
       setError(e?.message ?? 'Fehler');
@@ -90,7 +90,7 @@ export function PulseRunner({
             Wie war diese Phase <em className="font-editorial">für dich?</em>
           </h1>
           <p className="text-muted">
-            8 schnelle Fragen, ~2 Minuten. Alles anonym aggregiert ab 5 Antworten.
+            8 schnelle Fragen, ~2 Minuten. Antworten werden anonymisiert und ausschließlich aggregiert ausgewertet — sichtbar erst ab 5 vollständigen Antworten.
           </p>
         </div>
 

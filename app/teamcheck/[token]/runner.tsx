@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { ItemRenderer, type Item, type AnswerValue } from '@/components/assessment/item-renderer';
 import { HumatrixLogo } from '@/components/logo';
 
 type Props = {
   token: string;
-  invitationId: string;
   items: Item[];
   existingAnswers: Record<number, AnswerValue>;
   trainerName: string;
@@ -16,7 +14,7 @@ type Props = {
 };
 
 export function TeamcheckRunner({
-  token, invitationId, items, existingAnswers, trainerName, sport, club,
+  token, items, existingAnswers, trainerName, sport, club,
 }: Props) {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
@@ -41,23 +39,27 @@ export function TeamcheckRunner({
 
   useEffect(() => {
     if (started) {
-      const supabase = createClient();
-      supabase.from('invitations').update({ status: 'opened' }).eq('id', invitationId).then(() => {});
+      fetch(`/api/invitations/${encodeURIComponent(token)}/open`, {
+        method: 'POST',
+      }).catch(() => {/* nicht blockierend */});
     }
-  }, [started, invitationId]);
+  }, [started, token]);
 
   async function persistAnswer(itemId: number, value: AnswerValue) {
-    const supabase = createClient();
-    const { error: e1 } = await supabase
-      .from('invitation_answers')
-      .upsert({
-        invitation_id: invitationId,
+    const res = await fetch(`/api/invitations/${encodeURIComponent(token)}/answer`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
         item_id: itemId,
         value_numeric: value.value_numeric ?? null,
         value_choice: value.value_choice ?? null,
         value_position: value.value_position ?? null,
-      }, { onConflict: 'invitation_id,item_id' });
-    if (e1) throw e1;
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error ?? 'Fehler beim Speichern');
+    }
   }
 
   async function handleNext() {
@@ -68,11 +70,13 @@ export function TeamcheckRunner({
       await persistAnswer(current.id, pending);
       setAnswers({ ...answers, [current.id]: pending });
       if (isLast) {
-        const supabase = createClient();
-        await supabase
-          .from('invitations')
-          .update({ status: 'completed', completed_at: new Date().toISOString() })
-          .eq('id', invitationId);
+        const res = await fetch(`/api/invitations/${encodeURIComponent(token)}/complete`, {
+          method: 'POST',
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error ?? 'Fehler beim Abschließen');
+        }
         setFinished(true);
       } else {
         setIndex(index + 1);
@@ -110,8 +114,8 @@ export function TeamcheckRunner({
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">01</span>
                 <div>
-                  <div className="font-medium">100% anonym</div>
-                  <div className="text-sm text-muted">Niemand sieht je, wer was geantwortet hat. Auch wir nicht. {firstName} bekommt nur aggregierte Werte aus mindestens 5 Spielern.</div>
+                  <div className="font-medium">Anonymisierte Auswertung</div>
+                  <div className="text-sm text-muted">Niemand sieht einzelne Antworten. {firstName} bekommt nur aggregierte Werte aus mindestens 5 Spielern.</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">

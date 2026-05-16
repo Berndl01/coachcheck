@@ -61,7 +61,7 @@ export function Hero() {
             <div className="flex flex-wrap gap-x-6 gap-y-2 mt-7 font-mono text-xs uppercase tracking-[0.1em] text-muted">
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />
-                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">92</b>&nbsp;Premium-Items
+                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">64</b>&nbsp;Premium-Items
               </span>
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />
@@ -73,7 +73,7 @@ export function Hero() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />
-                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">24</b>&nbsp;Seiten Report
+                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">7–18</b>&nbsp;Seiten Report
               </span>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function Hero() {
               87<sup className="text-[0.35em] align-super text-gold font-mono font-medium tracking-normal">/100</sup>
             </div>
             <div className="font-editorial text-base text-bone-soft mt-3 pt-4 border-t border-ink-line leading-[1.4]">
-              „Dein Team erlebt dich als <em>klar und strukturiert</em> — aber dein Ton wirkt härter, als du meinst."
+              „Dein Team erlebt dich als <em>klar und strukturiert</em> — aber dein Ton wirkt härter, als du meinst.&ldquo;
             </div>
             <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-ink-line">
               {[

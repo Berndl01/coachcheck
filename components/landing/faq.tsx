@@ -8,8 +8,8 @@ const faqs = [
     a: 'Der Schnelltest startet bei 9 €, der volle Selbsttest bei 29 €. Der 360° Spiegel mit Fremdbild-Abgleich kostet 99 €, der TeamCheck startet bei 299 €, und die komplette Saisonbegleitung inkl. Consulting beginnt bei 1.490 €. Alle Pakete sind Einmalzahlungen ohne Abo. Der Preis richtet sich nach Tiefe, Dauer und Umfang der Begleitung.',
   },
   {
-    q: 'Ist der Test wirklich anonym?',
-    a: 'Ja. Für den Selbsttest brauchst du nur eine E-Mail, an die wir den Report senden. Bei der Teamversion bleiben die Spieler komplett anonym — du siehst nur Aggregatwerte, nie einzelne Antworten.',
+    q: 'Wie funktioniert die Anonymität bei Spieler- und 360°-Antworten?',
+    a: 'Antworten von Spielern und 360°-Einschätzern werden anonymisiert und ausschließlich aggregiert ausgewertet. Du als Trainer siehst niemals eine einzelne Antwort, sondern erst ab einer Mindestanzahl von vollständigen Antworten (3 bei 360°, 5 bei TeamCheck/Pulse) die zusammengefassten Werte. Zur sicheren Zuordnung von Einladungen werden technische Einmal-Tokens verarbeitet; die App speichert keine E-Mail-Adressen von Spielern. Wir geben keine Daten an Dritte weiter.',
   },
   {
     q: 'Für welche Sportarten ist das gedacht?',
@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     q: 'Wie unterscheidet sich das von Coaching?',
-    a: 'Coaching gibt dir Rat. Der Mindset Check gibt dir Daten. Er misst, wo du stehst, wie dein Team dich wirklich erlebt, und welche Entwicklungsfelder objektiv sichtbar sind. Die Entscheidungen triffst du selbst.',
+    a: 'Coaching gibt dir Rat. Der Mindset Check gibt dir Struktur. Er macht sichtbar, wo du stehst, wie dein Team dich erlebt, und welche Entwicklungsfelder strukturiert sichtbar werden. Die Interpretation und die Entscheidungen triffst du selbst.',
   },
   {
     q: 'Kann ich den TeamCheck auch ohne Selbsttest machen?',
@@ -25,11 +25,11 @@ const faqs = [
   },
   {
     q: 'Wie wissenschaftlich ist das System?',
-    a: 'Der Check basiert auf sechs diagnostischen Modulen (Führungsarchitektur, Führungswirkung, Teamklima, Teamstruktur, Performance Climate, Saisondynamik) und sechs Kernachsen. Die 12 Archetypen entstehen nicht durch direkte Abfrage, sondern durch die Kombination dieser Dimensionen — das ist psychometrisch deutlich valider als klassische Typen-Tests.',
+    a: 'Der Check basiert auf sechs diagnostischen Modulen (Führungsarchitektur, Führungswirkung, Teamklima, Teamstruktur, Performance Climate, Saisondynamik) und sechs Kernachsen. Die 12 Archetypen entstehen nicht durch direkte Abfrage, sondern durch die Kombination dieser Dimensionen. Das Modell ist wissenschaftlich anschlussfähig an etablierte Konstrukte (u. a. Coach-Athlete Relationship, Teamkohäsion, Self-Determination Theory, Psychological Safety) — es ist allerdings ein laufend weiterentwickeltes Coaching- und Reflexionsmodell, keine klinisch validierte Persönlichkeitsdiagnostik. Die Archetypen sind Coachingprofile, keine harten Typen-Zuweisungen.',
   },
   {
     q: 'Wer steht hinter dem Produkt?',
-    a: 'Humatrix — The Mind Club Company aus Tirol. Wir bauen Premium-Diagnostik an der Schnittstelle von Mindset, Führung und Teamdynamik. Der Sport Mindset Check ist die Sport-Edition unseres Kern-Frameworks — entwickelt gemeinsam mit Trainern aus Regionalliga bis Bundesliga und international eingesetzt.',
+    a: 'Humatrix — The Mind Club Company aus Tirol. Wir bauen Premium-Diagnostik an der Schnittstelle von Mindset, Führung und Teamdynamik. Der Sport Mindset Check ist die Sport-Edition unseres Kern-Frameworks — entwickelt in enger Zusammenarbeit mit Trainern aus dem Mannschaftssport.',
   },
 ];
 

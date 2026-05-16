@@ -36,7 +36,7 @@ export function VoicesSection() {
               className="font-display font-light text-[5rem] leading-[0.7] text-gold mb-2 block"
               style={{ fontVariationSettings: "'opsz' 144" }}
             >
-              "
+              &ldquo;
             </span>
             <p className="font-editorial italic text-[1.1rem] leading-[1.45] text-ink flex-grow mb-6">
               {v.text}

@@ -15,6 +15,12 @@ import { FaqSection } from '@/components/landing/faq';
 import { FinalCta } from '@/components/landing/final-cta';
 import { Footer } from '@/components/landing/footer';
 
+// TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss
+// die Seite dynamisch gerendert werden, sonst hängt der Build im
+// "Collecting page data"-Schritt unbestimmt lange.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function HomePage() {
   return (
     <>

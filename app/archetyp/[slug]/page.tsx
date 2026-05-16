@@ -6,6 +6,8 @@ import { Footer } from '@/components/landing/footer';
 import { ARCHETYPE_DEEP_DIVES } from '@/lib/archetype-deep-dive';
 import { PersonalSection } from './personal-section';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ArchetypePage({
   params,
   searchParams,

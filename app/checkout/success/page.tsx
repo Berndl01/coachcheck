@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { TopNav } from '@/components/top-nav';
 
+// TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss
+// die Seite dynamisch gerendert werden, sonst hängt der Build im
+// "Collecting page data"-Schritt.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function CheckoutSuccessPage() {
   return (
     <>

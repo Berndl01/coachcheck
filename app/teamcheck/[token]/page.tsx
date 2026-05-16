@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TeamcheckRunner } from './runner';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default async function TeamcheckPage({
   params,
 }: {
@@ -92,7 +95,6 @@ export default async function TeamcheckPage({
   return (
     <TeamcheckRunner
       token={token}
-      invitationId={invitation.id}
       items={(items ?? []) as any}
       existingAnswers={existing}
       trainerName={trainerName}

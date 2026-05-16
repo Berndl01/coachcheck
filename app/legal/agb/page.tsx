@@ -5,6 +5,12 @@ export const metadata = {
   title: 'AGB · Humatrix Coach',
 };
 
+// TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss
+// die Seite dynamisch gerendert werden, sonst hängt der Build im
+// "Collecting page data"-Schritt.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function AGBPage() {
   return (
     <>
@@ -22,8 +28,8 @@ export default function AGBPage() {
             <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">§ 1 Geltungsbereich</h2>
             <p>
               (1) Diese AGB gelten für alle Verträge zwischen <strong>Humatrix by Bernhard Lampl</strong>,
-              Mag. Bernhard Lampl, PhD, Ried 80, 6363 Westendorf, Tirol, Österreich (im Folgenden „Anbieter")
-              und den Kunden (im Folgenden „Kunde") über die Nutzung der Plattform <em>coachcheck.humatrix.cc</em>
+              Mag. Bernhard Lampl, PhD, Ried 80, 6363 Westendorf, Tirol, Österreich (im Folgenden &bdquo;Anbieter&ldquo;)
+              und den Kunden (im Folgenden &bdquo;Kunde&ldquo;) über die Nutzung der Plattform <em>coachcheck.humatrix.cc</em>
               und der dort angebotenen digitalen Produkte.
             </p>
             <p className="mt-3">

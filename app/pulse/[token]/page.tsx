@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PulseRunner } from './runner';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default async function PulsePage({
   params,
 }: {
@@ -93,7 +96,6 @@ export default async function PulsePage({
   return (
     <PulseRunner
       token={token}
-      cycleId={openCycle.id}
       cycleNumber={openCycle.cycle_number}
       items={(items ?? []) as any}
       existingResponses={existing}

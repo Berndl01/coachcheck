@@ -5,6 +5,8 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { CreateSeasonForm } from './create-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SaisonOverviewPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

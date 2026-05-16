@@ -23,7 +23,7 @@ type Props = {
 
 const STATUS_LABELS: Record<string, { de: string; color: string }> = {
   pending: { de: 'Bereit', color: 'bg-bone-line text-ink' },
-  sent: { de: 'Verschickt', color: 'bg-petrol text-bone' },
+  sent: { de: 'Aktiv', color: 'bg-petrol text-bone' },
   opened: { de: 'Geöffnet', color: 'bg-gold-light text-ink' },
   completed: { de: 'Eingegangen', color: 'bg-gold text-ink' },
   expired: { de: 'Abgelaufen', color: 'bg-muted text-bone' },
@@ -33,8 +33,6 @@ const MIN_PLAYERS = 5;
 
 export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: Props) {
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
-  const [mode, setMode] = useState<'emails' | 'tokens'>('emails');
-  const [emailsText, setEmailsText] = useState('');
   const [tokenCount, setTokenCount] = useState(15);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +40,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const completedCount = invitations.filter((i) => i.status === 'completed').length;
-  const sentCount = invitations.filter((i) => ['sent','opened','completed'].includes(i.status)).length;
+  const activeCount = invitations.filter((i) => ['pending', 'sent', 'opened'].includes(i.status)).length;
   const progressPct = Math.min(100, Math.round((completedCount / MIN_PLAYERS) * 100));
 
   async function bulkCreate() {
@@ -50,33 +48,20 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
     setError(null);
     setBulkSuccess(null);
     try {
-      const payload: any = { assessment_id: assessmentId, mode };
-      if (mode === 'emails') {
-        const parsed = emailsText
-          .split(/[\n,;\s]+/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-        if (parsed.length === 0) {
-          setError('Mindestens eine E-Mail-Adresse');
-          setCreating(false);
-          return;
-        }
-        payload.emails = parsed;
-      } else {
-        payload.count = tokenCount;
-      }
-
       const res = await fetch('/api/invitations/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          assessment_id: assessmentId,
+          mode: 'tokens',
+          count: tokenCount,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Fehler');
 
       setInvitations([...(data.invitations ?? []), ...invitations]);
-      setBulkSuccess(`${data.count} Einladung${data.count === 1 ? '' : 'en'} erstellt`);
-      setEmailsText('');
+      setBulkSuccess(`${data.count} Token-Link${data.count === 1 ? '' : 's'} erstellt`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -95,10 +80,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
   function copyAllLinks() {
     const lines = invitations
       .filter((i) => i.status !== 'completed' && i.status !== 'expired')
-      .map((i, idx) => {
-        const label = i.invited_email ?? `Spieler ${String(idx + 1).padStart(2, '0')}`;
-        return `${label}: ${appUrl}/teamcheck/${i.token}`;
-      })
+      .map((i, idx) => `Spieler ${String(idx + 1).padStart(2, '0')}: ${appUrl}/teamcheck/${i.token}`)
       .join('\n');
     copyToClipboard(lines);
     setBulkSuccess('Alle Links kopiert');
@@ -114,7 +96,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
             Spieler-Antworten
           </span>
           <div className="flex gap-6 items-baseline">
-            <span className="text-sm text-muted">{sentCount} verschickt</span>
+            <span className="text-sm text-muted">{activeCount} Links aktiv</span>
             <span className="font-display text-2xl tracking-[-0.02em]">
               {completedCount}<span className="text-muted text-base"> / {MIN_PLAYERS}+ benötigt</span>
             </span>
@@ -133,59 +115,34 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
         </div>
       </div>
 
-      {/* Bulk creator */}
+      {/* Token generator (anonymous-only) */}
       <div className="bg-ink text-bone p-6 rounded-md">
         <div className="font-mono text-xs uppercase tracking-[0.18em] text-gold mb-3">
-          Spieler einladen
+          Spieler-Links erzeugen
         </div>
         <h3 className="font-display text-xl tracking-[-0.02em] mb-2">
-          Mehrere Tokens auf einmal erstellen
+          Anonyme Token-Links erstellen
         </h3>
         <p className="text-bone-soft text-sm mb-4 leading-[1.5] max-w-[60ch]">
-          Du kannst <strong className="text-gold">E-Mails einfügen</strong> (eine pro Zeile, oder kommagetrennt) — wir versenden Einladungen automatisch — oder einfach <strong className="text-gold">anonyme Tokens</strong> generieren und die Links per WhatsApp / Slack / Aushang teilen.
+          Erzeuge anonyme Token-Links und verteile sie selbst per QR-Code, WhatsApp,
+          Slack oder Aushang. <strong className="text-gold">Die App speichert keine
+          Spieler-E-Mail-Adressen</strong> — die Antworten der Spieler kannst du
+          nachher ausschließlich aggregiert sehen.
         </p>
 
-        {/* Mode toggle */}
-        <div className="inline-flex bg-ink-soft rounded-full p-1 mb-4">
-          <button
-            onClick={() => setMode('emails')}
-            className={`px-4 py-2 rounded-full text-xs font-mono uppercase tracking-[0.1em] transition ${
-              mode === 'emails' ? 'bg-gold text-ink' : 'text-bone-soft'
-            }`}
-          >
-            E-Mails (mit Versand)
-          </button>
-          <button
-            onClick={() => setMode('tokens')}
-            className={`px-4 py-2 rounded-full text-xs font-mono uppercase tracking-[0.1em] transition ${
-              mode === 'tokens' ? 'bg-gold text-ink' : 'text-bone-soft'
-            }`}
-          >
-            Tokens (anonym)
-          </button>
-        </div>
-
-        {mode === 'emails' ? (
-          <textarea
-            placeholder="spieler1@email.at&#10;spieler2@email.at&#10;spieler3@email.at"
-            value={emailsText}
-            onChange={(e) => setEmailsText(e.target.value)}
-            rows={6}
-            className="w-full px-4 py-3 bg-ink-soft border border-ink-line rounded-md text-bone placeholder-muted focus:border-gold focus:outline-none font-mono text-sm leading-relaxed"
+        <div className="flex items-center gap-4">
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={tokenCount}
+            onChange={(e) =>
+              setTokenCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))
+            }
+            className="w-24 px-4 py-3 bg-ink-soft border border-ink-line rounded-md text-bone text-center font-display text-2xl focus:border-gold focus:outline-none"
           />
-        ) : (
-          <div className="flex items-center gap-4">
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={tokenCount}
-              onChange={(e) => setTokenCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-              className="w-24 px-4 py-3 bg-ink-soft border border-ink-line rounded-md text-bone text-center font-display text-2xl focus:border-gold focus:outline-none"
-            />
-            <span className="text-bone-soft">anonyme Tokens generieren</span>
-          </div>
-        )}
+          <span className="text-bone-soft">anonyme Token-Links generieren</span>
+        </div>
 
         <div className="flex gap-3 mt-4">
           <button
@@ -193,7 +150,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
             disabled={creating}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-bone disabled:opacity-50 transition"
           >
-            {creating ? 'Erstellt …' : `Einladungen erstellen`} <span className="font-mono">→</span>
+            {creating ? 'Erstellt …' : 'Token-Links erstellen'} <span className="font-mono">→</span>
           </button>
         </div>
 
@@ -206,7 +163,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="font-mono text-xs uppercase tracking-[0.18em] text-muted">
-              Spieler-Einladungen ({invitations.length})
+              Spieler-Token ({invitations.length})
             </div>
             <button
               onClick={copyAllLinks}
@@ -232,14 +189,12 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
                   </span>
                   <div className="flex-grow min-w-0">
                     <div className="font-medium text-sm truncate">
-                      {inv.invited_email ?? `Spieler-Token #${String(idx + 1).padStart(2, '0')}`}
+                      Spieler-Token #{String(idx + 1).padStart(2, '0')}
                     </div>
                     <div className="font-mono text-xs text-muted mt-0.5 truncate">
                       {inv.completed_at
                         ? `Eingegangen ${new Date(inv.completed_at).toLocaleDateString('de-AT')}`
-                        : inv.invited_email
-                          ? inv.sent_at ? `Verschickt am ${new Date(inv.sent_at).toLocaleDateString('de-AT')}` : 'Noch nicht verschickt'
-                          : `Token: …${inv.token.slice(-8)}`}
+                        : `Token: …${inv.token.slice(-8)}`}
                     </div>
                   </div>
                   {inv.status !== 'completed' && (

@@ -5,7 +5,7 @@ export function QuoteBreak() {
         className="absolute top-12 left-1/2 -translate-x-1/2 font-display font-light leading-[0.7] text-gold opacity-90 pointer-events-none"
         style={{ fontSize: 'clamp(8rem, 18vw, 14rem)', fontVariationSettings: "'opsz' 144", zIndex: 0 }}
       >
-        "
+        &ldquo;
       </span>
       <p
         className="font-editorial italic font-normal text-[clamp(1.6rem,3.5vw,2.6rem)] leading-[1.25] max-w-[24ch] mx-auto relative z-10"

@@ -343,33 +343,47 @@ export const MATURITY_LABELS: Record<MaturityKey, string> = {
  * Berechnet Führungsreife aus Modul-Trends + Achsen-Werten.
  * Reife ist NICHT der Stil — sondern wie souverän der Trainer
  * mit den Anforderungen seines Stils umgeht.
+ *
+ * Alle Inputs werden auf 0..1 normalisiert, dann gewichtet gemittelt.
+ * Folge: ein neutraler Trainer (alle Werte mittel) → 0.5 in jeder Reife-Achse,
+ * ein extrem schwacher → ~0, ein extrem starker → ~1.
  */
 export function computeMaturityScores(
   axisScores: AxisScores,
   moduleAverages: Record<string, number>
 ): MaturityScores {
   const a = axisScores;
-  const m = (code: string) => moduleAverages[code] ?? 0; // -1..+1
-
-  // Heuristik: kombiniert Modul-Trends mit Polaritäts-Indikatoren der Achsen
-  // - Reife = nicht-extrem + Modul-Konsistenz
-  // Werte kommen normiert auf 0..1 raus
-  const norm = (v: number) => Math.max(0, Math.min(1, (v + 1) / 2));
-  const balance = (axis: number) => 1 - Math.abs(axis - 0.5) * 2; // 0..1, höchster Wert wenn axis=0.5
+  // Modul-Mittelwerte sind in -1..+1 — auf 0..1 mappen.
+  const m01 = (code: string): number => {
+    const v = moduleAverages[code];
+    if (v == null) return 0.5;
+    return Math.max(0, Math.min(1, (v + 1) / 2));
+  };
 
   return {
-    // Selbstregulation: stabilisierend statt aktivierend unter Druck + Modul E hoch
-    selbstregulation: norm(0.5 * m('E') + 0.5 * (1 - Math.abs(a.stabilisierung_aktivierung - 0.4) * 2)),
-    // Perspektivflexibilität: Modul B + Anpassungsfähigkeit (nicht zu standardisierend)
-    perspektivflexibilitaet: norm(0.5 * m('B') + 0.5 * (1 - a.standardisierung_anpassung)),
-    // Konfliktreife: Modul D + Modul G + Beziehungs-Balance
-    konfliktreife: norm(0.4 * m('D') + 0.4 * m('G') + 0.2 * balance(a.leistung_beziehung)),
-    // Druckreife: Modul E + Reflexionsanteil
-    druckreife: norm(0.6 * m('E') + 0.4 * a.reflexion_direktheit),
-    // Verantwortungsklarheit: Modul C + Strukturanteil
-    verantwortungsklarheit: norm(0.5 * m('C') + 0.5 * a.struktur_intuition),
-    // Integrationsfähigkeit: Modul A + Reflexion + Balance
-    integrationsfaehigkeit: norm(0.4 * m('A') + 0.3 * a.reflexion_direktheit + 0.3 * balance(a.autoritaet_beteiligung)),
+    // Selbstregulation: Modul E (Druck-Performance) + Reflexionsanteil
+    selbstregulation:
+      0.7 * m01('E') + 0.3 * a.reflexion_direktheit,
+
+    // Perspektivflexibilität: Modul B (Kommunikation) + Anti-Standardisierung
+    perspektivflexibilitaet:
+      0.6 * m01('B') + 0.4 * (1 - a.standardisierung_anpassung),
+
+    // Konfliktreife: Modul D (Fehlerkultur) + Modul G (Beziehung)
+    konfliktreife:
+      0.5 * m01('D') + 0.5 * m01('G'),
+
+    // Druckreife: Modul E + Anti-Aktivierung (mehr stabilisierend)
+    druckreife:
+      0.7 * m01('E') + 0.3 * (1 - a.stabilisierung_aktivierung),
+
+    // Verantwortungsklarheit: Modul C (Entscheidung) + Struktur
+    verantwortungsklarheit:
+      0.6 * m01('C') + 0.4 * a.struktur_intuition,
+
+    // Integrationsfähigkeit: Modul A (Identität) + Reflexion
+    integrationsfaehigkeit:
+      0.6 * m01('A') + 0.4 * a.reflexion_direktheit,
   };
 }
 
