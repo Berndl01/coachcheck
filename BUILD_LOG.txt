@@ -1,0 +1,32 @@
+CLEAN-ROOM-VERIFIKATION v3_16 — 2026-06-11
+==========================================
+Frische Extraktion → npm ci → vollständige Gate-Sequenz.
+Umgebung: Node v22.22.2, npm 10.9.7 (entspricht Vercel Node 22.x).
+
+GATE 1  tsc --noEmit ............................ PASS
+GATE 2  claimcheck (44 Dateien) ................. PASS — keine riskanten Claims
+GATE 3  vitest run .............................. PASS — 37/37 Tests, 7 Dateien
+GATE 4  eslint . ................................ PASS — 0 Fehler, 0 Warnungen
+GATE 5  npm run build  (EXAKT der Vercel-Befehl,
+        inkl. prebuild = tsc + claimcheck) ...... PASS — Compiled, 9/9 Seiten
+GATE 6  npm audit --omit=dev .................... PASS — 0 vulnerabilities
+
+Inhaltlich identisch mit v3_15 (Know-how-Transfer Achtsamkeits-Trigger,
+siehe KNOW_HOW_TRANSFER_V3_15.md). Einzige Änderungen in v3_16:
+  - .gitignore: tsconfig.tsbuildinfo ergänzt
+  - BUILD_LOG.txt: dieser Verifikationslauf
+
+WICHTIG FÜR DEN GITHUB-UPLOAD
+-----------------------------
+Der Build schlägt auf Vercel nur fehl, wenn der Repo-Inhalt vom ZIP abweicht.
+Da `npm run build` hier mit identischem Befehl grün ist, beim Upload prüfen:
+
+1. Repo-Root = ZIP-Inhalt DIREKT: package.json muss auf oberster Ebene des
+   Repos liegen (NICHT verschachtelt als coachcheck/coachcheck/...).
+2. Alte Dateien ERSETZEN, nicht daneben legen — keine Duplikate alter Stände.
+3. Nicht einchecken: node_modules/, .next/, tsconfig.tsbuildinfo, .env*
+4. Nach dem Commit auf github.com gegenprüfen:
+   - lib/safety/care-triggers.ts existiert auf main
+   - scripts/claimcheck.mjs enthält den Eintrag 'lib/safety'
+5. Vercel-Projekteinstellung "Root Directory" muss leer sein (= Repo-Root),
+   Node-Version 22.x (Default).

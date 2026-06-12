@@ -1,0 +1,51 @@
+import { TopNav } from '@/components/top-nav';
+import { Hero } from '@/components/landing/hero';
+import { StatsStrip } from '@/components/landing/stats-strip';
+import { Ticker } from '@/components/landing/ticker';
+import { ProblemSection } from '@/components/landing/problem';
+import { ProductsSection } from '@/components/landing/products';
+import { ArchetypesSection } from '@/components/landing/archetypes';
+import { MiniCheck } from '@/components/landing/mini-check';
+import { ArchitectureSection } from '@/components/landing/architecture';
+import { ScienceFoundation } from '@/components/landing/science-foundation';
+import { HowItWorks } from '@/components/landing/how-it-works';
+import { SampleReport } from '@/components/landing/sample-report';
+import { VoicesSection } from '@/components/landing/voices';
+import { QuoteBreak } from '@/components/landing/quote-break';
+import { TrustBand } from '@/components/landing/trust-band';
+import { FaqSection } from '@/components/landing/faq';
+import { FinalCta } from '@/components/landing/final-cta';
+import { Footer } from '@/components/landing/footer';
+
+// TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss
+// die Seite dynamisch gerendert werden, sonst hängt der Build im
+// "Collecting page data"-Schritt unbestimmt lange.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export default function HomePage() {
+  return (
+    <>
+      <TopNav />
+      <main>
+        <Hero />
+        <StatsStrip />
+        <Ticker />
+        <ProblemSection />
+        <ProductsSection />
+        <ArchetypesSection />
+        <MiniCheck />
+        <ArchitectureSection />
+        <ScienceFoundation />
+        <HowItWorks />
+        <SampleReport />
+        <QuoteBreak />
+        <VoicesSection />
+        <TrustBand />
+        <FaqSection />
+        <FinalCta />
+      </main>
+      <Footer />
+    </>
+  );
+}

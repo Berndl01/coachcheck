@@ -1,0 +1,59 @@
+name: CI
+
+# Harte Qualitäts-Klammer vor jedem Merge/Deploy (P1 #9).
+# Vercel deployt nur, wenn dieser Workflow grün ist (Branch Protection:
+# "Require status checks to pass before merging" → CI auswählen).
+#
+# next.config.js ignoriert TS-/Lint-Fehler im Next-Build BEWUSST — deshalb
+# MUSS hier vorher hart geprüft werden (tsc + eslint + claimcheck + tests),
+# bevor überhaupt gebaut wird. Ohne grünen Lauf gibt es kein Deployment.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (clean, reproducible)
+        run: npm ci
+
+      - name: Gate — Typecheck + Claimcheck + Tests + Lint
+        run: npm run ci
+
+      - name: Build (reproduzierbar im Zielsystem)
+        # Build-time braucht keine echten Secrets (alle datenabhängigen Seiten
+        # sind force-dynamic). Platzhalter-NEXT_PUBLIC-Werte halten den Build
+        # deterministisch; die echten Keys liegen in Vercel.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          NEXT_PUBLIC_APP_URL: https://coachcheck.humatrix.cc
+        run: npm run build
+
+      - name: Security — keine high/critical (prod)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Archive build log
+        if: always()
+        run: |
+          mkdir -p ci-artifacts
+          npm ls --all > ci-artifacts/dependency-tree.txt 2>&1 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-artifacts
+          path: ci-artifacts/
+          retention-days: 14
