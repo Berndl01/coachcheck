@@ -39,14 +39,21 @@ const nextConfig = {
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://*.supabase.co",
-      "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co https://api.anthropic.com",
-      "frame-src https://challenges.cloudflare.com https://js.stripe.com",
+      // globals.css importiert Google Fonts per @import → Stylesheet kommt von
+      // fonts.googleapis.com, die .woff2-Dateien von fonts.gstatic.com. Ohne
+      // beide Hosts blockt die CSP die Schriften im Production-Build.
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://api.stripe.com",
+      "frame-src https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      // Stripe-Checkout: Das Consent-Formular POSTet an /checkout/[slug]/start,
+      // der Server antwortet mit Redirect auf checkout.stripe.com. Ohne die
+      // Stripe-Domains hier blockt die CSP-Direktive 'form-action' die
+      // Weiterleitung (Konsole: "violates form-action 'self'").
+      "form-action 'self' https://checkout.stripe.com",
     ].join('; ');
     return [
       {
