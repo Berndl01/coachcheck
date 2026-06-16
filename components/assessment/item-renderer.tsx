@@ -225,7 +225,14 @@ function SpannungsfeldInput({
         />
       </div>
       <div className="text-center font-mono text-[0.7rem] uppercase tracking-[0.15em] text-muted-dark mt-4">
-        Position: {Math.round(current * 100)} %
+        {(() => {
+          const pct = Math.round(current * 100);
+          // Regler-Wert in Bezug auf die Pole ausdrücken statt nackter Zahl:
+          // < 50 → Tendenz zum linken Pol, > 50 → rechter Pol, = 50 → ausgeglichen.
+          if (pct === 50) return 'Ausgeglichen · 50 / 50';
+          if (pct < 50) return `${100 - pct}% ${poles.left}`;
+          return `${pct}% ${poles.right}`;
+        })()}
       </div>
     </div>
   );
