@@ -82,6 +82,7 @@ export default async function AssessmentPage({
       items={items as Item[]}
       existingAnswers={existingAnswers}
       startIndex={startIndex}
+      productName={assessment.product?.name_de ?? null}
     />
   );
 }

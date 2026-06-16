@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ItemRenderer, type Item, type AnswerValue } from './item-renderer';
+import { AssessmentIntro } from './assessment-intro';
 
 type Props = {
   assessmentId: string;
   items: Item[];
   existingAnswers: Record<number, AnswerValue>;
   startIndex: number;
+  productName?: string | null;
 };
 
 export function AssessmentRunner({
@@ -16,8 +18,12 @@ export function AssessmentRunner({
   items,
   existingAnswers,
   startIndex,
+  productName,
 }: Props) {
   const router = useRouter();
+  // Intro-Screen vor dem Fragebogen: erklärt Dauer, Themen und Ablauf, damit
+  // man weiß, was kommt. Wird übersprungen, sobald gestartet wurde.
+  const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(startIndex);
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(existingAnswers);
   const [pending, setPending] = useState<AnswerValue | undefined>(undefined);
@@ -108,6 +114,18 @@ export function AssessmentRunner({
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <p className="text-muted">Keine Items verfügbar.</p>
       </div>
+    );
+  }
+
+  // Vor dem Start: Intro-Screen mit Dauer, Themen und Ablauf.
+  if (!started) {
+    return (
+      <AssessmentIntro
+        items={items}
+        productName={productName}
+        resuming={startIndex > 0 || Object.keys(existingAnswers).length > 0}
+        onStart={() => setStarted(true)}
+      />
     );
   }
 

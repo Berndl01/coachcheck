@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         </p>
         <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 28px;">
           Deine Einschätzung wird <strong style="color: #1B1C1E;">anonymisiert ausgewertet</strong>. ${escapeHtml(trainerName.split(' ')[0])} sieht nie einzelne Antworten —
-          nur den aggregierten Vergleich zwischen Selbstbild und Fremdbild aus dem Team (ab mindestens 3 Einschätzungen). Es dauert ca. 10 Minuten.
+          nur den aggregierten Vergleich zwischen Selbstbild und Fremdbild aus dem Team (ab mindestens 3 Einschätzungen). Plane dir dafür etwa 25–30 Minuten in Ruhe ein — deine ehrliche Sicht ist es wert. Du kannst jederzeit pausieren und später weitermachen.
         </p>
         <a href="${link}" style="display: inline-block; padding: 14px 28px; background: #1B1C1E; color: #FAFAF8; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px;">
           Jetzt Einschätzung abgeben →

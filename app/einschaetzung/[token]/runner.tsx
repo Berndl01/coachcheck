@@ -46,6 +46,10 @@ export function EinschaetzungRunner({
   const isLast = index === total - 1;
   const progressPct = Math.round(((index + 1) / total) * 100);
   const firstName = trainerName.split(' ')[0];
+  // Dauer ehrlich aus der echten Fragenzahl schätzen (~16 Sek/Frage, da man über
+  // eine andere Person nachdenkt; auf 5 gerundet, min. 10 Min). Verhindert die alte
+  // Falschangabe "~10 Min" bei ~90 Fragen und deckt sich mit der Einladungs-E-Mail.
+  const estMinutes = Math.max(10, Math.round((total * 16) / 60 / 5) * 5);
 
   useEffect(() => {
     if (started && current) {
@@ -141,8 +145,8 @@ export function EinschaetzungRunner({
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">02</span>
                 <div>
-                  <div className="font-medium">~10 Minuten</div>
-                  <div className="text-sm text-muted">Einschätzungs-Skalen, Szenarien, Spannungsfelder. Du kannst pausieren.</div>
+                  <div className="font-medium">~{estMinutes} Minuten · {total} Fragen</div>
+                  <div className="text-sm text-muted">Einschätzungs-Skalen, Szenarien, Spannungsfelder. Nimm dir Zeit — du kannst jederzeit pausieren und später weitermachen.</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
