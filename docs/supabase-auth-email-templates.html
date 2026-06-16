@@ -1,0 +1,215 @@
+<!--
+  ============================================================================
+  HUMATRIX COACH — SUPABASE AUTH-MAIL-VORLAGEN
+  ============================================================================
+
+  WICHTIG: Diese Mails werden NICHT vom App-Code erzeugt, sondern von Supabase
+  selbst. Die hässliche Standard-Mail, die du bekommst, ist die Supabase-
+  Default-Vorlage. Deshalb haben Code-Änderungen nichts gebracht.
+
+  SO SETZT DU DIE NEUEN VORLAGEN EIN:
+  ------------------------------------------------------------------
+  Supabase Dashboard → dein Projekt → Authentication → Emails
+  (bzw. "Email Templates"). Dort gibt es mehrere Tabs:
+    • "Confirm signup"      → Vorlage 1 unten einsetzen
+    • "Magic Link"          → Vorlage 2 unten einsetzen
+    • "Reset Password"      → Vorlage 3 unten einsetzen
+    • "Change Email Address"→ optional Vorlage 1 anpassen
+
+  Pro Tab:
+    1. Subject (Betreff) eintragen (steht jeweils über der Vorlage)
+    2. Den kompletten HTML-Block in das Message-/Body-Feld kopieren
+    3. Speichern
+
+  Die {{ .ConfirmationURL }} u.ä. sind Supabase-Platzhalter — NICHT ändern,
+  Supabase füllt sie automatisch mit dem echten Link.
+
+  ZUSTELLBARKEIT (damit die Mails nicht im Spam landen):
+  ------------------------------------------------------------------
+  Supabase → Authentication → Emails → SMTP Settings → Custom SMTP aktivieren:
+    Host:     smtp.resend.com
+    Port:     465
+    Username: resend
+    Password: <dein RESEND_API_KEY>
+    Sender:   noreply@humatrix.cc   (Name: Humatrix Coach)
+  Ohne Custom SMTP versendet Supabase über eine geteilte Test-Domain mit
+  niedrigem Limit und schlechter Zustellbarkeit.
+  ============================================================================
+-->
+
+
+<!-- ========================================================================
+     VORLAGE 1 — CONFIRM SIGNUP (Anmeldung bestätigen)
+     Betreff:  Nur noch ein Klick — bestätige deine Anmeldung bei Humatrix Coach
+     ======================================================================== -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#FAFAF8;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:520px;background:#FFFFFF;border:1px solid #DBD8D1;border-radius:8px;overflow:hidden;">
+        <!-- Header -->
+        <tr>
+          <td style="padding:28px 32px 0;">
+            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.22em;color:#1B1C1E;text-transform:uppercase;">HUMATRIX</div>
+            <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.18em;color:#9A9793;text-transform:uppercase;margin-top:3px;">The Mind Club Company</div>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:24px 32px 32px;">
+            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#B38E45;margin-bottom:14px;">
+              Fast geschafft
+            </div>
+            <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;letter-spacing:-0.02em;line-height:1.15;color:#1B1C1E;margin:0 0 16px;">
+              Willkommen an Bord.
+            </h1>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#1B1C1E;margin:0 0 12px;">
+              Schön, dass du dabei bist. Nur noch ein Klick, dann ist dein Zugang aktiv und du kannst dein erstes Coach-Assessment starten.
+            </p>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#767471;margin:0 0 28px;">
+              Bestätige dafür kurz deine E-Mail-Adresse:
+            </p>
+            <table cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 28px;">
+              <tr>
+                <td style="border-radius:999px;background:#1B1C1E;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 34px;font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;font-weight:600;color:#FAFAF8;text-decoration:none;border-radius:999px;">
+                    Anmeldung bestätigen &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#9A9793;margin:0;">
+              Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#B38E45;word-break:break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#9A9793;margin:18px 0 0;">
+              Du hast dich nicht bei Humatrix Coach angemeldet? Dann ignoriere diese E-Mail einfach.
+            </p>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #DBD8D1;">
+            <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:0.1em;color:#9A9793;text-transform:uppercase;line-height:1.6;">
+              Humatrix · The Mind Club Company · Westendorf, Tirol<br>
+              Coaching- &amp; Reflexionssystem für Trainer
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+
+<!-- ========================================================================
+     VORLAGE 2 — MAGIC LINK (Login per Link)
+     Betreff:  Dein Login-Link für Humatrix Coach
+     ======================================================================== -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#FAFAF8;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:520px;background:#FFFFFF;border:1px solid #DBD8D1;border-radius:8px;overflow:hidden;">
+        <tr>
+          <td style="padding:28px 32px 0;">
+            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.22em;color:#1B1C1E;text-transform:uppercase;">HUMATRIX</div>
+            <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.18em;color:#9A9793;text-transform:uppercase;margin-top:3px;">The Mind Club Company</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px 32px;">
+            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#B38E45;margin-bottom:14px;">
+              Anmelden
+            </div>
+            <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;letter-spacing:-0.02em;line-height:1.15;color:#1B1C1E;margin:0 0 16px;">
+              Dein Login-Link.
+            </h1>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#1B1C1E;margin:0 0 28px;">
+              Klicke auf den Button, um dich sicher bei Humatrix Coach anzumelden — ganz ohne Passwort.
+            </p>
+            <table cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 28px;">
+              <tr>
+                <td style="border-radius:999px;background:#1B1C1E;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 34px;font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;font-weight:600;color:#FAFAF8;text-decoration:none;border-radius:999px;">
+                    Jetzt anmelden &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#9A9793;margin:0;">
+              Funktioniert der Button nicht? Kopiere diesen Link in deinen Browser:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#B38E45;word-break:break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#9A9793;margin:18px 0 0;">
+              Du hast diesen Link nicht angefordert? Dann ignoriere diese E-Mail einfach.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #DBD8D1;">
+            <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:0.1em;color:#9A9793;text-transform:uppercase;line-height:1.6;">
+              Humatrix · The Mind Club Company · Westendorf, Tirol<br>
+              Coaching- &amp; Reflexionssystem für Trainer
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+
+<!-- ========================================================================
+     VORLAGE 3 — RESET PASSWORD (Passwort zurücksetzen)
+     Betreff:  Passwort zurücksetzen — Humatrix Coach
+     ======================================================================== -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#FAFAF8;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:520px;background:#FFFFFF;border:1px solid #DBD8D1;border-radius:8px;overflow:hidden;">
+        <tr>
+          <td style="padding:28px 32px 0;">
+            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.22em;color:#1B1C1E;text-transform:uppercase;">HUMATRIX</div>
+            <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.18em;color:#9A9793;text-transform:uppercase;margin-top:3px;">The Mind Club Company</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px 32px;">
+            <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#B38E45;margin-bottom:14px;">
+              Passwort
+            </div>
+            <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;letter-spacing:-0.02em;line-height:1.15;color:#1B1C1E;margin:0 0 16px;">
+              Neues Passwort setzen.
+            </h1>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#1B1C1E;margin:0 0 28px;">
+              Kein Problem — klicke auf den Button, um ein neues Passwort für dein Humatrix-Coach-Konto zu vergeben.
+            </p>
+            <table cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 28px;">
+              <tr>
+                <td style="border-radius:999px;background:#1B1C1E;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 34px;font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;font-weight:600;color:#FAFAF8;text-decoration:none;border-radius:999px;">
+                    Passwort zurücksetzen &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#9A9793;margin:0;">
+              Funktioniert der Button nicht? Kopiere diesen Link in deinen Browser:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#B38E45;word-break:break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+            <p style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#9A9793;margin:18px 0 0;">
+              Du hast keine Passwort-Zurücksetzung angefordert? Dann ignoriere diese E-Mail — dein Passwort bleibt unverändert.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #DBD8D1;">
+            <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:0.1em;color:#9A9793;text-transform:uppercase;line-height:1.6;">
+              Humatrix · The Mind Club Company · Westendorf, Tirol<br>
+              Coaching- &amp; Reflexionssystem für Trainer
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
