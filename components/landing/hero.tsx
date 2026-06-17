@@ -61,7 +61,7 @@ export function Hero() {
             <div className="flex flex-wrap gap-x-6 gap-y-2 mt-7 font-mono text-xs uppercase tracking-[0.1em] text-muted">
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />
-                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">92</b>&nbsp;Premium-Items
+                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">103</b>&nbsp;Premium-Items
               </span>
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />

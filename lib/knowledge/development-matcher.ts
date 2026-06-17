@@ -96,7 +96,7 @@ type AxisRule = {
   framings: Record<string, string>;
 };
 
-const AXIS_RULES: Record<AxisKey, AxisRule[]> = {
+export const AXIS_RULES: Record<AxisKey, AxisRule[]> = {
   struktur_intuition: [
     {
       pole: 'high',
@@ -241,45 +241,53 @@ const AXIS_RULES: Record<AxisKey, AxisRule[]> = {
  * Reifedimension → adressierende Interventionen + Trainer-Rahmung.
  * Greift, wenn die Reife in dieser Dimension niedrig ist.
  */
-const MATURITY_RULES: Record<MaturityKey, { interventionIds: string[]; rationale: string; framings: Record<string, string> }> = {
+export const MATURITY_RULES: Record<MaturityKey, { interventionIds: string[]; rationale: string; framings: Record<string, string> }> = {
   selbstregulation: {
-    interventionIds: ['I032', 'I011'],
+    interventionIds: ['I032', 'I011', 'I035', 'I039'],
     rationale: 'Wie souverän du unter Druck deine Grundlinie hältst, entscheidet über die Qualität deiner Führung in den entscheidenden Momenten.',
     framings: {
       I032: 'Trainiere deinen eigenen Emotion-zu-Handlung-Reset, bevor du ihn vom Team verlangst.',
       I011: 'Nutze das 3-Atemzüge-Muster als persönlichen Reset an der Seitenlinie.',
+      I035: 'Steuere deine eigene Belastung bewusst: Quellen sortieren, Erholungsfenster schützen, Austausch sichern.',
+      I039: 'Geh mit einer persönlichen Vorroutine in die Drucksituation, statt erst im Moment zu reagieren.',
     },
   },
   perspektivflexibilitaet: {
-    interventionIds: ['I004', 'I003'],
+    interventionIds: ['I004', 'I003', 'I040'],
     rationale: 'Andere Sichtweisen zuzulassen, ohne deine Linie zu verlieren, erweitert deine Wirkung über mehr Spielertypen.',
     framings: {
       I004: 'Hole im Arbeitsbündnis-Check-in aktiv die Perspektive des Spielers ein, bevor du bewertest.',
       I003: 'Biete echte Wahloptionen an — Autonomie im Rahmen schult deine eigene Perspektivflexibilität mit.',
+      I040: 'Prüfe nach wichtigen Botschaften die Wirkung statt nur die Absicht — und schärfe gezielt nach.',
     },
   },
   konfliktreife: {
-    interventionIds: ['I005', 'I025'],
+    interventionIds: ['I005', 'I025', 'I037'],
     rationale: 'Klar zu bleiben, wenn es unangenehm wird, ist der Kern reifer Führung — Vermeidung kostet langfristig Vertrauen.',
     framings: {
       I005: 'Führe einen Fehlerkultur-Reset im Training, der Klarheit erzeugt statt Widerstand.',
       I025: 'Etabliere eine Fehlerabschluss-Routine, damit Spannung bearbeitet und nicht aufgeschoben wird.',
+      I037: 'Strukturiere die Ansprache nach Niederlagen: Fakten, ein kontrollierbares Thema, klarer Blick nach vorn.',
     },
   },
   druckreife: {
-    interventionIds: ['I008', 'I011'],
+    interventionIds: ['I008', 'I011', 'I039', 'I035', 'I036'],
     rationale: 'In Krisen- und Niederlagenphasen entscheidet die Qualität deiner Führung über die Erholungsfähigkeit des Teams.',
     framings: {
       I008: 'Nutze das Crisis-Huddle-Protokoll: Fakten, Kontrollierbares, Leader-Rollen, klare 48h-Kommunikationsregel.',
       I011: 'Verankere ein gemeinsames Reset-Muster für Drucksituationen.',
+      I039: 'Bring dich mit einer persönlichen Vorroutine vor dem Spiel in die eigene Grundlinie.',
+      I035: 'Halte deine eigene Belastung im Blick, damit Druckphasen dich nicht unbemerkt aufzehren.',
+      I036: 'Trenne Außendruck (Verein/Eltern/Umfeld) vom sportlichen Kern und setze eine ruhige, klare Grenze.',
     },
   },
   verantwortungsklarheit: {
-    interventionIds: ['I009', 'I007'],
+    interventionIds: ['I009', 'I007', 'I038'],
     rationale: 'Klare Rollen und Status verhindern Frust und machen deine Entscheidungen nachvollziehbar.',
     framings: {
       I009: 'Führe frühzeitig Bankrollen-Gespräche: Rolle erklären, Impact-Szenario, Trainingsziel, Reviewtermin.',
       I007: 'Setze eine Leadership-Rollenmatrix auf, damit Verantwortung nicht nur am Kapitän hängt.',
+      I038: 'Kommuniziere eine Bank-/Rollenentscheidung fair: Begründung, Weg zurück, Wertschätzung, Reviewtermin.',
     },
   },
   integrationsfaehigkeit: {

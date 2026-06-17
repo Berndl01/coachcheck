@@ -1,7 +1,7 @@
 export function StatsStrip() {
   const stats = [
     { num: '5', sup: 'PAKETE', lbl: ['von Schnelltest', 'bis Signature'] },
-    { num: '90+', lbl: ['Premium-Items im', 'Hybrid-Assessment'] },
+    { num: '100+', lbl: ['Premium-Items im', 'Hybrid-Assessment'] },
     { num: '12', lbl: ['Sport-Archetypen', 'aus 6 Kernachsen'] },
     { num: '360°', lbl: ['Wirkungsanalyse', 'Selbst vs. Fremdbild'] },
     { num: '24', sup: 'SEITEN', lbl: ['Premium-Report auf', 'Consulting-Niveau'] },

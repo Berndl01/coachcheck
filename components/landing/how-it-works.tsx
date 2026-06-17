@@ -3,7 +3,7 @@ export function HowItWorks() {
     {
       n: '01',
       title: 'Fragebogen ausfüllen',
-      text: '92 hybride Premium-Items — Skalen, Forced Choice, Szenarien, Spannungsfelder, Dilemmata und Wichtig-vs-Gelebt-Paare. Rund 28 Minuten auf jedem Gerät.',
+      text: '103 hybride Premium-Items — Skalen, Forced Choice, Szenarien, Spannungsfelder, Dilemmata und Wichtig-vs-Gelebt-Paare. Rund 28 Minuten auf jedem Gerät.',
     },
     {
       n: '02',

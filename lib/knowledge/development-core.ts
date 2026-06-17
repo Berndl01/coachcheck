@@ -270,6 +270,16 @@ export const KNOWLEDGE_MODULES: KnowledgeModule[] = [
     allowed: 'Diese Auswertung zeigt kuratierte Entwicklungsimpulse.',
     forbidden: 'Methodikdatenbank, Scoringformeln oder Rohdaten extern zeigen.',
   },
+  {
+    id: 'M26_coach_self_management',
+    name: 'Selbstführung, Belastungssteuerung & Erholung des Trainers',
+    category: 'Coach Self-Leadership',
+    constructs: ['self-regulation', 'recovery management', 'support network', 'boundary setting', 'energy awareness'],
+    appTargets: ['Coach Scan', 'Führung unter Druck', '14-Tage-Aufgabe', 'Entwicklungspfad'],
+    allowed:
+      'Wie der Trainer die eigene Belastung steuert und Erholung schützt, ist Teil seiner Führungsqualität — Entwicklungs- und Coachinghinweis im heutigen Kontext.',
+    forbidden: 'Burnout-Diagnose, klinische Erschöpfung oder Therapieempfehlung für den Trainer.',
+  },
 ];
 
 export const INTERVENTIONS: Intervention[] = [
@@ -646,6 +656,109 @@ export const INTERVENTIONS: Intervention[] = [
     steps: ['Zukunftsthema parken + Wochenfokus + Supportperson', 'konkretes Verhalten vereinbaren', 'nach 14 Tagen prüfen'],
     contraindication: 'Typ ist Coaching-Hypothese, keine Persönlichkeitsschublade',
     evidence: 'B+',
+  },
+  // ---------------------------------------------------------------------------
+  // COACH-SELBST-BAUSTEINE (v3_26): direkt an den Trainer adressierte
+  // Hilfestellungen für eigene Belastung, Außendruck und schwierige
+  // Kommunikation. Schließt die Lücke, dass die bestehenden Druck-/Overload-/
+  // Stakeholder-Bausteine auf Spieler bzw. Consultant zugeschnitten waren.
+  // Claim-sicher: Entwicklungs-/Coachinghinweise, keine klinische Einordnung.
+  // ---------------------------------------------------------------------------
+  {
+    id: 'I035',
+    moduleId: 'M26_coach_self_management',
+    name: 'Eigene Belastungssteuerung (Trainer)',
+    audience: 'coach',
+    useCase: 'Niedrige Selbstregulation/Druckreife — eigene Belastung im Blick behalten',
+    durationMin: 20,
+    steps: [
+      'eigene Belastungsquellen auflisten (sportlich / organisatorisch / zwischenmenschlich)',
+      '2 schützbare Erholungsfenster pro Woche fixieren',
+      '1–2 Personen benennen, mit denen du Belastung offen besprichst',
+      'nach 14 Tagen prüfen: Was hat spürbar entlastet?',
+    ],
+    contraindication: 'Kein Ersatz für fachliche Unterstützung bei anhaltender Erschöpfung',
+    evidence: 'B+',
+  },
+  {
+    id: 'I036',
+    moduleId: 'M22_parent_agent_stakeholder_pressure',
+    name: 'Außendruck-Grenze setzen (Verein/Eltern/Umfeld)',
+    audience: 'coach',
+    useCase: 'Druck von außen vermischt sich mit der sportlichen Linie',
+    durationMin: 20,
+    steps: [
+      'sportlichen Kern vom Außendruck trennen (Was ist Sache, was ist Stimmung?)',
+      'klären: Was entscheidest du selbst, was kommunizierst du nach außen',
+      'eine ruhige, klare Grenzbotschaft formulieren',
+      'Kanal und festen Ansprechpartner für das Umfeld festlegen',
+    ],
+    contraindication: 'Keine Schuldzuweisung an das Umfeld; Grenze sachlich halten',
+    evidence: 'B+',
+  },
+  {
+    id: 'I037',
+    moduleId: 'M06_feedback_communication_error_culture',
+    name: 'Niederlagen-Ansprache strukturieren',
+    audience: 'coach',
+    useCase: 'Nach Niederlage die Balance zwischen Klartext und Aufbau finden',
+    durationMin: 15,
+    steps: [
+      'kurz die Fakten benennen, ohne Schuldzuweisung',
+      'ein kontrollierbares Thema für die nächste Woche wählen',
+      'den Blick nach vorn richten (nächste Aufgabe konkret)',
+      'einzelne Spieler gezielt stabilisieren statt Kollektivkritik',
+    ],
+    contraindication: 'Nicht beschönigen und nicht persönlich werden',
+    evidence: 'A-',
+  },
+  {
+    id: 'I038',
+    moduleId: 'M12_roles_status_bench_culture',
+    name: 'Faire Bank-/Rollenbotschaft kommunizieren',
+    audience: 'coach',
+    useCase: 'Verdienten Spieler auf die Bank setzen / Rolle verändern',
+    durationMin: 15,
+    steps: [
+      'Entscheidung mit klarer, nachvollziehbarer Begründung erklären',
+      'den Weg zurück bzw. ein Impact-Szenario aufzeigen',
+      'Wertschätzung für die bisherige Leistung sichtbar machen',
+      'einen konkreten Reviewtermin vereinbaren',
+    ],
+    contraindication: 'Nicht erst nach Eskalation; nicht vor der Gruppe bloßstellen',
+    evidence: 'A-',
+  },
+  {
+    id: 'I039',
+    moduleId: 'M15_pressure_emotion_reset',
+    name: 'Persönliche Druck-Vorroutine (Seitenlinie)',
+    audience: 'coach',
+    useCase: 'Vor entscheidenden Spielen/Momenten in die eigene Grundlinie kommen',
+    durationMin: 10,
+    steps: [
+      'einen persönlichen Anker wählen (kurzer Satz oder Geste)',
+      'vor Anpfiff ein längeres Ausatmen + bewussten Fokus setzen',
+      'die erste eigene Handlung bei Druck vorab definieren',
+      'nach dem Spiel kurz prüfen: hat die Routine getragen?',
+    ],
+    contraindication: 'Kein Ersatz für die inhaltliche Spielvorbereitung',
+    evidence: 'B+',
+  },
+  {
+    id: 'I040',
+    moduleId: 'M06_feedback_communication_error_culture',
+    name: 'Wirkungs-Check für wichtige Botschaften',
+    audience: 'coach',
+    useCase: 'Botschaften kommen im Team unterschiedlich an',
+    durationMin: 10,
+    steps: [
+      'nach einer wichtigen Botschaft aktiv nachfragen, wie sie verstanden wurde',
+      'den Unterschied zwischen Absicht und Wirkung benennen',
+      'gezielt dort nachschärfen, wo es nötig ist',
+      'die Rückmeldeschleife sichtbar schließen',
+    ],
+    contraindication: 'Nicht jede Aussage zerreden; bewusst bei Kernbotschaften einsetzen',
+    evidence: 'A-',
   },
 ];
 
