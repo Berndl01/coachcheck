@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { notifyTrainerOnFremdbildResponse } from '@/lib/email/progress-emails';
 import { bad, isValidTokenShape, ok, rateLimit } from '@/lib/utils/anon-api';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 
@@ -34,7 +35,7 @@ export async function POST(
   // 1) Invitation laden
   const { data: inv, error: selErr } = await admin
     .from('invitations')
-    .select('id, status, expires_at')
+    .select('id, status, expires_at, invitation_type, parent_assessment_id')
     .eq('token', token)
     .maybeSingle();
 
@@ -80,5 +81,17 @@ export async function POST(
     .eq('id', inv.id);
 
   if (updErr) return bad(500, 'Could not complete invitation');
+
+  // Trainer beim Eingang einer Fremdeinschätzung benachrichtigen (Meilensteine:
+  // erste Antwort, FREMDBILD_MIN erreicht). Best effort — blockiert den
+  // Abschluss nie.
+  if (inv.invitation_type === 'fremdbild' && inv.parent_assessment_id) {
+    try {
+      await notifyTrainerOnFremdbildResponse(admin, inv.parent_assessment_id);
+    } catch (err) {
+      console.warn('[invitation-complete] trainer notify failed:', err);
+    }
+  }
+
   return ok({ status: 'completed', expected: expectedIds.length, submitted });
 }

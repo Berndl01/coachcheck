@@ -1,32 +1,54 @@
-CLEAN-ROOM-VERIFIKATION v3_16 — 2026-06-11
+CLEAN-ROOM-VERIFIKATION v3_35 — 2026-06-18
 ==========================================
-Frische Extraktion → npm ci → vollständige Gate-Sequenz.
+Frische Extraktion aus v3_34 → npm ci → Umbau → vollständige Gate-Sequenz.
 Umgebung: Node v22.22.2, npm 10.9.7 (entspricht Vercel Node 22.x).
 
 GATE 1  tsc --noEmit ............................ PASS
-GATE 2  claimcheck (44 Dateien) ................. PASS — keine riskanten Claims
-GATE 3  vitest run .............................. PASS — 37/37 Tests, 7 Dateien
+GATE 2  claimcheck (56 Dateien) ................. PASS — keine riskanten Claims
+GATE 3  vitest run .............................. PASS — 139/139 Tests, 16 Dateien
 GATE 4  eslint . ................................ PASS — 0 Fehler, 0 Warnungen
-GATE 5  npm run build  (EXAKT der Vercel-Befehl,
-        inkl. prebuild = tsc + claimcheck) ...... PASS — Compiled, 9/9 Seiten
+GATE 5  next build (vollständig, inkl. Static-
+        Generation 9/9) ........................ PASS — Compiled, 9/9 Seiten,
+        KEIN Hang bei "Collecting page data"
 GATE 6  npm audit --omit=dev .................... PASS — 0 vulnerabilities
+GATE 7  PDF-Render (scripts/pdf-fulltest.mjs) ... PASS — 3/3 Varianten
 
-Inhaltlich identisch mit v3_15 (Know-how-Transfer Achtsamkeits-Trigger,
-siehe KNOW_HOW_TRANSFER_V3_15.md). Einzige Änderungen in v3_16:
-  - .gitignore: tsconfig.tsbuildinfo ergänzt
-  - BUILD_LOG.txt: dieser Verifikationslauf
+ANMERKUNG ZUM BUILD
+-------------------
+Anders als im v3_34-Review lief `next build` hier vollständig durch — inklusive
+der Phase "Collecting page data" und "Generating static pages (9/9)", die zuvor
+hing. Die drei neuen Seiten/Routen (/widerruf, /api/widerruf, /api/unsubscribe)
+sind bewusst `export const dynamic = 'force-dynamic'` + `runtime = 'nodejs'`,
+damit sie nicht in die statische Sammelphase geraten (gleiches Muster wie
+/kontakt und /legal/*). Trotzdem bleibt ein erfolgreicher Vercel-Produktions-
+deploy der maßgebliche Freigabepunkt.
+
+NEU IN v3_35 (siehe HARDENING_V3_35_CHANGES.md)
+-----------------------------------------------
+Vier Verkaufsfreigabe-Blocker aus dem v3_34-Review adressiert (Mechanik):
+  1. Vollständige Vertrags-/Widerrufsinfo direkt in der Bestätigungs-Mail +
+     unveränderbarer Vertrags-Snapshot auf der Purchase.
+  2. Assessment erst nach erfolgreicher Bestätigung freischalten
+     (Status awaiting_contract_confirmation → pending).
+  3. Consent eindeutig an den konkreten Kauf gebunden (checkout_attempt_id).
+  4. Online-Widerrufsfunktion (/widerruf + /api/widerruf + withdrawals-Tabelle).
+Plus: CRON_SECRET/INVOICE_VAT_NOTE dokumentiert, Resume-Reminder auf echte
+Inaktivität, One-Click-Unsubscribe-POST, idempotente Meilenstein-Mails.
+
+OFFEN (extern, nicht im Code abnehmbar)
+---------------------------------------
+- Erfolgreicher Vercel-Produktionsdeploy
+- Echter Stripe-Testkauf inkl. zugestellter Mail/Assessment/Report/PDF/Refund
+- Anwaltliche Prüfung der finalen Vertrags-/Widerrufs-/Steuertexte
+- INVOICE_VAT_NOTE mit dem korrekten Steuerstatus belegen (Steuerberater)
+- Entscheidung: Falls die AGB-§7-Ergänzung (Online-Widerrufsfunktion) als
+  materielle Änderung gilt → AGB_VERSION + CONSENT_VERSION vor Go-Live hochzählen.
 
 WICHTIG FÜR DEN GITHUB-UPLOAD
 -----------------------------
-Der Build schlägt auf Vercel nur fehl, wenn der Repo-Inhalt vom ZIP abweicht.
-Da `npm run build` hier mit identischem Befehl grün ist, beim Upload prüfen:
-
-1. Repo-Root = ZIP-Inhalt DIREKT: package.json muss auf oberster Ebene des
-   Repos liegen (NICHT verschachtelt als coachcheck/coachcheck/...).
-2. Alte Dateien ERSETZEN, nicht daneben legen — keine Duplikate alter Stände.
+1. Repo-Root = ZIP-Inhalt DIREKT (package.json auf oberster Ebene).
+2. Alte Dateien ERSETZEN, nicht daneben legen.
 3. Nicht einchecken: node_modules/, .next/, tsconfig.tsbuildinfo, .env*
-4. Nach dem Commit auf github.com gegenprüfen:
-   - lib/safety/care-triggers.ts existiert auf main
-   - scripts/claimcheck.mjs enthält den Eintrag 'lib/safety'
-5. Vercel-Projekteinstellung "Root Directory" muss leer sein (= Repo-Root),
-   Node-Version 22.x (Default).
+4. Neue Supabase-Migrationen 33 + 34 in Produktion ausführen
+   (idempotent; awaiting-Status-Constraint + withdrawals-Tabelle).
+5. Vercel: CRON_SECRET als Env setzen, sonst laufen Retry-/Reminder-Crons nicht.

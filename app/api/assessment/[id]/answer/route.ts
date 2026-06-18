@@ -146,14 +146,20 @@ export async function POST(
   );
   if (upErr) return NextResponse.json({ error: 'could not save answer' }, { status: 500 });
 
+  // Fortschritt + echte Aktivitätszeit serverseitig setzen. last_activity_at
+  // wird bei JEDER Antwort gebumpt — daran erkennt der Resume-Reminder echte
+  // Inaktivität (statt am created_at, das jemanden erinnern würde, der gerade
+  // erst weitergearbeitet hat). status bleibt 'in_progress' — Abschluss nur
+  // über /finalize.
+  const update: Record<string, unknown> = {
+    status: 'in_progress',
+    last_activity_at: new Date().toISOString(),
+  };
   if (typeof body.current_item_index === 'number') {
-    const update: Record<string, unknown> = {
-      current_item_index: body.current_item_index,
-      status: 'in_progress',
-    };
-    if (!assessment.started_at) update.started_at = new Date().toISOString();
-    await admin.from('assessments').update(update).eq('id', id);
+    update.current_item_index = body.current_item_index;
   }
+  if (!assessment.started_at) update.started_at = new Date().toISOString();
+  await admin.from('assessments').update(update).eq('id', id);
 
   return NextResponse.json({ ok: true });
 }

@@ -1,55 +1,72 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailSafe } from '@/lib/email/resend';
-import { PROVIDER, providerAddressLine, VAT_NOTE, AGB_VERSION } from '@/lib/legal/provider';
+import { PROVIDER, AGB_VERSION } from '@/lib/legal/provider';
+import {
+  WIDERRUF_CONSENT_TEXT,
+  buildContractSnapshot,
+  flattenConsentText,
+  type ContractSnapshot,
+} from '@/lib/legal/withdrawal';
 
 /**
  * Bestell- und Vertragsbestätigung (FAGG, digitale Inhalte).
  *
- * Diese Mail ist der dauerhafte Datenträger nach dem Kauf: sie enthält die
+ * Diese Mail ist der dauerhafte Datenträger nach dem Kauf. Sie enthält die
  * vollständigen Vertragsdaten, den exakten Wortlaut der Widerruf-Zustimmung,
- * Consent-Version + -Zeitpunkt sowie die maßgebliche AGB-Fassung. Der Versand
- * wird auf der purchase-Zeile protokolliert (confirmation_sent_at/attempts/error)
- * und ist über den Retry-Endpoint nachholbar.
+ * die VOLLSTÄNDIGE Widerrufsbelehrung und das Muster-Widerrufsformular direkt
+ * im Text (nicht nur als Link) sowie eine prominente Online-Widerrufsfunktion.
+ *
+ * Gerendert wird AUS dem unveränderbaren Vertrags-Snapshot, der beim Kauf
+ * gespeichert wurde. So entspricht die Mail exakt der zum Bestellzeitpunkt
+ * geltenden Fassung — auch wenn AGB-Texte später geändert werden.
  *
  * WICHTIG: Ob diese Bestätigung die rechtliche Schwelle (z. B. Erlöschen des
  * Widerrufsrechts) erfüllt, ist eine anwaltliche Bewertung — nicht von diesem
- * Code zugesichert. Der Code stellt den Mechanismus bereit (Inhalt + zuverlässiger,
- * protokollierter Versand), nicht das Rechtsurteil.
+ * Code zugesichert. Der Code stellt den Mechanismus bereit (vollständiger
+ * Inhalt + zuverlässiger, protokollierter Versand), nicht das Rechtsurteil.
  */
+
+// Re-Export für Bestandscode/Tests, die den Wortlaut hier importieren.
+export { WIDERRUF_CONSENT_TEXT };
 
 const EUR = (cents: number, currency: string) =>
   new Intl.NumberFormat('de-AT', { style: 'currency', currency: (currency || 'eur').toUpperCase() })
     .format((cents ?? 0) / 100);
 
-const DT = (d: Date) =>
+const DT = (iso: string | Date) =>
   new Intl.DateTimeFormat('de-AT', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     timeZone: 'Europe/Vienna',
-  }).format(d) + ' Uhr (MEZ/MESZ)';
+  }).format(typeof iso === 'string' ? new Date(iso) : iso) + ' Uhr (MEZ/MESZ)';
 
-/** Der exakte Wortlaut der Widerruf-Verzicht-Checkbox aus dem Checkout. */
-export const WIDERRUF_CONSENT_TEXT =
-  'Ich verlange ausdrücklich, dass CoachCheck schon vor Ablauf der 14-tägigen ' +
-  'Widerrufsfrist mit der Bereitstellung des digitalen Inhalts beginnt. Mir ist ' +
-  'bekannt, dass ich dadurch mit Beginn der Ausführung mein Widerrufsrecht verliere.';
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
+/** Escapter, zeilenerhaltender Klartextblock (für Belehrung/Formular). */
+function pre(text: string): string {
+  return `<div style="white-space:pre-wrap; font-size:13px; line-height:1.55; color:#3A3835; background:#FAF8F4; border:1px solid #ECE8E1; border-radius:6px; padding:14px 16px; margin:0 0 4px;">${esc(text)}</div>`;
+}
+
+/**
+ * Baut die vollständige Bestell-/Vertragsbestätigung aus dem Snapshot.
+ */
 export function buildOrderConfirmationEmail(p: {
   firstName: string;
-  productName: string;
-  orderNumber: string;
-  purchaseId: string;
-  purchasedAt: Date;
-  amountCents: number;
-  currency: string;
-  consentVersion: string | null;
-  consentAcceptedAt: Date | null;
   appUrl: string;
   assessmentId: string;
+  snapshot: ContractSnapshot;
 }): { subject: string; html: string } {
+  const s = p.snapshot;
   const agbUrl = `${p.appUrl}/legal/agb`;
   const datenschutzUrl = `${p.appUrl}/legal/datenschutz`;
   const impressumUrl = `${p.appUrl}/legal/impressum`;
   const startUrl = `${p.appUrl}/assessment/${p.assessmentId}`;
+  const widerrufUrl = `${p.appUrl}/widerruf?ref=${encodeURIComponent(s.order.orderNumber)}`;
 
   const row = (label: string, value: string) =>
     `<tr>
@@ -57,51 +74,52 @@ export function buildOrderConfirmationEmail(p: {
        <td style="padding:6px 0; color:#1A1917; font-size:14px; vertical-align:top;">${value}</td>
      </tr>`;
 
-  const consentLine = p.consentAcceptedAt
-    ? `${DT(p.consentAcceptedAt)}${p.consentVersion ? ` · Fassung ${p.consentVersion}` : ''}`
-    : (p.consentVersion ? `Fassung ${p.consentVersion}` : '—');
+  const widerrufConsent = s.consents.find((c) => c.type === 'widerruf_verzicht') ?? null;
+  const consentLine = widerrufConsent?.acceptedAt
+    ? `${DT(widerrufConsent.acceptedAt)}${s.consentVersion ? ` · Fassung ${s.consentVersion}` : ''}`
+    : (s.consentVersion ? `Fassung ${s.consentVersion}` : '—');
 
-  const subject = `Deine Bestell- und Vertragsbestätigung · ${p.productName} (${p.orderNumber})`;
+  const subject = `Deine Bestell- und Vertragsbestätigung · ${s.product.name} (${s.order.orderNumber})`;
 
   const html = `
 <div style="font-family:-apple-system,Segoe UI,sans-serif; max-width:600px; margin:0 auto; color:#1A1917; line-height:1.55;">
   <div style="padding:32px 24px 8px;">
     <div style="font-family:monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#B38E45; margin-bottom:14px;">
-      ✓ Zahlung erhalten
+      &#10003; Zahlung erhalten
     </div>
     <h1 style="font-family:Georgia,serif; font-weight:300; font-size:30px; letter-spacing:-0.02em; line-height:1.12; margin:0 0 14px;">
-      Schön, dass du da bist, ${p.firstName}.
+      Sch&ouml;n, dass du da bist, ${esc(p.firstName)}.
     </h1>
     <p style="font-size:16px; margin:0 0 8px;">
-      Dein <strong>${p.productName}</strong> ist freigeschaltet. Du kannst direkt loslegen —
-      und unten findest du deine vollständige Bestell- und Vertragsbestätigung zum Aufbewahren.
+      Dein <strong>${esc(s.product.name)}</strong> ist freigeschaltet. Du kannst direkt loslegen &mdash;
+      und unten findest du deine vollst&auml;ndige Bestell- und Vertragsbest&auml;tigung zum Aufbewahren.
     </p>
     <p style="margin:18px 0 28px;">
       <a href="${startUrl}" style="display:inline-block; background:#1A1917; color:#F4F1EC; text-decoration:none; padding:13px 22px; border-radius:999px; font-weight:600; font-size:15px;">
-        Assessment starten →
+        Assessment starten &rarr;
       </a>
     </p>
   </div>
 
   <div style="background:#F0EEEA; border-radius:6px; padding:22px 22px 8px; margin:0 8px;">
     <div style="font-family:monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:#767471; margin-bottom:8px;">
-      Bestell- und Vertragsbestätigung
+      Bestell- und Vertragsbest&auml;tigung
     </div>
     <table style="width:100%; border-collapse:collapse;">
-      ${row('Bestellnummer', p.orderNumber)}
-      ${row('Bestelldatum', DT(p.purchasedAt))}
-      ${row('Produkt', p.productName)}
-      ${row('Bruttopreis', `${EUR(p.amountCents, p.currency)} <span style="color:#767471;">— ${VAT_NOTE}</span>`)}
-      ${row('Zahlungsart', 'Kreditkarte (über Stripe)')}
-      ${row('Vertragsreferenz', p.purchaseId)}
+      ${row('Bestellnummer', esc(s.order.orderNumber))}
+      ${row('Bestelldatum', DT(s.order.purchasedAt))}
+      ${row('Produkt', esc(s.product.name))}
+      ${row('Bruttopreis', `${EUR(s.product.priceCents, s.product.currency)} <span style="color:#767471;">&mdash; ${esc(s.vatNote)}</span>`)}
+      ${row('Zahlungsart', 'Kreditkarte (&uuml;ber Stripe)')}
+      ${row('Vertragsreferenz', esc(s.order.purchaseId))}
     </table>
     <div style="border-top:1px solid #DCD8D1; margin:14px 0 0; padding-top:12px;">
       <div style="font-size:13px; color:#767471; margin-bottom:4px;">Anbieter</div>
       <div style="font-size:14px;">
-        ${PROVIDER.legalName}<br/>
-        ${PROVIDER.person}<br/>
-        ${providerAddressLine()}<br/>
-        Tel.: ${PROVIDER.phone} · ${PROVIDER.email}<br/>
+        ${esc(s.provider.legalName)}<br/>
+        ${esc(s.provider.person)}<br/>
+        ${esc(s.provider.address)}<br/>
+        Tel.: ${esc(s.provider.phone)} &middot; ${esc(s.provider.email)}<br/>
         <a href="${impressumUrl}" style="color:#B38E45;">Impressum</a>
       </div>
     </div>
@@ -112,29 +130,47 @@ export function buildOrderConfirmationEmail(p: {
       Widerruf &amp; digitale Leistung
     </div>
     <p style="font-size:14px; margin:0 0 10px;">
-      Du hast beim Kauf ausdrücklich dem sofortigen Leistungsbeginn zugestimmt. Im Wortlaut:
+      Du hast beim Kauf ausdr&uuml;cklich dem sofortigen Leistungsbeginn zugestimmt. Im Wortlaut:
     </p>
     <blockquote style="margin:0 0 12px; padding:10px 14px; background:#FAF8F4; border-left:3px solid #B38E45; font-size:13.5px; color:#3A3835;">
-      „${WIDERRUF_CONSENT_TEXT}“
+      &bdquo;${esc(s.widerrufVerzichtText)}&ldquo;
     </blockquote>
     <table style="width:100%; border-collapse:collapse;">
       ${row('Zustimmung dokumentiert', consentLine)}
-      ${row('Maßgebliche AGB-Fassung', `Stand ${AGB_VERSION} — <a href="${agbUrl}" style="color:#B38E45;">AGB ansehen</a>`)}
+      ${row('Ma&szlig;gebliche AGB-Fassung', `Stand ${esc(s.agbVersion)} &mdash; <a href="${agbUrl}" style="color:#B38E45;">AGB ansehen</a>`)}
     </table>
-    <p style="font-size:13px; color:#767471; margin:12px 0 0;">
-      Hinweis: Bei digitalen Inhalten erlischt das 14-tägige Widerrufsrecht, sobald die
-      Ausführung mit deiner ausdrücklichen Zustimmung begonnen hat (FAGG). Widerrufsbelehrung
-      und Muster-Widerrufsformular findest du in den
-      <a href="${agbUrl}" style="color:#B38E45;">AGB</a>. Es gilt die zum Bestellzeitpunkt
-      gültige AGB-Fassung.
+  </div>
+
+  <div style="padding:8px 24px;">
+    <div style="font-family:monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:#767471; margin-bottom:8px;">
+      Widerrufsbelehrung (vollst&auml;ndig)
+    </div>
+    ${pre(s.widerrufsbelehrung)}
+  </div>
+
+  <div style="padding:8px 24px;">
+    <div style="font-family:monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:#767471; margin-bottom:8px;">
+      Muster-Widerrufsformular
+    </div>
+    ${pre(s.musterWiderrufsformular)}
+    <p style="margin:14px 0 4px;">
+      <a href="${widerrufUrl}" style="display:inline-block; background:#7A1F1F; color:#F4F1EC; text-decoration:none; padding:12px 20px; border-radius:999px; font-weight:600; font-size:14px;">
+        Vertrag online widerrufen &rarr;
+      </a>
+    </p>
+    <p style="font-size:12px; color:#767471; margin:8px 0 0;">
+      Du kannst auch formlos per E-Mail an
+      <a href="mailto:${esc(s.provider.email)}" style="color:#B38E45;">${esc(s.provider.email)}</a> widerrufen.
+      Hinweis: Bei digitalen Inhalten erlischt das 14-t&auml;gige Widerrufsrecht, sobald die Ausf&uuml;hrung
+      mit deiner ausdr&uuml;cklichen Zustimmung begonnen hat (FAGG).
     </p>
   </div>
 
   <div style="padding:8px 24px 28px;">
     <p style="font-size:12px; color:#9A9894; margin:18px 0 0; border-top:1px solid #ECE8E1; padding-top:14px;">
-      Bewahre diese E-Mail als Vertragsbestätigung auf. Fragen? Antworte einfach auf diese
-      Mail oder schreib an <a href="mailto:${PROVIDER.email}" style="color:#B38E45;">${PROVIDER.email}</a>.<br/>
-      <a href="${datenschutzUrl}" style="color:#9A9894;">Datenschutz</a> ·
+      Bewahre diese E-Mail als Vertragsbest&auml;tigung auf. Fragen? Antworte einfach auf diese
+      Mail oder schreib an <a href="mailto:${esc(s.provider.email)}" style="color:#B38E45;">${esc(s.provider.email)}</a>.<br/>
+      <a href="${datenschutzUrl}" style="color:#9A9894;">Datenschutz</a> &middot;
       <a href="${impressumUrl}" style="color:#9A9894;">Impressum</a>
     </p>
   </div>
@@ -144,11 +180,17 @@ export function buildOrderConfirmationEmail(p: {
 }
 
 /**
- * Lädt alle Daten zu einer Purchase, baut die Bestätigung und versendet sie —
- * idempotent und statusverfolgt. Wird vom Webhook und vom Retry-Endpoint genutzt.
+ * Lädt alle Daten zu einer Purchase, friert den Vertrags-Snapshot ein, baut die
+ * Bestätigung und versendet sie — idempotent und statusverfolgt. Wird vom
+ * Webhook und vom Retry-Endpoint genutzt.
  *
  * - Bereits gesendet (confirmation_sent_at gesetzt) → no-op, ok:true.
- * - Erfolg → confirmation_sent_at = now, attempts++.
+ * - Consent wird über checkout_attempt_id exakt diesem Kauf zugeordnet
+ *   (Fallback: neueste Einträge des Users, für Altbestellungen ohne ID).
+ * - Snapshot wird beim ersten erfolgreichen Lauf auf der Purchase eingefroren.
+ * - Erfolg → confirmation_sent_at = now, attempts++, UND das gesperrte
+ *   Assessment wird von 'awaiting_contract_confirmation' auf 'pending'
+ *   freigeschaltet (Leistungsbeginn erst nach Bestätigung).
  * - Fehler → attempts++, confirmation_last_error gesetzt, ok:false.
  *
  * Wirft NIE (sendEmailSafe wirft nicht); Rückgabe für Logging/Retry.
@@ -162,7 +204,7 @@ export async function sendOrderConfirmationForPurchase(
 
   const { data: purchase, error: pErr } = await admin
     .from('purchases')
-    .select('id, user_id, product_id, assessment_id, amount_cents, currency, paid_at, created_at, order_number, confirmation_sent_at, confirmation_attempts, metadata, status')
+    .select('id, user_id, product_id, assessment_id, amount_cents, currency, paid_at, created_at, order_number, confirmation_sent_at, confirmation_attempts, metadata, status, checkout_attempt_id, consent_version, contract_snapshot')
     .eq('id', purchaseId)
     .single();
 
@@ -171,16 +213,22 @@ export async function sendOrderConfirmationForPurchase(
   if (purchase.confirmation_sent_at && !opts?.force) return { ok: true, skipped: true };
   if (!purchase.assessment_id) return { ok: false, error: 'no assessment linked yet' };
 
-  const [{ data: product }, { data: profile }, { data: consents }] = await Promise.all([
+  // Consent EXAKT diesem Kauf zuordnen (checkout_attempt_id). Fallback nur für
+  // Altbestellungen ohne ID: neueste checkout-consent-Einträge des Users.
+  const consentQuery = admin
+    .from('consent_records')
+    .select('version, accepted_at, consent_type, checkout_attempt_id')
+    .eq('user_id', purchase.user_id)
+    .eq('source', 'checkout-consent');
+  const consentRes = purchase.checkout_attempt_id
+    ? await consentQuery.eq('checkout_attempt_id', purchase.checkout_attempt_id).order('accepted_at', { ascending: false })
+    : await consentQuery.order('accepted_at', { ascending: false }).limit(8);
+
+  const [{ data: product }, { data: profile }] = await Promise.all([
     admin.from('products').select('name_de').eq('id', purchase.product_id).single(),
     admin.from('profiles').select('full_name').eq('id', purchase.user_id).single(),
-    admin.from('consent_records')
-      .select('version, accepted_at, consent_type')
-      .eq('user_id', purchase.user_id)
-      .eq('source', 'checkout-consent')
-      .order('accepted_at', { ascending: false })
-      .limit(8),
   ]);
+  const consents = consentRes.data ?? [];
 
   const meta = (purchase.metadata ?? {}) as { stripe_customer_email?: string | null };
   const email = meta.stripe_customer_email ?? null;
@@ -194,21 +242,41 @@ export async function sendOrderConfirmationForPurchase(
     return { ok: false, error: 'no recipient email' };
   }
 
-  const widerruf = (consents ?? []).find((c) => c.consent_type === 'widerruf_verzicht')
-    ?? (consents ?? [])[0] ?? null;
+  const orderNumber = purchase.order_number
+    ? `CC-${purchase.order_number}`
+    : `CC-${String(purchase.id).slice(0, 8).toUpperCase()}`;
+
+  // Snapshot einfrieren (falls noch nicht geschehen) — die zum Bestellzeitpunkt
+  // geltenden Texte/Daten werden dauerhaft fixiert.
+  const snapshot: ContractSnapshot =
+    (purchase.contract_snapshot as ContractSnapshot | null) ??
+    buildContractSnapshot({
+      productName: product?.name_de ?? 'Dein Paket',
+      priceCents: purchase.amount_cents ?? 0,
+      currency: purchase.currency ?? 'eur',
+      orderNumber,
+      purchaseId: purchase.id,
+      purchasedAt: new Date(purchase.paid_at ?? purchase.created_at ?? Date.now()),
+      consentVersion: purchase.consent_version ?? null,
+      consents: consents.map((c) => ({ type: c.consent_type, acceptedAt: c.accepted_at ?? null })),
+    });
+
+  if (!purchase.contract_snapshot) {
+    await admin.from('purchases')
+      .update({
+        contract_snapshot: snapshot,
+        agb_version: AGB_VERSION,
+        consent_version: snapshot.consentVersion,
+        consent_text_snapshot: flattenConsentText(snapshot),
+      })
+      .eq('id', purchase.id);
+  }
 
   const { subject, html } = buildOrderConfirmationEmail({
     firstName: profile?.full_name?.split(' ')[0] ?? 'Trainer',
-    productName: product?.name_de ?? 'Dein Paket',
-    orderNumber: purchase.order_number ? `CC-${purchase.order_number}` : `CC-${String(purchase.id).slice(0, 8).toUpperCase()}`,
-    purchaseId: purchase.id,
-    purchasedAt: new Date(purchase.paid_at ?? purchase.created_at ?? Date.now()),
-    amountCents: purchase.amount_cents ?? 0,
-    currency: purchase.currency ?? 'eur',
-    consentVersion: widerruf?.version ?? null,
-    consentAcceptedAt: widerruf?.accepted_at ? new Date(widerruf.accepted_at) : null,
     appUrl,
     assessmentId: purchase.assessment_id,
+    snapshot,
   });
 
   const res = await sendEmailSafe({ to: email, subject, html, category: 'order-confirmation' });
@@ -221,6 +289,14 @@ export async function sendOrderConfirmationForPurchase(
         confirmation_last_error: null,
       })
       .eq('id', purchase.id);
+
+    // Leistungsbeginn erst JETZT: gesperrtes Assessment freischalten.
+    // Nur den awaiting-Zustand anfassen (idempotent, race-sicher).
+    await admin.from('assessments')
+      .update({ status: 'pending' })
+      .eq('id', purchase.assessment_id)
+      .eq('status', 'awaiting_contract_confirmation');
+
     return { ok: true };
   }
 

@@ -38,6 +38,11 @@ export async function recordConsent(entry: {
   ip?: string | null;
   userAgent?: string | null;
   source?: string;
+  // Bindet diese Einwilligung an einen konkreten Checkout-Vorgang. So kann die
+  // Bestätigung exakt die zu DIESEM Kauf gehörenden Consents verwenden.
+  checkoutAttemptId?: string | null;
+  // Exakter Wortlaut der angeklickten Erklärung (nicht nur die Versionsnummer).
+  consentText?: string | null;
 }): Promise<boolean> {
   try {
     const { error } = await createAdminClient().from('consent_records').insert({
@@ -47,6 +52,8 @@ export async function recordConsent(entry: {
       ip_hash: hash(entry.ip),
       user_agent_hash: hash(entry.userAgent),
       source: entry.source ?? null,
+      checkout_attempt_id: entry.checkoutAttemptId ?? null,
+      consent_text: entry.consentText ?? null,
     });
     if (error) {
       console.error('[consent] record failed:', error.message);

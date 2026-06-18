@@ -137,7 +137,8 @@ export default function AGBPage() {
               <p>
                 Verbraucher haben nach dem Fern- und Auswärtsgeschäfte-Gesetz (FAGG) das Recht, binnen
                 <strong> 14 Tagen</strong> ohne Angabe von Gründen zu widerrufen. Die Frist beginnt mit
-                Vertragsschluss. Zur Ausübung genügt eine eindeutige Erklärung (z. B. per E-Mail an <Mail />).
+                Vertragsschluss. Zur Ausübung genügt eine eindeutige Erklärung (z. B. per E-Mail an <Mail /> oder
+                über die <a href="/widerruf" className="text-gold-deep underline">Online-Widerrufsfunktion</a>).
                 Zur Fristwahrung reicht die rechtzeitige Absendung.
               </p>
             </div>

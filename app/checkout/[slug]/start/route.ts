@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import Stripe from 'stripe';
+import { randomUUID } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { recordConsent } from '@/lib/utils/audit';
 import { CONSENT_VERSION } from '@/lib/constants/consent';
+import { CONSENT_TEXTS } from '@/lib/legal/withdrawal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,12 +67,27 @@ export async function POST(
   // Erst NACH aktiver Zustimmung. IP/UA werden in recordConsent gehasht.
   // Schlägt die Nachweis-Speicherung fehl, darf KEIN Checkout starten —
   // sonst gäbe es eine Zahlung ohne gesicherten Einwilligungsnachweis.
+  //
+  // checkout_attempt_id bindet die vier Consents eindeutig an GENAU diesen
+  // Checkout-Vorgang. Dieselbe ID landet in den Stripe-Metadaten und später in
+  // der Purchase, sodass die Bestätigung exakt die zu diesem Kauf gehörenden
+  // Einwilligungen verwendet (nicht „die letzten N des Users").
+  const checkoutAttemptId = randomUUID();
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
   const userAgent = request.headers.get('user-agent') ?? null;
   const consentResults = await Promise.all(
-    ['agb', 'datenschutz', 'ki_verarbeitung', 'widerruf_verzicht'].map((consentType) =>
-      recordConsent({ userId: user.id, consentType, version: CONSENT_VERSION, ip, userAgent, source: 'checkout-consent' })
-    )
+    (['agb', 'datenschutz', 'ki_verarbeitung', 'widerruf_verzicht'] as const).map((consentType) =>
+      recordConsent({
+        userId: user.id,
+        consentType,
+        version: CONSENT_VERSION,
+        ip,
+        userAgent,
+        source: 'checkout-consent',
+        checkoutAttemptId,
+        consentText: CONSENT_TEXTS[consentType] ?? null,
+      }),
+    ),
   );
   if (consentResults.some((ok) => !ok)) {
     return NextResponse.json(
@@ -116,6 +133,7 @@ export async function POST(
       product_id: product.id.toString(),
       product_slug: product.slug,
       consent_version: CONSENT_VERSION,
+      checkout_attempt_id: checkoutAttemptId,
     },
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,

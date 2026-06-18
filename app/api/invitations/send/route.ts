@@ -59,8 +59,10 @@ export async function POST(request: NextRequest) {
   const sport = profile?.sport ?? '';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://coachcheck.humatrix.cc';
   const link = `${appUrl}/einschaetzung/${invitation.token}`;
-  // Token-basierte Unsubscribe-URL: bricht den Versand für diesen einen Empfänger ab
-  const unsubscribeUrl = `${appUrl}/einschaetzung/${invitation.token}?unsubscribe=1`;
+  // List-Unsubscribe-Header → echter One-Click-POST-Endpoint (RFC 8058). Gmail/
+  // Yahoo senden einen POST hierauf; der bricht den Versand für genau diesen
+  // Empfänger ab. Die sichtbare Einschätzungsseite bleibt unter ?unsubscribe=1.
+  const unsubscribeUrl = `${appUrl}/api/unsubscribe?token=${invitation.token}`;
 
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({

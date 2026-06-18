@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;
     const productId = session.metadata?.product_id;
+    const checkoutAttemptId = session.metadata?.checkout_attempt_id ?? null;
+    const consentVersion = session.metadata?.consent_version ?? null;
 
     if (!userId || !productId) {
       return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
@@ -95,6 +97,9 @@ export async function POST(request: NextRequest) {
         currency: session.currency ?? 'eur',
         status: 'paid',
         paid_at: new Date().toISOString(),
+        // Bindung an den konkreten Checkout-Vorgang (Consent-Verknüpfung).
+        checkout_attempt_id: checkoutAttemptId,
+        consent_version: consentVersion,
         metadata: {
           stripe_customer_email: session.customer_email ?? session.customer_details?.email ?? null,
           payment_status: session.payment_status,
@@ -125,13 +130,28 @@ export async function POST(request: NextRequest) {
     // (2) Assessment nur anlegen, wenn noch keines verlinkt ist. So bleibt ein
     //     zahlender Kunde nie ohne Assessment — auch wenn ein früherer Versuch
     //     genau hier abgebrochen ist und Stripe das Event erneut zustellt.
+    //
+    //     WICHTIG (FAGG, dauerhafter Datenträger): Das Assessment startet als
+    //     'awaiting_contract_confirmation' und wird ERST nach erfolgreich
+    //     zugestellter Vertragsbestätigung auf 'pending' freigeschaltet
+    //     (sendOrderConfirmationForPurchase → Statuswechsel). Scheitert der
+    //     Versand, bleibt es gesperrt und der Retry-Lauf holt die Bestätigung
+    //     (und damit die Freischaltung) nach — der Kunde wird also nicht
+    //     dauerhaft ausgesperrt, aber die Leistung beginnt nicht vor der
+    //     Bestätigung.
     if (!assessmentId) {
       const { data: assessment, error: aErr } = await admin
         .from('assessments')
         // purchase_id sofort setzen → 1:1-Bindung an die bezahlte Purchase
         // (Entitlement-Gate + Migration-27-Unique-Index). Ohne diese Bindung
         // bekäme ein Assessment keinen Premium-Report.
-        .insert({ user_id: userId, product_id: parseInt(productId), status: 'pending', purchase_id: purchaseId })
+        .insert({
+          user_id: userId,
+          product_id: parseInt(productId),
+          status: 'awaiting_contract_confirmation',
+          purchase_id: purchaseId,
+          last_activity_at: new Date().toISOString(),
+        })
         .select('id')
         .single();
       if (aErr || !assessment) {
