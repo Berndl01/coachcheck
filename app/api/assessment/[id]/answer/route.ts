@@ -80,13 +80,21 @@ export async function POST(
   // 2) Item laden + validieren
   const { data: item } = await supabase
     .from('items')
-    .select('id, active, package_tiers, format, options')
+    .select('id, active, package_tiers, format, options, player_item')
     .eq('id', body.item_id)
     .maybeSingle();
 
   if (!item || !item.active) return NextResponse.json({ error: 'item invalid' }, { status: 400 });
   if (!Array.isArray(item.package_tiers) || !item.package_tiers.includes(tier)) {
     return NextResponse.json({ error: 'item not allowed for this tier' }, { status: 400 });
+  }
+  // Defense-in-depth: Spieler-Items (player_item=true) gehören ausschließlich in
+  // den Einladungs-Flow (get_items_for_invitation, invitation_type='spieler') und
+  // dürfen NIEMALS im Coach-Selbstassessment landen — auch nicht via crafted
+  // Request. get_items_for_assessment liefert sie ab Migration 26 nicht mehr aus;
+  // dieser Guard schließt den Schreibpfad.
+  if (item.player_item === true) {
+    return NextResponse.json({ error: 'item not allowed for this assessment' }, { status: 400 });
   }
 
   // 3) Format-spezifische Wertvalidierung — genau EIN Feld zählt.
