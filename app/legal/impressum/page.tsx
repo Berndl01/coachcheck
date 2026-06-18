@@ -97,12 +97,12 @@ export default function ImpressumPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">Online-Streitbeilegung</h2>
+            <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">Verbraucherschlichtung</h2>
             <p>
-              Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit:{' '}
-              <a href="https://ec.europa.eu/consumers/odr" className="text-gold-deep hover:underline" target="_blank" rel="noopener noreferrer">
-                ec.europa.eu/consumers/odr
-              </a>.
+              Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor einer
+              Verbraucherschlichtungsstelle teilzunehmen. Anliegen richtest du am besten direkt an{' '}
+              <a href="mailto:office@humatrix.cc" className="text-gold-deep hover:underline">office@humatrix.cc</a> —
+              wir bemühen uns um eine einvernehmliche Lösung.
             </p>
           </section>
 

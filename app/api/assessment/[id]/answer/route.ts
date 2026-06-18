@@ -77,8 +77,11 @@ export async function POST(
   const tier = (assessment.product as any)?.tier;
   if (!tier) return NextResponse.json({ error: 'could not resolve tier' }, { status: 500 });
 
-  // 2) Item laden + validieren
-  const { data: item } = await supabase
+  // 2) Item laden + validieren — Lesen ab Migration 29 über service_role
+  //    (items_read_auth ist entfernt; der Browser kann items nicht mehr direkt
+  //    lesen). Ownership des Assessments ist oben bereits geprüft.
+  const admin = createAdminClient();
+  const { data: item } = await admin
     .from('items')
     .select('id, active, package_tiers, format, options, player_item')
     .eq('id', body.item_id)
@@ -131,7 +134,6 @@ export async function POST(
   // 4) Antwort + Fortschritt serverseitig persistieren (Service-Role, nach
   //    explizitem Ownership-Check). status bleibt 'in_progress' — Abschluss
   //    ausschließlich über /finalize.
-  const admin = createAdminClient();
   const { error: upErr } = await admin.from('answers').upsert(
     {
       assessment_id: id,

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -75,6 +76,11 @@ export async function POST(
     return NextResponse.json({ error: 'Assessment nicht gefunden.' }, { status: 404 });
   }
 
+  // Ownership ist oben (id + user_id) verifiziert. Schreiben ab Migration 27
+  // ausschließlich serverseitig über die service_role (Browser-RLS lässt keine
+  // assessments-UPDATEs mehr zu). Scope bleibt defensiv auf user_id gepinnt.
+  const admin = createAdminClient();
+
   const context = {
     seasonPhase,
     teamMaturity,
@@ -98,7 +104,7 @@ export async function POST(
     metadata,
   };
 
-  const { error } = await supabase
+  const { error } = await admin
     .from('assessments')
     .update(updateWithColumns)
     .eq('id', id)
@@ -110,7 +116,7 @@ export async function POST(
   // oder PostgREST den Schema-Cache noch nicht aktualisiert hat, speichern wir den Kontext
   // trotzdem in assessments.metadata.context. Damit sieht der Kunde keinen Rohfehler.
   if (hasMissingContextColumnError(error)) {
-    const { error: fallbackError } = await supabase
+    const { error: fallbackError } = await admin
       .from('assessments')
       .update({ metadata })
       .eq('id', id)

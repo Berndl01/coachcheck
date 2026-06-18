@@ -9,9 +9,10 @@ export type Item = {
   submodule: string | null;
   format: string;
   text_de: string;
-  options: Array<{ key: string; text: string; weights: Record<string, number> }> | null;
-  axis_weights: Record<string, number>;
-  reverse_scored: boolean;
+  // Nur Anzeige-Daten erreichen den Browser. Scoring-Metadaten (axis_weights,
+  // reverse_scored, Options-Gewichte) werden serverseitig vor der Übergabe
+  // entfernt (IP-Schutz) — der Runner braucht sie nicht.
+  options: Array<{ key: string; text: string }> | null;
 };
 
 export type AnswerValue = {
@@ -147,7 +148,7 @@ function ChoiceInput({
   value,
   onChange,
 }: {
-  options: Array<{ key: string; text: string; weights: Record<string, number> }>;
+  options: Array<{ key: string; text: string }>;
   value: string | undefined;
   onChange: (k: string) => void;
 }) {

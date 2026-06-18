@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { TopNav } from '@/components/top-nav';
@@ -136,14 +137,18 @@ export default async function AdminChecklistPage() {
   let contextSchemaOk = false;
 
   try {
+    // Globale Zahlen brauchen den service_role-Client (nach dem Admin-Gate oben);
+    // der RLS-Client zählte sonst nur die eigenen Zeilen, und items ist seit
+    // Migration 29 für den Browser gar nicht mehr direkt lesbar.
+    const admin = createAdminClient();
     const [prodRes, itemRes, archRes, userRes, axRes, reportRes, contextRes] = await Promise.all([
-      supabase.from('products').select('id', { count: 'exact', head: true }),
-      supabase.from('items').select('id', { count: 'exact', head: true }),
-      supabase.from('archetypes').select('id', { count: 'exact', head: true }),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('assessments').select('id', { count: 'exact', head: true }),
-      supabase.from('reports').select('id', { count: 'exact', head: true }),
-      supabase.from('assessments').select('context_age_range', { count: 'exact', head: true }),
+      admin.from('products').select('id', { count: 'exact', head: true }),
+      admin.from('items').select('id', { count: 'exact', head: true }),
+      admin.from('archetypes').select('id', { count: 'exact', head: true }),
+      admin.from('profiles').select('id', { count: 'exact', head: true }),
+      admin.from('assessments').select('id', { count: 'exact', head: true }),
+      admin.from('reports').select('id', { count: 'exact', head: true }),
+      admin.from('assessments').select('context_age_range', { count: 'exact', head: true }),
     ]);
     productCount = prodRes.count ?? 0;
     itemCount = itemRes.count ?? 0;

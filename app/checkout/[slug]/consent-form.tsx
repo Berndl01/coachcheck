@@ -3,21 +3,24 @@
 import { useState } from 'react';
 
 /**
- * Drei aktive Zustimmungen, bevor der Checkout starten darf (P0 #4):
+ * Vier aktive Zustimmungen, bevor der Checkout starten darf:
  *   - AGB
- *   - Datenschutzerklärung
+ *   - Datenschutzerklärung (zur Kenntnis genommen)
  *   - Verständnis der KI-gestützten / automatisierten Auswertung
+ *   - Ausdrücklicher Wunsch nach vorzeitigem Leistungsbeginn + Kenntnis des
+ *     Widerrufsrecht-Verlusts (FAGG, digitale Inhalte)
  *
  * Das Formular POSTet auf /checkout/[slug]/start. Dort wird die Zustimmung
  * serverseitig erneut geprüft und versioniert gespeichert, bevor die
- * Stripe-Session erzeugt wird. Ohne alle drei Haken: kein Checkout.
+ * Stripe-Session erzeugt wird. Ohne alle vier Haken: kein Checkout.
  */
 export function CheckoutConsent({ slug }: { slug: string }) {
   const [agb, setAgb] = useState(false);
   const [datenschutz, setDatenschutz] = useState(false);
   const [ki, setKi] = useState(false);
+  const [widerruf, setWiderruf] = useState(false);
 
-  const allChecked = agb && datenschutz && ki;
+  const allChecked = agb && datenschutz && ki && widerruf;
 
   return (
     <form method="post" action={`/checkout/${slug}/start`} className="grid gap-5">
@@ -40,7 +43,7 @@ export function CheckoutConsent({ slug }: { slug: string }) {
           <>
             Ich habe die{' '}
             <a href="/legal/datenschutz" target="_blank" rel="noreferrer" className="text-gold-deep underline">Datenschutzerklärung</a>{' '}
-            gelesen und akzeptiere sie.
+            zur Kenntnis genommen.
           </>
         }
       />
@@ -53,6 +56,18 @@ export function CheckoutConsent({ slug }: { slug: string }) {
             Mir ist bewusst, dass die Auswertung KI-gestützt erfolgt und der Bericht
             automatisiert auf Basis meiner Antworten erstellt wird. Das Ergebnis ist eine
             Coaching-Einordnung, keine medizinische oder psychologische Diagnose.
+          </>
+        }
+      />
+      <Checkbox
+        name="widerruf_verzicht"
+        checked={widerruf}
+        onChange={setWiderruf}
+        label={
+          <>
+            Ich verlange ausdrücklich, dass CoachCheck schon vor Ablauf der 14-tägigen
+            Widerrufsfrist mit der Bereitstellung des digitalen Inhalts beginnt. Mir ist
+            bekannt, dass ich dadurch mit Beginn der Ausführung mein Widerrufsrecht verliere.
           </>
         }
       />

@@ -22,9 +22,10 @@ const REFERENCES = [
   { authors: 'Williamson et al.', year: 2024, topic: 'Zielsetzung im Sport (systematisches Review)', ev: 'A' },
   { authors: 'Jowett & Ntoumanis', year: 2004, topic: 'Coach-Athlet-Beziehung (CART-Q)', ev: 'A-' },
   { authors: 'Fransen et al.', year: 2015, topic: 'Athlete Leadership & Netzwerkanalyse', ev: 'A-' },
-  { authors: 'Cooke et al.', year: 2024, topic: 'Psychologische Sicherheit im Sport (Review)', ev: 'A-' },
+  { authors: 'Vella et al.', year: 2024, topic: 'Psychologische Sicherheit im Sport (systematisches Review & Konzeptanalyse)', ev: 'A-' },
+  { authors: 'Cooke et al.', year: 2024, topic: 'Psychologische Sicherheit im Sport (qualitative Studie)', ev: 'B+' },
   { authors: 'Chelladurai & Saleh', year: 1980, topic: 'Dimensionen des Führungsverhaltens (LSS)', ev: 'B+' },
-  { authors: 'Glandorf et al.', year: 2022, topic: 'Burnout & Gesundheit im Sport (Review)', ev: 'A-' },
+  { authors: 'Glandorf et al.', year: 2023, topic: 'Burnout & Gesundheit im Sport (Review & Meta-Analyse)', ev: 'A-' },
 ];
 
 export function ScienceFoundation() {

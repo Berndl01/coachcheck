@@ -43,3 +43,20 @@ export async function getReportSignedUrl(
   }
   return data.signedUrl;
 }
+
+/**
+ * Löscht Report-PDF-Dateien aus dem Storage. Wird beim Löschen von Reports,
+ * Assessments und bei Kontolöschungen aufgerufen, damit keine personenbezogenen
+ * PDFs im Bucket zurückbleiben (DSGVO). Gibt zurück, ob die Löschung gelang.
+ */
+export async function deleteReportFiles(storagePaths: Array<string | null | undefined>): Promise<boolean> {
+  const paths = storagePaths.filter((p): p is string => typeof p === 'string' && p.length > 0);
+  if (paths.length === 0) return true;
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from(BUCKET).remove(paths);
+  if (error) {
+    console.error('[storage] report file delete failed:', error.message);
+    return false;
+  }
+  return true;
+}

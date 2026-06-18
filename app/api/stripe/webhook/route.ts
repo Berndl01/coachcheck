@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmailSafe } from '@/lib/email/resend';
+import { sendOrderConfirmationForPurchase } from '@/lib/email/order-confirmation';
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -9,61 +9,6 @@ function getStripe() {
   });
 }
 
-function welcomeEmailHtml(params: {
-  firstName: string;
-  productName: string;
-  appUrl: string;
-  assessmentId: string;
-}) {
-  const { firstName, productName, appUrl, assessmentId } = params;
-  return `
-<div style="font-family: -apple-system, Segoe UI, sans-serif; max-width: 560px; margin: 0 auto; color: #1A1917; line-height: 1.55;">
-  <div style="padding: 32px 24px 24px;">
-    <div style="font-family: monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #B38E45; margin-bottom: 14px;">
-      ✓ Du bist dabei
-    </div>
-    <h1 style="font-family: Georgia, serif; font-weight: 300; font-size: 34px; letter-spacing: -0.02em; line-height: 1.1; margin: 0 0 16px;">
-      Schön, dass du da bist, ${firstName}.
-    </h1>
-    <p style="font-size: 16px; margin: 0 0 12px;">
-      Cool, dass du mit dabei bist — wir freuen uns wirklich, dich an Bord zu haben.
-    </p>
-    <p style="font-size: 16px; margin: 0 0 24px;">
-      Dein <strong>${productName}</strong> ist freigeschaltet und wartet auf dich. Du bist nur noch <strong>einen Klick</strong> von deinem persönlichen Coach-Assessment entfernt.
-    </p>
-
-    <div style="background: #F0EEEA; border-left: 4px solid #B38E45; padding: 18px 20px; border-radius: 4px; margin: 0 0 28px;">
-      <div style="font-family: monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #767471; margin-bottom: 10px;">
-        Drei kurze Schritte
-      </div>
-      <ol style="margin: 0; padding-left: 20px; font-size: 15px;">
-        <li style="margin-bottom: 8px;">Profil kurz vervollständigen — auf welchem Niveau trainierst du, mit welcher Altersklasse?</li>
-        <li style="margin-bottom: 8px;">Assessment in Ruhe durchgehen — ca. 10–15 Minuten, ganz für dich.</li>
-        <li style="margin-bottom: 0;">Dein Report ist sofort fertig — direkt online und als PDF zum Mitnehmen.</li>
-      </ol>
-    </div>
-
-    <div style="text-align: center; margin: 0 0 32px;">
-      <a href="${appUrl}/assessment/${assessmentId}"
-         style="display: inline-block; background: #1A1917; color: #F5F3EE; padding: 14px 32px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 15px;">
-        Jetzt loslegen →
-      </a>
-    </div>
-
-    <p style="font-family: Georgia, serif; font-style: italic; color: #767471; font-size: 15px; margin: 0 0 10px;">
-      Ein Tipp von uns: Antworte ehrlich — du machst das für dich.
-      Je echter deine Antworten, desto treffsicherer wird dein Report.
-    </p>
-
-    <p style="font-size: 13px; color: #767471; margin: 32px 0 0; border-top: 1px solid #E6E3DD; padding-top: 18px;">
-      Du hast Fragen oder hängst irgendwo? Antworte einfach auf diese Mail oder schreib uns an
-      <a href="mailto:office@humatrix.cc" style="color: #B38E45;">office@humatrix.cc</a> — wir sind für dich da.<br>
-      Humatrix by Bernhard Lampl · Ried 80 · 6363 Westendorf · Tirol
-    </p>
-  </div>
-</div>
-`;
-}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -116,6 +61,13 @@ export async function POST(request: NextRequest) {
 
     if (!userId || !productId) {
       return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
+    }
+
+    // Nur tatsächlich bezahlte Sessions verarbeiten. checkout.session.completed
+    // kann (z.B. bei asynchronen Zahlarten) mit payment_status != 'paid' kommen
+    // — dann kein 'paid'-Purchase und kein Assessment anlegen.
+    if (session.payment_status !== 'paid') {
+      return NextResponse.json({ received: true, ignored: 'payment_status not paid' });
     }
 
     const admin = createAdminClient();
@@ -173,11 +125,13 @@ export async function POST(request: NextRequest) {
     // (2) Assessment nur anlegen, wenn noch keines verlinkt ist. So bleibt ein
     //     zahlender Kunde nie ohne Assessment — auch wenn ein früherer Versuch
     //     genau hier abgebrochen ist und Stripe das Event erneut zustellt.
-    let createdNow = false;
     if (!assessmentId) {
       const { data: assessment, error: aErr } = await admin
         .from('assessments')
-        .insert({ user_id: userId, product_id: parseInt(productId), status: 'pending' })
+        // purchase_id sofort setzen → 1:1-Bindung an die bezahlte Purchase
+        // (Entitlement-Gate + Migration-27-Unique-Index). Ohne diese Bindung
+        // bekäme ein Assessment keinen Premium-Report.
+        .insert({ user_id: userId, product_id: parseInt(productId), status: 'pending', purchase_id: purchaseId })
         .select('id')
         .single();
       if (aErr || !assessment) {
@@ -185,7 +139,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Assessment creation failed' }, { status: 500 });
       }
       assessmentId = assessment.id;
-      createdNow = true;
       if (purchaseId) {
         const { error: linkErr } = await admin
           .from('purchases')
@@ -195,33 +148,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // (3) Welcome-Email nur beim ERSTMALIGEN Anlegen (kein Doppelversand bei Retry).
-    if (createdNow && assessmentId) {
-      try {
-        const { data: profile } = await admin
-          .from('profiles').select('full_name').eq('id', userId).single();
-        const { data: product } = await admin
-          .from('products').select('name_de').eq('id', parseInt(productId)).single();
-
-        const email = session.customer_email ?? session.customer_details?.email;
-        if (email) {
-          const firstName = profile?.full_name?.split(' ')[0] ?? 'Trainer';
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://coachcheck.humatrix.cc';
-          await sendEmailSafe({
-            to: email,
-            subject: `Schön, dass du dabei bist! ${product?.name_de ?? 'Dein Assessment'} ist startklar 🎯`,
-            html: welcomeEmailHtml({
-              firstName,
-              productName: product?.name_de ?? 'Dein Paket',
-              appUrl,
-              assessmentId,
-            }),
-            category: 'welcome',
-          });
-        }
-      } catch (err) {
-        console.warn('[webhook] Welcome email failed but checkout ok:', err);
+    // (3) Bestell- und Vertragsbestätigung (dauerhafter Datenträger, FAGG).
+    //     Idempotent + statusverfolgt: die Funktion überspringt, wenn bereits
+    //     gesendet, und heilt einen früher fehlgeschlagenen Versand bei
+    //     Redelivery selbst. Scheitert der Versand, bleibt das Assessment
+    //     dennoch nutzbar (kein zahlender Kunde wird ausgesperrt) — der offene
+    //     Versand wird protokolliert und ist über den Retry-Endpoint nachholbar.
+    if (assessmentId && purchaseId) {
+      const conf = await sendOrderConfirmationForPurchase(admin, purchaseId);
+      if (!conf.ok && !conf.skipped) {
+        console.warn('[webhook] order confirmation not sent (will retry):', conf.error);
       }
+    }
+  }
+
+  // --- Rückerstattung / Dispute → Berechtigung entziehen --------------------
+  // Stripe sendet 'charge.refunded' AUCH bei Teilrückerstattungen. Wir entziehen
+  // die Berechtigung nur bei VOLLER Rückerstattung (amount_refunded >= amount).
+  // Disputes (charge.dispute.created) entziehen immer. Da das Entitlement-Gate
+  // nur Status 'paid' akzeptiert, wird danach kein neuer Premium-Report erzeugt.
+  if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
+    const obj = event.data.object as {
+      payment_intent?: string | null;
+      amount?: number | null;
+      amount_refunded?: number | null;
+    };
+    const paymentIntent = typeof obj.payment_intent === 'string' ? obj.payment_intent : null;
+    const isFullRefund =
+      event.type === 'charge.dispute.created' ||
+      (typeof obj.amount === 'number' &&
+        typeof obj.amount_refunded === 'number' &&
+        obj.amount_refunded >= obj.amount);
+
+    if (paymentIntent && isFullRefund) {
+      const admin = createAdminClient();
+      const { error: refErr } = await admin
+        .from('purchases')
+        .update({ status: 'refunded' })
+        .eq('stripe_payment_intent', paymentIntent);
+      if (refErr) console.error('[webhook] refund status update failed:', refErr.message);
     }
   }
 

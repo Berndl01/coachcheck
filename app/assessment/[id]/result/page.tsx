@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ReportGenerateButton } from '@/components/assessment/report-generate-button';
@@ -136,7 +137,9 @@ export default async function ResultPage({
   // Führungsreife (zweite Schicht) — sofort sichtbar machen, nicht nur im PDF.
   let maturityScores: Record<string, number> | null = null;
   if (productTier >= 2) {
-    const { data: matAnswers } = await supabase
+    // Item-Join über admin (items seit Migration 29 nicht über RLS lesbar);
+    // Ownership ist oben (id + user_id) bereits verifiziert.
+    const { data: matAnswers } = await createAdminClient()
       .from('answers')
       .select('value_numeric, value_position, item:items(module_code, reverse_scored)')
       .eq('assessment_id', id);

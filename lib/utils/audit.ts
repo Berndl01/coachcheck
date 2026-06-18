@@ -38,9 +38,9 @@ export async function recordConsent(entry: {
   ip?: string | null;
   userAgent?: string | null;
   source?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
-    await createAdminClient().from('consent_records').insert({
+    const { error } = await createAdminClient().from('consent_records').insert({
       user_id: entry.userId,
       consent_type: entry.consentType,
       version: entry.version,
@@ -48,7 +48,13 @@ export async function recordConsent(entry: {
       user_agent_hash: hash(entry.userAgent),
       source: entry.source ?? null,
     });
+    if (error) {
+      console.error('[consent] record failed:', error.message);
+      return false;
+    }
+    return true;
   } catch (err) {
-    console.warn('[consent] record failed:', err instanceof Error ? err.message : err);
+    console.error('[consent] record threw:', err instanceof Error ? err.message : err);
+    return false;
   }
 }

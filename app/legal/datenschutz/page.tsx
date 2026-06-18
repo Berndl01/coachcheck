@@ -123,7 +123,7 @@ export default function DatenschutzPage() {
               <div className="p-4 bg-bone-soft rounded-md border border-bone-line">
                 <div className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep mb-1">Zahlungsabwicklung</div>
                 <div className="font-medium">Stripe Payments Europe, Ltd. (Irland)</div>
-                <div className="text-sm text-muted">Kreditkarten und SEPA-Lastschrift.</div>
+                <div className="text-sm text-muted">Kreditkarten.</div>
               </div>
             </div>
           </section>

@@ -108,8 +108,8 @@ export default function AGBPage() {
               – soweit anwendbar – enthalten und wird auf der Rechnung ausgewiesen.
             </p>
             <p className="mt-3">
-              (2) Die Zahlung erfolgt über Stripe (Stripe Payments Europe, Ltd.) per Kreditkarte oder
-              SEPA-Lastschrift. Der Anbieter speichert keine vollständigen Zahlungsdaten.
+              (2) Die Zahlung erfolgt über Stripe (Stripe Payments Europe, Ltd.) per Kreditkarte.
+              Der Anbieter speichert keine vollständigen Zahlungsdaten.
             </p>
             <p className="mt-3">
               (3) Rechnungen werden elektronisch als PDF bereitgestellt. Der Kunde stimmt dem
@@ -203,10 +203,9 @@ export default function AGBPage() {
           <section>
             <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">§ 11 Streitbeilegung</h2>
             <p>
-              Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit:{' '}
-              <a href="https://ec.europa.eu/consumers/odr" className="text-gold-deep underline" target="_blank" rel="noopener noreferrer">ec.europa.eu/consumers/odr</a>.
               Der Anbieter ist nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor
-              einer Verbraucherschlichtungsstelle teilzunehmen.
+              einer Verbraucherschlichtungsstelle teilzunehmen. Anliegen können jederzeit direkt an
+              office@humatrix.cc gerichtet werden; wir bemühen uns um eine einvernehmliche Lösung.
             </p>
           </section>
 

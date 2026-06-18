@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TeamcheckRunner } from './runner';
+import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -95,7 +96,7 @@ export default async function TeamcheckPage({
   return (
     <TeamcheckRunner
       token={token}
-      items={(items ?? []) as any}
+      items={sanitizeItemsForClient(items) as any}
       existingAnswers={existing}
       trainerName={trainerName}
       sport={sport}

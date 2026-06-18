@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -78,7 +79,11 @@ export async function POST(request: NextRequest) {
   // Vorsorglich: emails-Parameter ignorieren, falls vorhanden.
   void emails;
 
-  const { data: invitations, error } = await supabase
+  // Schreiben ab Migration 29 serverseitig via service_role (Browser-INSERT auf
+  // invitations entfernt). Ownership ist oben geprüft; Spieler-Einladungen sind
+  // garantiert anonym (invited_email: null).
+  const admin = createAdminClient();
+  const { data: invitations, error } = await admin
     .from('invitations')
     .insert(records)
     .select();

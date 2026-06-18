@@ -8,6 +8,8 @@ import { evaluateCareSignals, type CareResponse } from '@/lib/safety/care-trigge
 import { uploadReportPDF, getReportSignedUrl } from '@/lib/pdf/storage';
 import { sendEmailSafe } from '@/lib/email/resend';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { checkPaidEntitlement } from '@/lib/auth/entitlement';
+import { isAdminUser } from '@/lib/utils/admin';
 import {
   computeFremdbildAxisScores,
   computeAxisDiscrepancies,
@@ -61,7 +63,24 @@ export async function POST(
   // --- Idempotenz-Klammer (P0) -------------------------------------------
   // Admin-Client einmalig für Lock + Persistenz.
   const admin = createAdminClient();
-  const regenerate = new URL(request.url).searchParams.get('regenerate') === '1';
+
+  // --- Entitlement-Gate (P0) ---------------------------------------------
+  // Bevor IRGENDEIN KI-/PDF-Kostenpfad startet: Assessment muss durch eine
+  // gültige, bezahlte Purchase desselben Nutzers gedeckt sein. Schließt die
+  // umgehbare Paywall (Migration 27 + dieser Check + RLS-Lockdown).
+  const entitlement = await checkPaidEntitlement(admin, assessmentId, user.id);
+  if (!entitlement.ok) {
+    return NextResponse.json(
+      { error: 'Für dieses Assessment liegt keine gültige Bezahlung vor.', reason: entitlement.reason },
+      { status: 402 },
+    );
+  }
+
+  // ?regenerate=1 erzwingt einen neuen (teuren) KI-/PDF-Lauf. Nur für Admins —
+  // ein normaler Käufer kann so keine wiederholten Kostenläufe auslösen und
+  // erhält den bereits erzeugten Report aus dem Cache.
+  const regenerate =
+    new URL(request.url).searchParams.get('regenerate') === '1' && (await isAdminUser(user));
 
   // (a) Existiert bereits ein fertiger Report? Dann ohne neuen KI-/PDF-Lauf
   //     ausliefern — verhindert teure Doppelläufe bei Reload/Mehrfachklick.
@@ -110,8 +129,9 @@ export async function POST(
     .eq('id', user.id)
     .single();
 
-  // Compute module averages
-  const { data: answers } = await supabase
+  // Compute module averages — Item-Join über admin (items für Browser/RLS
+  // seit Migration 29 nicht lesbar; sonst module_code/reverse_scored null).
+  const { data: answers } = await admin
     .from('answers')
     .select('value_numeric, value_position, item:items(module_code, format, reverse_scored)')
     .eq('assessment_id', assessmentId);
@@ -181,7 +201,7 @@ export async function POST(
     if (aggregates && aggregates.length > 0) {
       // Build items lookup for the aggregated items
       const itemIds = (aggregates as any[]).map((a) => a.item_id);
-      const { data: items } = await supabase
+      const { data: items } = await admin
         .from('items')
         .select('id, format, axis_weights, reverse_scored, options')
         .in('id', itemIds);
@@ -227,7 +247,7 @@ export async function POST(
     if (tcAggs && tcAggs.length > 0) {
       // Build items lookup for axis weights
       const itemIds = (tcAggs as any[]).map((a) => a.item_id);
-      const { data: tcItems } = await supabase
+      const { data: tcItems } = await admin
         .from('items')
         .select('id, format, axis_weights, reverse_scored, options')
         .in('id', itemIds);

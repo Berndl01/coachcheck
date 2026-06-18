@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   // Load invitation with parent assessment
   const { data: invitation } = await supabase
     .from('invitations')
-    .select('id, token, invited_email, invitation_type, expires_at, parent_assessment_id, assessment:parent_assessment_id(user_id)')
+    .select('id, token, invited_email, invitation_type, expires_at, unsubscribed_at, parent_assessment_id, assessment:parent_assessment_id(user_id)')
     .eq('id', invitation_id)
     .single();
 
@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
   // Validate ownership
   if ((invitation.assessment as any)?.user_id !== user.id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
+  // Abgemeldete Empfänger erhalten keine weiteren E-Mails (DSGVO/CAN-SPAM,
+  // funktionierender One-Click-Unsubscribe).
+  if (invitation.unsubscribed_at) {
+    return NextResponse.json({ error: 'Empfänger hat sich abgemeldet.' }, { status: 409 });
   }
 
   if (!invitation.invited_email) {

@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { AssessmentRunner } from '@/components/assessment/runner';
-import type { Item, AnswerValue } from '@/components/assessment/item-renderer';
+import type { AnswerValue } from '@/components/assessment/item-renderer';
+import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,7 @@ export default async function AssessmentPage({
   return (
     <AssessmentRunner
       assessmentId={id}
-      items={items as Item[]}
+      items={sanitizeItemsForClient(items)}
       existingAnswers={existingAnswers}
       startIndex={startIndex}
       productName={assessment.product?.name_de ?? null}

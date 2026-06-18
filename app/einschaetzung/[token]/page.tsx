@@ -1,21 +1,25 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { EinschaetzungRunner } from './runner';
+import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export default async function EinschaetzungPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ unsubscribe?: string }>;
 }) {
   const { token } = await params;
+  const { unsubscribe } = await searchParams;
   const admin = createAdminClient();
 
   // Load invitation by token
   const { data: invitation } = await admin
     .from('invitations')
-    .select('id, status, expires_at, parent_assessment_id, invitation_type, assessment:parent_assessment_id(profile:user_id(full_name, sport))')
+    .select('id, status, expires_at, parent_assessment_id, invitation_type, unsubscribed_at, assessment:parent_assessment_id(profile:user_id(full_name, sport))')
     .eq('token', token)
     .maybeSingle();
 
@@ -31,6 +35,32 @@ export default async function EinschaetzungPage({
           </h1>
           <p className="text-muted">
             Der Einladungslink ist nicht (mehr) gültig oder wurde widerrufen. Wende dich an den Trainer, der dir den Link geschickt hat.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // Abmeldung (One-Click-Unsubscribe-Header / sichtbarer Link). Vorrangig vor
+  // allen anderen Zuständen. Idempotent: erneuter Aufruf zeigt dieselbe Bestätigung.
+  if (unsubscribe === '1' || invitation.unsubscribed_at) {
+    if (!invitation.unsubscribed_at) {
+      await admin
+        .from('invitations')
+        .update({ unsubscribed_at: new Date().toISOString(), status: 'expired' })
+        .eq('id', invitation.id);
+    }
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
+        <div className="max-w-md text-center">
+          <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-4">
+            Abgemeldet
+          </div>
+          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
+            Du wurdest abgemeldet.
+          </h1>
+          <p className="text-muted">
+            Zu dieser Einladung erhältst du keine weiteren E-Mails. Du musst nichts weiter tun.
           </p>
         </div>
       </main>
@@ -100,7 +130,7 @@ export default async function EinschaetzungPage({
   return (
     <EinschaetzungRunner
       token={token}
-      items={(items ?? []) as any}
+      items={sanitizeItemsForClient(items) as any}
       existingAnswers={existing}
       trainerName={trainerName}
       sport={sport}

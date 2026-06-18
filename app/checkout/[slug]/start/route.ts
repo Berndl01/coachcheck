@@ -50,8 +50,9 @@ export async function POST(
   const agbOk = checked('agb');
   const datenschutzOk = checked('datenschutz');
   const kiOk = checked('ki_verarbeitung');
+  const widerrufOk = checked('widerruf_verzicht');
 
-  if (!agbOk || !datenschutzOk || !kiOk) {
+  if (!agbOk || !datenschutzOk || !kiOk || !widerrufOk) {
     // Ohne vollständige Zustimmung zurück zum Consent-Gate.
     return NextResponse.redirect(new URL(`/checkout/${slug}?consent=incomplete`, request.url), { status: 303 });
   }
@@ -62,13 +63,21 @@ export async function POST(
 
   // --- Consent versioniert & nachweisbar speichern (DSGVO Art. 7) --------
   // Erst NACH aktiver Zustimmung. IP/UA werden in recordConsent gehasht.
+  // Schlägt die Nachweis-Speicherung fehl, darf KEIN Checkout starten —
+  // sonst gäbe es eine Zahlung ohne gesicherten Einwilligungsnachweis.
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
   const userAgent = request.headers.get('user-agent') ?? null;
-  await Promise.allSettled(
-    ['agb', 'datenschutz', 'ki_verarbeitung'].map((consentType) =>
+  const consentResults = await Promise.all(
+    ['agb', 'datenschutz', 'ki_verarbeitung', 'widerruf_verzicht'].map((consentType) =>
       recordConsent({ userId: user.id, consentType, version: CONSENT_VERSION, ip, userAgent, source: 'checkout-consent' })
     )
   );
+  if (consentResults.some((ok) => !ok)) {
+    return NextResponse.json(
+      { error: 'Deine Zustimmung konnte gerade nicht gesichert gespeichert werden. Bitte versuche es in einem Moment erneut.' },
+      { status: 503 },
+    );
+  }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2025-02-24.acacia' as any,

@@ -29,8 +29,11 @@ export async function POST(
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
-  // Load all answers + items (for weights + options)
-  const { data: answers, error: aErr } = await supabase
+  // Ownership ist verifiziert. Antworten + Item-Join ab Migration 29 über
+  // service_role lesen — der Browser-/RLS-Client kann items nicht mehr lesen,
+  // sonst kämen axis_weights als null und das Scoring wäre falsch.
+  const admin = createAdminClient();
+  const { data: answers, error: aErr } = await admin
     .from('answers')
     .select('item_id, value_numeric, value_choice, value_position, item:items(format, axis_weights, reverse_scored, options, module_code)')
     .eq('assessment_id', id);
@@ -151,8 +154,7 @@ export async function POST(
   const { primary, secondary } = determineArchetypes(axisScores, archetypes as Archetype[]);
   const signature = buildSignature(axisScores);
 
-  // Save results via admin client (bypasses RLS for the UPDATE)
-  const admin = createAdminClient();
+  // Save results via admin client (bypasses RLS for the UPDATE).
   const { error: uErr } = await admin
     .from('assessments')
     .update({
