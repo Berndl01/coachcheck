@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/internal/reminders", "schedule": "0 */6 * * *" },
-    { "path": "/api/internal/confirmation-retry", "schedule": "30 */2 * * *" }
+    { "path": "/api/internal/confirmation-retry", "schedule": "30 */2 * * *" },
+    { "path": "/api/internal/withdrawal-retry", "schedule": "15 */2 * * *" }
   ]
 }

@@ -82,8 +82,13 @@ export default function DatenschutzPage() {
 
             <h3 className="font-mono text-xs uppercase tracking-[0.1em] text-muted mt-4 mb-2">Technische Daten</h3>
             <p>
-              Beim Aufruf unserer Seiten werden technisch notwendige Daten verarbeitet (IP-Adresse,
-              Browser-Typ, Zeitstempel). Diese werden nach 14 Tagen automatisch gelöscht.
+              Beim Aufruf unserer Seiten verarbeiten unsere Infrastruktur-Dienstleister (insbesondere
+              unser Hosting-Anbieter Vercel) technisch notwendige Server- und Zugriffsdaten (z.&nbsp;B.
+              IP-Adresse, Browser-Typ, Zeitstempel). Diese serverseitigen Logs unterliegen den
+              Aufbewahrungs- und Löschfristen des jeweiligen Anbieters; eine darüber hinausgehende
+              eigene Speicherung dieser Rohdaten nehmen wir nicht vor. In unserer eigenen Datenbank
+              speichern wir daraus nur gekürzte, gehashte Werte (z.&nbsp;B. einen verkürzten IP-Hash)
+              als Nachweis zu Einwilligungen und Widerrufen.
             </p>
           </section>
 
@@ -150,7 +155,8 @@ export default function DatenschutzPage() {
               <strong>Rechnungen:</strong> 7 Jahre (gesetzlich verpflichtend).<br />
               <strong>Aggregierte Reports/Snapshots:</strong> solange der Account besteht.<br />
               <strong>Tokenbasierte Rohantworten (360°/TeamCheck/Pulse):</strong> nur solange für Auswertung, Support und Missbrauchsschutz erforderlich.<br />
-              <strong>Technische Logs:</strong> 14 Tage.
+              <strong>Server- und Zugriffs-Logs:</strong> gemäß den Aufbewahrungsfristen unserer Infrastruktur-Anbieter (z.&nbsp;B. Vercel).<br />
+              <strong>Gehashte Nachweisdaten (IP-Hash zu Einwilligung/Widerruf):</strong> gemeinsam mit dem zugehörigen Vorgang.
             </p>
           </section>
 
@@ -203,7 +209,7 @@ export default function DatenschutzPage() {
 
           <section className="pt-6 border-t border-bone-line">
             <p className="text-sm text-muted">
-              Stand: Mai 2026. Änderungen dieser Erklärung werden an dieser Stelle veröffentlicht.
+              Stand: 18. Juni 2026. Änderungen dieser Erklärung werden an dieser Stelle veröffentlicht.
             </p>
           </section>
         </div>

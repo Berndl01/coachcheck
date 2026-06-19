@@ -136,9 +136,13 @@ describe('Verdrahtung: Webhook, Migration, Retry', () => {
     expect(r).toMatch(/Bearer \$\{secret\}/);
     expect(r).toMatch(/confirmation_sent_at.*null|is\('confirmation_sent_at', null\)/s);
   });
-  it('Bestätigungs-Versand schaltet das gesperrte Assessment frei', () => {
+  it('Bestätigungs-Versand schaltet das gesperrte Assessment atomar frei (RPC)', () => {
     const oc = read('lib', 'email', 'order-confirmation.ts');
-    expect(oc).toMatch(/awaiting_contract_confirmation/);
-    expect(oc).toMatch(/status: 'pending'/);
+    // Freischaltung erfolgt jetzt transaktional über die DB-Funktion, nicht über
+    // zwei separate Updates → der frühere `status: 'pending'`-Literal entfällt.
+    expect(oc).toMatch(/finalize_order_confirmation/);
+    expect(oc).toMatch(/p_purchase_id/);
+    expect(oc).toMatch(/p_assessment_id/);
+    expect(oc).not.toMatch(/status: 'pending'/);
   });
 });

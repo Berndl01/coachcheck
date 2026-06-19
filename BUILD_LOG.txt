@@ -23,6 +23,26 @@ damit sie nicht in die statische Sammelphase geraten (gleiches Muster wie
 /kontakt und /legal/*). Trotzdem bleibt ein erfolgreicher Vercel-Produktions-
 deploy der maßgebliche Freigabepunkt.
 
+NEU IN v3_36 (siehe HARDENING_V3_36_CHANGES.md)
+-----------------------------------------------
+Die vier vom v3_35-Audit VERIFIZIERTEN Blocker im Code geschlossen + 3 Texte:
+  1. § 4 FAGG-Infos (Leistung/Bereitstellung/Gewährleistung/Funktionalität/
+     Nutzung-Haftung) jetzt INLINE in der Bestätigungsmail + als unveränderbares
+     Vertrags-PDF angehängt (Inhaltshash auf der Purchase).
+  2. Atomare Freischaltung: finalize_order_confirmation()-RPC (Versandmarker +
+     Assessment-Freischaltung in EINER Transaktion) + Retry-Selbstheilung.
+  3. Snapshot friert den GESPEICHERTEN consent_text ein; strikte 4-von-4-
+     Validierung vor Freischaltung (Neukäufe).
+  4. Online-Widerruf belastbar: Identifikation Pflicht (Bestellnr ODER Produkt),
+     vollständiger Erklärungsinhalt in Mail + declaration_full, neuer Retry-Cron
+     /api/internal/withdrawal-retry, Button "Widerruf bestätigen", ehrlicher
+     confirmationEmailSent-Status.
+  5/6/7. AGB/Consent-Version 18. Juni 2026; PDF-Rechnung → "auf Anfrage";
+     14-Tage-Log-Löschung → reale Provider-Aufbewahrung + nur gehashte Nachweise.
+Migration 35 NEU. Gates grün: tsc, claimcheck (57), vitest 161/161, eslint,
+next build (sauber, kein Hang), npm audit 0, PDF-Report-Volltest, Vertrags-PDF.
+Hinweis: der Audit-Build-Hang war hier NICHT reproduzierbar (umgebungsbedingt).
+
 NEU IN v3_35 (siehe HARDENING_V3_35_CHANGES.md)
 -----------------------------------------------
 Vier Verkaufsfreigabe-Blocker aus dem v3_34-Review adressiert (Mechanik):
@@ -49,6 +69,8 @@ WICHTIG FÜR DEN GITHUB-UPLOAD
 1. Repo-Root = ZIP-Inhalt DIREKT (package.json auf oberster Ebene).
 2. Alte Dateien ERSETZEN, nicht daneben legen.
 3. Nicht einchecken: node_modules/, .next/, tsconfig.tsbuildinfo, .env*
-4. Neue Supabase-Migrationen 33 + 34 in Produktion ausführen
-   (idempotent; awaiting-Status-Constraint + withdrawals-Tabelle).
-5. Vercel: CRON_SECRET als Env setzen, sonst laufen Retry-/Reminder-Crons nicht.
+4. Neue Supabase-Migrationen 33 + 34 + 35 in Produktion ausführen
+   (idempotent; awaiting-Status + withdrawals-Tabelle + finalize-Funktion/
+   Vertrags-PDF-Hash/Widerruf-Retry-Spalten).
+5. Vercel: CRON_SECRET als Env setzen, sonst laufen ALLE Crons nicht
+   (reminders, confirmation-retry, withdrawal-retry → HTTP 503).

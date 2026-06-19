@@ -74,6 +74,73 @@ export const MUSTER_WIDERRUFSFORMULAR = [
   'Datum / Unterschrift (nur bei Mitteilung auf Papier): ____________',
 ].join('\n');
 
+/**
+ * Hauptmerkmale der Leistung je Paket (§ 4 Abs 1 Z 1 FAGG). Keyword-basiert aus
+ * dem Produktnamen, mit ehrlichem Fallback. Bewusst ohne Erfolgs-/Validitäts-
+ * oder Item-Zahl-Behauptungen — beschreibt nur, was tatsächlich geliefert wird.
+ */
+export function serviceDescriptionFor(productName: string): string {
+  const n = (productName || '').toLowerCase();
+  if (/schnell/.test(n)) {
+    return 'Kurzer Online-Fragebogen mit KI-gestützter Sofort-Einordnung deiner Antworten; Ergebnis als schriftlicher Report (PDF). Rein digitale Leistung.';
+  }
+  if (/spiegel|fremdbild|360/.test(n)) {
+    return 'Ausführlicher Online-Selbsttest plus Einholung von Fremdeinschätzungen über persönliche Einladungslinks; Selbst- und Fremdbild werden in einem schriftlichen Report (PDF) zusammengeführt. Rein digitale Leistung.';
+  }
+  if (/selbst/.test(n)) {
+    return 'Ausführlicher Online-Selbsttest mit KI-gestützter Auswertung; Ergebnis als schriftlicher Report (PDF). Rein digitale Leistung.';
+  }
+  if (/team/.test(n)) {
+    return 'Teambezogene Erhebung mit persönlicher Auswertung und Begleitung durch das Humatrix-Team; umfasst digitale Erhebung und persönliche Beratungsleistung. Termine werden individuell abgestimmt.';
+  }
+  if (/saison|beratung/.test(n)) {
+    return 'Laufende, persönliche Begleitung über eine Saison inklusive wiederkehrender Erhebungen und individueller Beratung durch das Humatrix-Team. Termine und Umfang werden individuell abgestimmt.';
+  }
+  return 'Online-Fragebogen mit KI-gestützter Auswertung; Ergebnis als schriftlicher Report (PDF). Rein digitale Leistung.';
+}
+
+/** Leistungs-/Bereitstellungsbedingungen (§ 4 Abs 1 Z 4 FAGG). */
+export const BEREITSTELLUNG =
+  'Die digitale Leistung wird unmittelbar nach Zahlungseingang und Zustellung ' +
+  'dieser Vertragsbestätigung freigeschaltet und ist in deinem Konto unter ' +
+  'coachcheck.humatrix.cc abrufbar. Bei Paketen mit persönlicher Begleitung ' +
+  '(TeamCheck, Saison & Beratung) beginnt die Leistung nach individueller ' +
+  'Terminabstimmung.';
+
+/** Gesetzlicher Gewährleistungshinweis für digitale Leistungen (§ 4 Abs 1 Z 14 FAGG). */
+export const GEWAEHRLEISTUNG =
+  'Es gelten die gesetzlichen Gewährleistungsrechte für digitale Leistungen ' +
+  '(Verbrauchergewährleistungsgesetz/ABGB). Entspricht die Leistung nicht dem ' +
+  'Vertrag, besteht Anspruch auf Herstellung des vertragsgemäßen Zustands und – ' +
+  'nach Maßgabe der gesetzlichen Voraussetzungen – auf Preisminderung oder ' +
+  'Auflösung des Vertrags.';
+
+/** Funktionalität, Kompatibilität, Interoperabilität (§ 4 Abs 1 Z 15 u 16 FAGG). */
+export const FUNKTIONALITAET_KOMPATIBILITAET =
+  'Die Nutzung erfolgt webbasiert in aktuellen Browsern (z. B. Chrome, Safari, ' +
+  'Firefox, Edge) auf Desktop- und Mobilgeräten; eine Internetverbindung ist ' +
+  'erforderlich. Der Report wird als PDF bereitgestellt und ist mit gängigen ' +
+  'PDF-Programmen lesbar. Es kommen keine kopierschutzbedingten technischen ' +
+  'Beschränkungen (DRM) zum Einsatz; deine Daten kannst du in deinem Konto ' +
+  'exportieren.';
+
+/** Nutzungs-, Verfügbarkeits- und Haftungsbedingungen (Verweis auf AGB). */
+export const NUTZUNG_HAFTUNG_VERFUEGBARKEIT =
+  'Die Leistung dient der Coaching-Einordnung und ersetzt keine medizinische ' +
+  'oder psychologische Behandlung. Eine ununterbrochene Verfügbarkeit wird nicht ' +
+  'zugesichert; kurze Wartungs- oder Ausfallzeiten sind möglich. Die Haftung ' +
+  'richtet sich nach den AGB und den zwingenden gesetzlichen Bestimmungen. Es ' +
+  'gilt österreichisches Recht; zwingende Verbraucherschutzbestimmungen deines ' +
+  'Aufenthaltsstaats bleiben unberührt.';
+
+export type ServiceTerms = {
+  leistungsbeschreibung: string;
+  bereitstellung: string;
+  gewaehrleistung: string;
+  funktionalitaet: string;
+  nutzungHaftung: string;
+};
+
 export type ConsentSnapshotEntry = {
   type: string;
   label: string;
@@ -96,6 +163,7 @@ export type ContractSnapshot = {
   product: { name: string; priceCents: number; currency: string };
   order: { orderNumber: string; purchaseId: string; purchasedAt: string };
   vatNote: string;
+  serviceTerms: ServiceTerms;
   consents: ConsentSnapshotEntry[];
   widerrufVerzichtText: string;
   widerrufsbelehrung: string;
@@ -114,7 +182,11 @@ export function buildContractSnapshot(input: {
   purchaseId: string;
   purchasedAt: Date;
   consentVersion: string | null;
-  consents: Array<{ type: string; acceptedAt: string | null }>;
+  // text optional: der TATSÄCHLICH gespeicherte Wortlaut der angeklickten
+  // Erklärung. Wenn vorhanden, wird er eingefroren (nicht die Code-Konstante) —
+  // so steht in der Bestätigung exakt, was der Kunde angeklickt hat, auch wenn
+  // CONSENT_TEXTS später geändert wird. Fallback nur für Altbestellungen.
+  consents: Array<{ type: string; acceptedAt: string | null; text?: string | null }>;
 }): ContractSnapshot {
   const consents: ConsentSnapshotEntry[] = ['agb', 'datenschutz', 'ki_verarbeitung', 'widerruf_verzicht'].map(
     (type) => {
@@ -122,7 +194,8 @@ export function buildContractSnapshot(input: {
       return {
         type,
         label: CONSENT_LABELS[type] ?? type,
-        text: CONSENT_TEXTS[type] ?? '',
+        // Gespeicherter Originalwortlaut hat Vorrang; Code-Konstante nur Fallback.
+        text: (match?.text && match.text.trim()) || CONSENT_TEXTS[type] || '',
         acceptedAt: match?.acceptedAt ?? null,
       };
     },
@@ -147,6 +220,13 @@ export function buildContractSnapshot(input: {
       purchasedAt: input.purchasedAt.toISOString(),
     },
     vatNote: VAT_NOTE,
+    serviceTerms: {
+      leistungsbeschreibung: serviceDescriptionFor(input.productName),
+      bereitstellung: BEREITSTELLUNG,
+      gewaehrleistung: GEWAEHRLEISTUNG,
+      funktionalitaet: FUNKTIONALITAET_KOMPATIBILITAET,
+      nutzungHaftung: NUTZUNG_HAFTUNG_VERFUEGBARKEIT,
+    },
     consents,
     widerrufVerzichtText: WIDERRUF_CONSENT_TEXT,
     widerrufsbelehrung: WIDERRUFSBELEHRUNG,

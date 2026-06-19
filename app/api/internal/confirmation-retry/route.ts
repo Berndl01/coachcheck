@@ -52,7 +52,31 @@ async function run(request: NextRequest) {
     else if (!res.skipped) failed += 1;
   }
 
-  return NextResponse.json({ attempted: (pending ?? []).length, sent, failed });
+  // Selbstheilung (Review #2, Szenario A): Bestätigung bereits versendet
+  // (confirmation_sent_at gesetzt), aber das Assessment hängt noch im gesperrten
+  // Zustand — z. B. weil die atomare Freischaltung einmal scheiterte. Hier reicht
+  // ein einzelnes, idempotentes UPDATE (für sich atomar): awaiting → pending.
+  // So bleibt kein zahlender Kunde dauerhaft gesperrt.
+  let repaired = 0;
+  const { data: stuck } = await admin
+    .from('purchases')
+    .select('assessment_id')
+    .eq('status', 'paid')
+    .not('confirmation_sent_at', 'is', null)
+    .not('assessment_id', 'is', null)
+    .limit(BATCH);
+  for (const p of stuck ?? []) {
+    if (!p.assessment_id) continue;
+    const { data: upd } = await admin
+      .from('assessments')
+      .update({ status: 'pending' })
+      .eq('id', p.assessment_id)
+      .eq('status', 'awaiting_contract_confirmation')
+      .select('id');
+    if (upd && upd.length > 0) repaired += 1;
+  }
+
+  return NextResponse.json({ attempted: (pending ?? []).length, sent, failed, repaired });
 }
 
 export async function POST(request: NextRequest) {

@@ -3,4 +3,4 @@
  * Nicht-Next-Exporte enthalten (sonst bricht die Route-Typprüfung im Build).
  * Bei inhaltlicher Änderung von AGB/Datenschutz/KI-Verarbeitung hochzählen.
  */
-export const CONSENT_VERSION = '2026-05-31';
+export const CONSENT_VERSION = '2026-06-18';

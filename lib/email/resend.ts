@@ -84,6 +84,7 @@ export async function sendEmailSafe(params: {
   replyTo?: string;         // Override default
   unsubscribeUrl?: string;  // Optional — sonst nur mailto:-Variante
   category?: string;        // Für Logging / Resend-Tags
+  attachments?: Array<{ filename: string; content: Buffer | string }>; // optionale Dateianhänge (z. B. Vertrags-PDF)
 }): Promise<{ ok: boolean; id?: string; error?: string }> {
   if (!emailEnabled()) {
     console.warn('[email] RESEND_API_KEY not set — skipping email to', params.to);
@@ -114,6 +115,9 @@ export async function sendEmailSafe(params: {
         'X-Entity-Ref-ID': params.category ?? 'transactional',
       },
       tags: params.category ? [{ name: 'category', value: params.category }] : undefined,
+      attachments: params.attachments && params.attachments.length > 0
+        ? params.attachments.map((a) => ({ filename: a.filename, content: a.content }))
+        : undefined,
     });
 
     if (result.error) {

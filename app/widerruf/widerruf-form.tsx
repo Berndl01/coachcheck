@@ -16,6 +16,7 @@ export function WiderrufForm({ defaultRef }: { defaultRef?: string }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [ref, setRef] = useState<string | null>(null);
+  const [emailConfirmed, setEmailConfirmed] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const turnstileRef = useRef<HTMLDivElement>(null);
 
@@ -54,8 +55,15 @@ export function WiderrufForm({ defaultRef }: { defaultRef?: string }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setSending(true);
     setError(null);
+
+    // Vertragsidentifikation: mindestens Bestellnummer ODER Produkt.
+    if (!orderRef.trim() && !productHint.trim()) {
+      setError('Bitte gib zur Identifizierung deines Vertrags mindestens deine Bestellnummer oder das gekaufte Produkt an.');
+      return;
+    }
+
+    setSending(true);
     try {
       const res = await fetch('/api/widerruf', {
         method: 'POST',
@@ -74,6 +82,7 @@ export function WiderrufForm({ defaultRef }: { defaultRef?: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Fehler');
       setRef(data.ref ?? null);
+      setEmailConfirmed(data.confirmationEmailSent !== false);
       setSent(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -88,8 +97,18 @@ export function WiderrufForm({ defaultRef }: { defaultRef?: string }) {
         <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">✓ Eingegangen</div>
         <h2 className="font-display text-3xl tracking-[-0.02em] mb-3">Dein Widerruf ist eingegangen.</h2>
         <p className="font-editorial italic text-lg text-muted leading-[1.5] max-w-[48ch] mx-auto">
-          Wir haben dir eine Eingangsbestätigung per E-Mail geschickt{ref ? ` (Vorgang ${ref})` : ''}. Wir
-          prüfen deinen Widerruf und melden uns zeitnah bei dir.
+          {emailConfirmed ? (
+            <>
+              Wir haben dir eine Eingangsbestätigung per E-Mail geschickt{ref ? ` (Vorgang ${ref})` : ''}. Wir
+              prüfen deinen Widerruf und melden uns zeitnah bei dir.
+            </>
+          ) : (
+            <>
+              Dein Eingang ist fristwahrend protokolliert{ref ? ` (Vorgang ${ref})` : ''}. Die
+              Eingangsbestätigung per E-Mail folgt in Kürze automatisch — bitte prüfe auch deinen
+              Spam-Ordner. Wir prüfen deinen Widerruf und melden uns zeitnah bei dir.
+            </>
+          )}
         </p>
       </div>
     );
@@ -132,8 +151,14 @@ export function WiderrufForm({ defaultRef }: { defaultRef?: string }) {
             placeholder="z. B. 360° Spiegel"
             className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
           />
+          <p className="text-xs text-muted mt-1">Falls du die Bestellnummer nicht zur Hand hast.</p>
         </div>
       </div>
+
+      <p className="text-xs text-muted leading-[1.5] -mt-1">
+        Zur Identifizierung deines Vertrags ist mindestens eines der beiden Felder
+        (Bestellnummer oder Produkt) erforderlich.
+      </p>
 
       <div>
         <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Anmerkung (optional)</label>
@@ -181,7 +206,7 @@ export function WiderrufForm({ defaultRef }: { defaultRef?: string }) {
         type="submit" disabled={sending}
         className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink disabled:opacity-50 transition w-fit"
       >
-        {sending ? 'Sendet …' : 'Widerruf absenden'} <span className="font-mono">→</span>
+        {sending ? 'Sendet …' : 'Widerruf bestätigen'} <span className="font-mono">→</span>
       </button>
     </form>
   );

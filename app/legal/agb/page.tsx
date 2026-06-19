@@ -104,16 +104,18 @@ export default function AGBPage() {
           <section>
             <h2 className="font-display text-2xl tracking-[-0.02em] mb-3">§ 5 Preise & Zahlung</h2>
             <p>
-              (1) Es gelten die im Checkout angezeigten Preise als Endpreise. Eine etwaige Umsatzsteuer ist
-              – soweit anwendbar – enthalten und wird auf der Rechnung ausgewiesen.
+              (1) Es gelten die im Checkout angezeigten Preise als Endpreise in Euro. Eine etwaige
+              Umsatzsteuer ist – soweit anwendbar – im angezeigten Endpreis enthalten.
             </p>
             <p className="mt-3">
               (2) Die Zahlung erfolgt über Stripe (Stripe Payments Europe, Ltd.) per Kreditkarte.
               Der Anbieter speichert keine vollständigen Zahlungsdaten.
             </p>
             <p className="mt-3">
-              (3) Rechnungen werden elektronisch als PDF bereitgestellt. Der Kunde stimmt dem
-              elektronischen Rechnungsversand zu.
+              (3) Nach Zahlungseingang erhält der Kunde eine Bestellbestätigung auf einem dauerhaften
+              Datenträger (E-Mail) mit allen Bestell- und Vertragsdaten. Eine formelle Rechnung stellt
+              der Anbieter auf Anfrage unter office@humatrix.cc bereit. Der Kunde stimmt der
+              elektronischen Übermittlung dieser Belege zu.
             </p>
           </section>
 
@@ -240,7 +242,7 @@ export default function AGBPage() {
             </div>
           </section>
 
-          <p className="text-muted text-sm pt-4">Stand: Mai 2026.</p>
+          <p className="text-muted text-sm pt-4">Stand: 18. Juni 2026.</p>
         </div>
       </main>
       <Footer />

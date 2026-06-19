@@ -39,5 +39,7 @@ export function providerAddressLine(): string {
 export const VAT_NOTE =
   process.env.INVOICE_VAT_NOTE ?? 'Alle Beträge sind Bruttoendpreise in Euro.';
 
-/** Maßgebliche AGB-Fassung (Stand der AGB-Seite). */
-export const AGB_VERSION = 'Mai 2026';
+/** Maßgebliche AGB-Fassung (Stand der AGB-Seite). Bei jeder inhaltlichen
+ *  Änderung hochzählen — die Fassung wird beweisrelevant im Vertrags-Snapshot
+ *  eingefroren. */
+export const AGB_VERSION = '18. Juni 2026';
