@@ -1,3 +1,24 @@
+SECURITY v3_41 — 2026-06-19
+==========================================
+4. Audit: echte Berechtigungs-/Datenschutzlücken geschlossen.
+1) Saison-Monitor (Tier 5) war ohne Kauf nutzbar → seasons.purchase_id + Server-
+   Zwang (bezahlter Tier-5-Kauf) + RLS-Schreibrechte entfernt.
+2) Pulse-Aggregate ab 1 Antwort sichtbar → DB-Schwelle >= 5 (compute_pulse_snapshot
+   + detect_pulse_trends).
+3) Trainer konnte Einzelantworten lesen → pulse_responses_owner_select entfernt +
+   Token-Seiten geben keine gespeicherten Antworten mehr zurück.
+4) Invitation-API → Fremdbild-only, Tier-3 unbedingt, DB-Check (Spieler ohne E-Mail).
+Plus: Freigabe-Token-Rotation, kein Fehler-Leak, PDF-wrap-Fix, Beispiel-PDF neu,
+Doku-Banner gegen gefährliche Altanleitungen.
+
+DATENBANK: 33 → 34 → 35 → 36 → 37 → 38 (idempotent). 38 = Sicherheits-Migration.
+GATES: tsc · claimcheck(60) · vitest 206/206 · eslint · build 9/9 · audit 0 · PDF 3/3.
+
+OFFEN: echter Stripe-E2E (test.fixme) nur live; Fallback-Verhalten bleibt wie
+gewünscht (deterministisch ausliefern), Auto-Nachveredelung optionaler Folgeschritt.
+
+================================================================================
+
 FIX v3_40 — 2026-06-19
 ==========================================
 ZWEI Live-Probleme aus dem Report-Screen behoben:

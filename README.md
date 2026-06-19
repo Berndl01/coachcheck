@@ -1,3 +1,32 @@
+> ⚠️ **ACHTUNG — TEILE DIESES DOKUMENTS SIND VERALTET (Stand vor v3_41).**
+> Folge ausschließlich dem Abschnitt **„VERBINDLICHER DEPLOYMENT-STAND"** direkt unten.
+> Die weiter unten stehenden alten Schritte dürfen NICHT befolgt werden, insbesondere:
+> - **keine** direkten Schreibzugriffe über `rest/v1/answers` oder andere REST-Endpunkte,
+> - **kein** Rollback auf alte/anonyme RLS-Policies (öffnet bereits geschlossene Sicherheitslücken),
+> - veraltete Migrations-Angaben („Migration 12", „21 Migrationen") ignorieren.
+
+## VERBINDLICHER DEPLOYMENT-STAND (v3_41)
+
+1. **Migrationen in Reihenfolge ausführen: 01 → 38** (idempotent).
+   Frische DB: alle. Bestehende Produktion: nur die noch fehlenden, in aufsteigender Reihenfolge.
+2. **Schreibzugriffe nur serverseitig (service_role).** Keine direkten Browser-/REST-Writes auf
+   `answers`, `assessments`, `seasons`, `pulse_cycles`, `pulse_invitations`, `pulse_responses`,
+   `invitations`, `consent_records`.
+3. **RLS niemals auf anonyme/offene Policies zurücksetzen.** Rollback nur strukturerhaltend.
+4. **Env-Variablen:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`,
+   `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`,
+   `INVOICE_VAT_NOTE`, Turnstile-Keys.
+5. **Stripe-Webhook + Crons aktiv:** confirmation-retry, withdrawal-retry, reminders.
+6. **Vor Verkaufsfreigabe:** echter Stripe-End-to-End-Kauf inkl. Bestätigung, PDF,
+   Freischaltung, Report und Refund/Widerruf.
+7. **Datenschutz/Paywall (ab v3_41):** Saison nur mit bezahltem Tier-5-Kauf;
+   Pulse-Aggregate erst ab 5 Antworten; öffentliche Tokens geben keine Einzelantworten zurück.
+
+Maßgeblicher Stand: siehe `BUILD_LOG.txt`.
+
+---
+
 # Humatrix Coach Assessment
 
 Premium-Assessment-System für Sport-Trainer. Wissenschaftlich fundiertes Analyse-Modell mit 12 Archetypen, 7 Modulen, 6 Kernachsen.

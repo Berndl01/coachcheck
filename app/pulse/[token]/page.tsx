@@ -81,17 +81,10 @@ export default async function PulsePage({
     .eq('active', true)
     .order('id', { ascending: true });
 
-  // Check if this token has already responded for this cycle
-  const { data: existingResponses } = await admin
-    .from('pulse_responses')
-    .select('pulse_item_id, value_numeric')
-    .eq('pulse_cycle_id', openCycle.id)
-    .eq('respondent_token', token);
-
+  // DATENSCHUTZ: keine gespeicherten Einzelantworten über den Token zurückgeben.
+  // Pulse-Antworten werden ohnehin gemeinsam abgeschickt; ein Vorbefüllen ist nicht
+  // nötig und würde dem Trainer das Mitlesen anonymer Antworten ermöglichen.
   const existing: Record<number, number> = {};
-  (existingResponses ?? []).forEach((r: any) => {
-    existing[r.pulse_item_id] = r.value_numeric;
-  });
 
   return (
     <PulseRunner

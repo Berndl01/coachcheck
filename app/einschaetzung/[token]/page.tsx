@@ -108,20 +108,10 @@ export default async function EinschaetzungPage({
     invitation_token: token,
   });
 
-  // Load already submitted answers
-  const { data: existingAnswers } = await admin
-    .from('invitation_answers')
-    .select('item_id, value_numeric, value_choice, value_position')
-    .eq('invitation_id', invitation.id);
-
+  // DATENSCHUTZ: Der öffentliche Einladungstoken darf NIEMALS bereits gespeicherte
+  // Einzelantworten zurückgeben — sonst könnte der Trainer (der den Token verteilt)
+  // die anonymen Antworten der Teilnehmer mitlesen. Der Fragebogen startet leer.
   const existing: Record<number, { value_numeric?: number; value_choice?: string; value_position?: number }> = {};
-  (existingAnswers ?? []).forEach((a: any) => {
-    existing[a.item_id] = {
-      value_numeric: a.value_numeric ?? undefined,
-      value_choice: a.value_choice ?? undefined,
-      value_position: a.value_position ?? undefined,
-    };
-  });
 
   const trainerProfile = (invitation.assessment as any)?.profile;
   const trainerName = trainerProfile?.full_name ?? 'der Trainer';

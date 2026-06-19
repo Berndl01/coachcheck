@@ -73,7 +73,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const admin = createAdminClient();
   const { error } = await admin
     .from('assessments')
-    .update({ share_enabled: false })
+    // Token beim Deaktivieren entfernen → der alte, bereits verschickte Link wird
+    // dauerhaft ungültig. Eine erneute Aktivierung erzeugt einen NEUEN Token.
+    .update({ share_enabled: false, share_token: null })
     .eq('id', id)
     .eq('user_id', user.id);
 

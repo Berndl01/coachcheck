@@ -56,7 +56,7 @@ export function SampleReport() {
             </a>
           </div>
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-bone-soft/70 mt-4">
-            Echter 19-Seiten-Report (anonymisiertes Beispielprofil) · PDF, ~90 KB
+            Echter mehrseitiger Beispielreport (anonymisiertes Beispielprofil) · PDF
           </p>
         </div>
 

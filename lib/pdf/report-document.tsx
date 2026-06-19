@@ -1433,7 +1433,7 @@ export function ReportDocument(props: ReportProps) {
           </Text>
           <View style={{ marginTop: 18 }}>
             {texts.wirkung_je_spielertyp.map((p, i) => (
-              <View key={i} style={styles.moduleCard}>
+              <View key={i} style={styles.moduleCard} wrap={false}>
                 <Text style={{ fontSize: 11, fontFamily: PDF_DISPLAY, color: COLORS.ink, marginBottom: 5 }}>
                   {p.spielertyp}
                 </Text>
@@ -1469,19 +1469,19 @@ export function ReportDocument(props: ReportProps) {
               </View>
             )}
 
-            <View style={styles.moduleCard}>
+            <View style={styles.moduleCard} wrap={false}>
               <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>SO ERREICHST DU MICH</Text>
               <Text style={styles.body}>{texts.bedienungsanleitung.soErreichstDuMich}</Text>
             </View>
-            <View style={styles.moduleCard}>
+            <View style={styles.moduleCard} wrap={false}>
               <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>SO GIBST DU MIR FEEDBACK</Text>
               <Text style={styles.body}>{texts.bedienungsanleitung.soGibstDuFeedback}</Text>
             </View>
-            <View style={styles.moduleCard}>
+            <View style={styles.moduleCard} wrap={false}>
               <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>UNTER DRUCK</Text>
               <Text style={styles.body}>{texts.bedienungsanleitung.unterDruck}</Text>
             </View>
-            <View style={styles.moduleCard}>
+            <View style={styles.moduleCard} wrap={false}>
               <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>BITTE VERMEIDEN</Text>
               <Text style={styles.body}>{texts.bedienungsanleitung.vermeide}</Text>
             </View>

@@ -140,8 +140,8 @@ Nur das JSON, kein Drumherum.`;
     const parsed = JSON.parse(raw);
     return NextResponse.json({ ok: true, content: parsed });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'AI error';
+    const msg = err instanceof Error ? err.message : 'personalization error';
     console.error('Personalization failed:', msg);
-    return NextResponse.json({ error: `AI-Fehler: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: 'Die Personalisierung konnte vorübergehend nicht erstellt werden.' }, { status: 500 });
   }
 }
