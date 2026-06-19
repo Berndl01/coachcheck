@@ -114,7 +114,7 @@ export function buildOrderConfirmationEmail(p: {
     <p style="font-size:16px; margin:0 0 8px;">
       Dein <strong>${esc(s.product.name)}</strong> ist freigeschaltet. Du kannst direkt loslegen &mdash;
       und unten findest du deine vollst&auml;ndige Bestell- und Vertragsbest&auml;tigung zum Aufbewahren.
-      Das vollst&auml;ndige Vertragsdokument h&auml;ngt zus&auml;tzlich als PDF an dieser E-Mail.
+      Deine Vertragsbest&auml;tigung h&auml;ngt zus&auml;tzlich als PDF an dieser E-Mail.
     </p>
     <p style="margin:18px 0 28px;">
       <a href="${startUrl}" style="display:inline-block; background:#1A1917; color:#F4F1EC; text-decoration:none; padding:13px 22px; border-radius:999px; font-weight:600; font-size:15px;">
@@ -157,8 +157,10 @@ export function buildOrderConfirmationEmail(p: {
     ${term('Funktionalit&auml;t, Kompatibilit&auml;t &amp; Interoperabilit&auml;t', s.serviceTerms.funktionalitaet)}
     ${term('Nutzung, Verf&uuml;gbarkeit &amp; Haftung', s.serviceTerms.nutzungHaftung)}
     <p style="font-size:12px; color:#767471; margin:4px 0 0;">
-      Ma&szlig;gebliche AGB-Fassung: Stand ${esc(s.agbVersion)} (im angeh&auml;ngten PDF enthalten) &mdash;
-      <a href="${agbUrl}" style="color:#B38E45;">aktuelle AGB ansehen</a>.
+      Ma&szlig;gebliche AGB-Fassung: Stand ${esc(s.agbVersion)} (beim Kauf akzeptiert) &mdash;
+      <a href="${agbUrl}" style="color:#B38E45;">vollst&auml;ndige AGB ansehen</a>. Das angeh&auml;ngte PDF
+      enth&auml;lt deine Vertragsbest&auml;tigung mit diesen &sect; 4-Vertragsbedingungen, deinen
+      Zustimmungen und der Widerrufsbelehrung.
     </p>
   </div>
 
@@ -246,13 +248,23 @@ type ConsentRow = {
  * Altbestellungen ohne ID werden best effort behandelt (kein Block).
  */
 function validateConsents(rows: ConsentRow[], purchaseConsentVersion: string | null): { ok: boolean; reason?: string } {
+  // Keine Duplikate je Pflichttyp (der Unique-Index in der DB erzwingt das
+  // zusätzlich; hier defensiv gespiegelt).
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if ((REQUIRED_CONSENTS as readonly string[]).includes(r.consent_type)) {
+      if (seen.has(r.consent_type)) return { ok: false, reason: `doppelter consent: ${r.consent_type}` };
+      seen.add(r.consent_type);
+    }
+  }
   const byType = new Map(rows.map((r) => [r.consent_type, r]));
   for (const t of REQUIRED_CONSENTS) {
     const r = byType.get(t);
     if (!r) return { ok: false, reason: `consent fehlt: ${t}` };
     if (!r.accepted_at) return { ok: false, reason: `accepted_at fehlt: ${t}` };
     if (!r.consent_text || !r.consent_text.trim()) return { ok: false, reason: `consent_text fehlt: ${t}` };
-    if (purchaseConsentVersion && r.version && r.version !== purchaseConsentVersion) {
+    if (!r.version || !r.version.trim()) return { ok: false, reason: `version fehlt: ${t}` };
+    if (purchaseConsentVersion && r.version !== purchaseConsentVersion) {
       return { ok: false, reason: `version weicht ab: ${t} (${r.version} ≠ ${purchaseConsentVersion})` };
     }
   }
@@ -364,7 +376,7 @@ export async function sendOrderConfirmationForPurchase(
     });
 
   if (!purchase.contract_snapshot) {
-    await admin.from('purchases')
+    const { error: snapErr } = await admin.from('purchases')
       .update({
         contract_snapshot: snapshot,
         agb_version: AGB_VERSION,
@@ -372,6 +384,19 @@ export async function sendOrderConfirmationForPurchase(
         consent_text_snapshot: flattenConsentText(snapshot),
       })
       .eq('id', purchase.id);
+    if (snapErr) {
+      // Der Vertrags-Snapshot ist der beweisrelevante Datenträger. Lässt er sich
+      // nicht speichern, darf die Bestätigung NICHT versendet und das Assessment
+      // NICHT freigeschaltet werden — sonst beginnt die Leistung ohne gesicherten
+      // Vertragsnachweis. Fehler protokollieren, Retry zieht später nach.
+      await admin.from('purchases')
+        .update({
+          confirmation_attempts: (purchase.confirmation_attempts ?? 0) + 1,
+          confirmation_last_error: `contract_snapshot speichern fehlgeschlagen: ${snapErr.message}`,
+        })
+        .eq('id', purchase.id);
+      return { ok: false, error: 'snapshot persist failed' };
+    }
   }
 
   // Vertrags-PDF aus genau diesem Snapshot rendern (dauerhafter Datenträger).

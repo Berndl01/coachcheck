@@ -192,10 +192,15 @@ export async function POST(request: NextRequest) {
     receivedAtLabel,
   });
 
-  // (6a) Vollständigen Erklärungstext beweisrelevant speichern.
-  await admin.from('withdrawals')
+  // (6a) Vollständigen Erklärungstext nachweisrelevant speichern.
+  const { error: declErr } = await admin.from('withdrawals')
     .update({ declaration_full: confirmation.declarationText })
     .eq('id', wd.id);
+  if (declErr) {
+    // Eingang ist bereits gespeichert (fristwahrend). Den Volltext zieht der
+    // Retry-Cron nötigenfalls nach — aber wir ignorieren den Fehler nicht.
+    console.warn('[widerruf] declaration_full speichern fehlgeschlagen:', declErr.message);
+  }
 
   const customerRes = await sendEmailSafe({
     to: email,
@@ -234,8 +239,9 @@ export async function POST(request: NextRequest) {
   //     KEINE Sende-Behauptung — stattdessen Retry-Felder setzen, der Cron
   //     versendet automatisch erneut.
   const nowIso = new Date().toISOString();
+  let statusErr: { message: string } | null = null;
   if (customerRes.ok) {
-    await admin.from('withdrawals')
+    const { error } = await admin.from('withdrawals')
       .update({
         confirmation_sent_at: nowIso,
         admin_notified_at: adminRes.ok ? nowIso : null,
@@ -243,9 +249,10 @@ export async function POST(request: NextRequest) {
         confirmation_next_retry_at: null,
       })
       .eq('id', wd.id);
+    statusErr = error;
   } else {
     console.warn('[widerruf] customer confirm failed, scheduling retry:', customerRes.error);
-    await admin.from('withdrawals')
+    const { error } = await admin.from('withdrawals')
       .update({
         admin_notified_at: adminRes.ok ? nowIso : null,
         confirmation_attempts: 1,
@@ -253,7 +260,9 @@ export async function POST(request: NextRequest) {
         confirmation_next_retry_at: new Date(Date.now() + RETRY_BASE_DELAY_MS).toISOString(),
       })
       .eq('id', wd.id);
+    statusErr = error;
   }
+  if (statusErr) console.warn('[widerruf] Versandstatus speichern fehlgeschlagen:', statusErr.message);
 
   if (!adminRes.ok) console.warn('[widerruf] admin notify failed:', adminRes.error);
 

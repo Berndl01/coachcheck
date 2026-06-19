@@ -1,3 +1,120 @@
+FIX v3_40 — 2026-06-19
+==========================================
+ZWEI Live-Probleme aus dem Report-Screen behoben:
+
+1) FUNKTION: Bei nicht verfügbarem KI-Dienst zeigte die Report-Route bewusst
+   "KI-Dienst ausgelastet · wird erneut erstellt" (503) statt auszuliefern.
+   Jetzt: der vollständige, deterministisch aus Archetyp + Achsenwerten
+   abgeleitete Report (inkl. Bedienungsanleitung + Wirkung-je-Spielertyp) wird
+   SOFORT ausgeliefert. Käufer bekommt immer einen kompletten Report, ohne
+   sichtbaren Dienst-Hinweis. Intern bleibt ai_fallback=true → im Monitor sichtbar.
+
+2) WHITE-LABEL: "Claude Opus" / "KI" aus aller Produkt-UI entfernt
+   - Ergebnisseite (Premium-Report-Block)
+   - Report-Button (Lade-/Hinweistexte, Fehlertexte)
+   - Archetyp-Seite (persönliche Schicht)
+   Reports/Texte erscheinen jetzt als CoachCheck-Leistung, ohne Technologie-Nennung.
+
+NICHT geändert (bewusst, rechtlich): Datenschutzerklärung nennt weiterhin Anthropic
+als Auftragsverarbeiter + automatisierte/KI-gestützte Verarbeitung, und die
+Consent-Checkbox bleibt — das sind DSGVO-Pflichtangaben und im Vertrags-Snapshot
+eingefroren. Umstellung auf "automatisiert" möglich, aber bumpt consent_version.
+
+Gates: tsc · claimcheck(59) · vitest 193/193 · eslint · build 9/9 · audit 0 · PDF 3/3.
+Trigger on_auth_user_created ist laut Live-Abfrage aktiv (tgenabled = O) — der
+v3_39-Profil-Fix deckt Altbestände ohne Profilzeile zusätzlich ab.
+
+================================================================================
+
+HOTFIX v3_39 — 2026-06-19
+==========================================
+LIVE-FEHLER behoben: "null value in column email of relation profiles violates
+not-null constraint" beim Profil-Speichern (/profil/setup).
+Ursache: app/api/profil/setup/route.ts machte einen Upsert OHNE email; fehlte die
+Profilzeile (Signup-Trigger on_auth_user_created nicht aktiv / Altbestand), war es
+ein INSERT mit email = null → NOT-NULL-Verletzung.
+Fix: email des eingeloggten Users IMMER im Upsert mitgeben → Route ist unabhängig
+vom Trigger. tsc/claimcheck/vitest(188)/eslint/build/audit grün.
+LIVE-DB PRÜFEN: Trigger on_auth_user_created (Migration 01) sollte aktiv sein —
+sonst bekommen neue Signups keine Profilzeile automatisch.
+
+================================================================================
+
+FEATURE v3_38 — 2026-06-19
+==========================================
+Baut drei Produkt-Review-Punkte ein: (1) Wirkung-je-Spielertyp als strukturierte
+Matrix, (2) Bedienungsanleitung als teilbares Artefakt, (3) teilbare Ergebniskarte
+(öffentlicher Share-Link, Opt-in, nur Karten-Felder, keine personenbezogenen Daten).
+
+GATE 1  tsc --noEmit ............................ PASS
+GATE 2  claimcheck (59 Dateien) ................. PASS
+GATE 3  vitest run .............................. PASS — 187/187 Tests, 19 Dateien
+GATE 4  eslint . ................................ PASS — 0/0
+GATE 5  next build (inkl. Static 9/9) .......... PASS — /karte/[token] dynamisch
+GATE 6  npm audit --omit=dev .................... PASS — 0 vulnerabilities
+GATE 7  PDF-Render .............................. PASS — 3/3 (mit 2 neuen Abschnitten)
+
+DATENBANK — in Reihenfolge: 33 → 34 → 35 → 36 → 37 (idempotent).
+  Migration 37 = Share-Token (assessments.share_token/share_enabled/shared_at) + Unique-Index.
+
+NEUE DATEIEN
+  lib/insight/operating-manual.ts            (gemeinsamer Builder: Manual + Spielertyp-Matrix)
+  app/api/assessment/[id]/share/route.ts     (Share aktivieren/widerrufen, Eigentümer-gebunden)
+  app/karte/[token]/page.tsx                 (öffentliche Karte, nur freigegebene Felder, noindex)
+  components/assessment/share-card-button.tsx (Teilen-Button)
+  supabase/migrations/37_shareable_profile_card.sql
+  tests/feature-v3-38.test.ts                (11 Tests)
+
+SICHERHEIT DER ÖFFENTLICHEN KARTE
+  Unrätselbarer UUID-Token + share_enabled-Opt-in. Nur Archetyp/Kernsatz/Stärken/
+  Bedienungsanleitung/Spielertyp-Matrix sichtbar. Keine E-Mail, keine Antworten,
+  kein 360°/Team, kein voller Report. anon ohne direkten Tabellenzugriff. noindex.
+
+================================================================================
+
+HARDENING v3_37 — 2026-06-19
+==========================================
+Schließt den realen Blocker aus dem v3_36-Audit: die Vertragsbestätigungs-Sperre
+war nur auf der E-Mail-/Zahlungs-Ebene scharf, nicht in den Assessment-APIs/der
+Item-RPC (umgehbar per direktem API-Aufruf). Plus Webhook-Selbstheilung,
+finalize-Härtung, Snapshot-Persistenz-Abbruch, Consent-Unique-Index, ehrliche
+AGB-Aussage.
+
+GATE 1  tsc --noEmit ............................ PASS
+GATE 2  claimcheck (58 Dateien) ................. PASS — keine riskanten Claims
+GATE 3  vitest run .............................. PASS — 176/176 Tests, 18 Dateien
+GATE 4  eslint . ................................ PASS — 0 Fehler, 0 Warnungen
+GATE 5  next build (inkl. Static 9/9) .......... PASS — Compiled, 9/9 Seiten,
+        KEIN Hang bei "Collecting page data"
+GATE 6  npm audit --omit=dev .................... PASS — 0 vulnerabilities
+GATE 7  PDF-Render (scripts/pdf-fulltest.mjs) ... PASS — 3/3 Varianten
+
+DATENBANK — in Reihenfolge ausführen: 33 → 34 → 35 → 36 (idempotent).
+  Migration 36 = Aktivierungssperre auf DB-Ebene (Trigger trg_enforce_contract_gate)
+  + finalize_order_confirmation-Härtung (Zuordnungsprüfung + Freigabe-Flag)
+  + get_items_for_assessment-Statusfilter + consent_checkout_type_unique
+  + admin_escalated_at (purchases/withdrawals).
+  ACHTUNG bei bestehender Prod: consent_checkout_type_unique schlägt fehl, falls
+  doppelte Consent-Datensätze je (User, Checkout, Typ) existieren → vorher bereinigen.
+
+NEUE/ENTSCHEIDENDE DATEIEN
+  lib/assessment/activation-gate.ts          (NEU — isAssessmentActivated)
+  supabase/migrations/36_activation_gate_enforcement.sql  (NEU)
+  tests/hardening-v3-37.test.ts              (NEU — 15 Tests)
+  app/api/assessment/[id]/{answer,finalize,context}/route.ts  (409-Gate)
+  app/api/stripe/webhook/route.ts            (lookup-first + 500 bei Link-Fehler)
+  app/api/internal/confirmation-retry/route.ts  (relink + RPC-Reparatur + Eskalation)
+  lib/email/order-confirmation.ts            (Snapshot-Abbruch, Consent strikt, AGB ehrlich)
+
+ANMERKUNG ZUM BUILD
+-------------------
+Der vom Audit erneut beobachtete `npm run build`-Hang bei "Collecting page data"
+war hier wieder NICHT reproduzierbar (Compile + 9/9 Seiten erfolgreich). Sehr
+wahrscheinlich umgebungsbedingt. Maßgeblicher Freigabepunkt bleibt ein
+erfolgreicher Vercel-Produktionsdeploy + echter Stripe-E2E-Kauf.
+
+================================================================================
+
 CLEAN-ROOM-VERIFIKATION v3_35 — 2026-06-18
 ==========================================
 Frische Extraktion aus v3_34 → npm ci → Umbau → vollständige Gate-Sequenz.

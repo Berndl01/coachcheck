@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmailSafe } from '@/lib/email/resend';
 import { renderWithdrawalConfirmationEmail } from '@/lib/email/withdrawal-confirmation';
+import { PROVIDER } from '@/lib/legal/provider';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -110,7 +111,32 @@ async function run(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ attempted: (pending ?? []).length, sent, failed });
+  // Eskalation: Widerrufe, deren Bestätigung das Versuchslimit erreicht hat und
+  // weiterhin nicht zugestellt ist, einmalig an den Betreiber melden.
+  let escalated = 0;
+  const { data: stuckMax } = await admin
+    .from('withdrawals')
+    .select('id, full_name, email, order_ref, confirmation_last_error')
+    .is('confirmation_sent_at', null)
+    .gte('confirmation_attempts', MAX_ATTEMPTS)
+    .is('admin_escalated_at', null)
+    .limit(BATCH);
+  for (const wd of stuckMax ?? []) {
+    const ref = `WD-${String(wd.id).slice(0, 8).toUpperCase()}`;
+    const r = await sendEmailSafe({
+      to: process.env.KONTAKT_EMAIL ?? PROVIDER.email,
+      subject: `⚠️ Widerrufs-Eingangsbestätigung hängt nach ${MAX_ATTEMPTS} Versuchen (${ref})`,
+      html: `<p>Eine Widerrufs-Eingangsbestätigung konnte nach ${MAX_ATTEMPTS} Versuchen nicht zugestellt werden und braucht manuelle Prüfung.</p>
+             <p>Vorgang: ${ref}<br/>Name: ${wd.full_name ?? '—'}<br/>E-Mail: ${wd.email}<br/>Bestellnummer: ${wd.order_ref ?? '—'}<br/>Letzter Fehler: ${wd.confirmation_last_error ?? '—'}</p>`,
+      category: 'withdrawal-escalation',
+    });
+    if (r.ok) {
+      await admin.from('withdrawals').update({ admin_escalated_at: new Date().toISOString() }).eq('id', wd.id);
+      escalated += 1;
+    }
+  }
+
+  return NextResponse.json({ attempted: (pending ?? []).length, sent, failed, escalated });
 }
 
 export async function POST(request: NextRequest) {

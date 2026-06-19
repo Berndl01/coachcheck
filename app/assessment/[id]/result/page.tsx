@@ -11,6 +11,8 @@ import { TeamcheckManager } from '@/components/assessment/teamcheck-manager';
 import { ContextForm } from '@/components/assessment/context-form';
 import { getReportSignedUrl } from '@/lib/pdf/storage';
 import { buildInstantSignature } from '@/lib/insight/instant-signature';
+import { buildOperatingManual, buildPlayerTypeMatrix } from '@/lib/insight/operating-manual';
+import { ShareCardButton } from '@/components/assessment/share-card-button';
 import { buildProgressComparison } from '@/lib/insight/progress';
 import { computeMaturityScores, MATURITY_KEYS, MATURITY_LABELS, type AxisScores } from '@/lib/scoring';
 
@@ -133,6 +135,10 @@ export default async function ResultPage({
   const secondary = assessment.secondary as any;
   const axisScores = assessment.axis_scores as Record<string, number>;
   const signature = buildInstantSignature(axisScores as any);
+  const manual = primary ? buildOperatingManual(primary, axisScores as any) : null;
+  const playerMatrix = primary ? buildPlayerTypeMatrix(primary, axisScores as any) : null;
+  const shareToken = (assessment as any).share_token as string | null;
+  const shareEnabled = Boolean((assessment as any).share_enabled);
 
   // Führungsreife (zweite Schicht) — sofort sichtbar machen, nicht nur im PDF.
   let maturityScores: Record<string, number> | null = null;
@@ -430,8 +436,8 @@ export default async function ResultPage({
             </h2>
             <p className="text-bone-soft mb-6 max-w-[55ch] leading-[1.5]">
               Personalisierte Interpretationen, dein Druckprofil, ein konkreter
-              Entwicklungspfad und ein Gesprächsleitfaden — generiert von Claude
-              Opus, gerendert als Premium-PDF.
+              Entwicklungspfad und ein Gesprächsleitfaden — auf Basis deiner
+              Antworten erstellt, als Premium-PDF.
             </p>
             <ReportGenerateButton
               assessmentId={id}
@@ -554,6 +560,84 @@ export default async function ResultPage({
                 </ul>
               </div>
             </div>
+            </div>
+          </section>
+        )}
+
+        {/* WIRKUNG JE SPIELERTYP */}
+        {playerMatrix && (
+          <section className="max-w-4xl mx-auto px-4 md:px-8 py-14">
+            <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-3 flex items-center gap-3">
+              <span className="w-10 h-px bg-ink" /> Wirkung je Spielertyp
+            </div>
+            <h2 className="font-display font-light text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.05] tracking-[-0.03em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
+              Derselbe Stil, vier Wirkungen.
+            </h2>
+            <p className="text-muted text-sm leading-[1.5] max-w-[60ch] mb-8">
+              Dein Stil kommt nicht bei allen gleich an. So wirkt er auf vier typische Spielertypen — und was du je Typ konkret anpassen kannst.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {playerMatrix.map((p, i) => (
+                <div key={i} className="p-6 bg-bone-soft rounded-md border border-bone-line">
+                  <div className="font-display text-lg tracking-[-0.01em] mb-2">{p.spielertyp}</div>
+                  <p className="text-sm leading-[1.55] text-ink mb-4">{p.wirkung}</p>
+                  <div className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-gold-deep mb-1">Anpassung</div>
+                  <p className="text-sm leading-[1.5] text-ink">{p.anpassung}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* BEDIENUNGSANLEITUNG + TEILBARE KARTE */}
+        {manual && (
+          <section className="bg-petrol text-bone py-16 px-4 md:px-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-light mb-3 flex items-center gap-3">
+                <span className="w-10 h-px bg-gold" /> Deine Bedienungsanleitung
+              </div>
+              <h2 className="font-display font-light text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.05] tracking-[-0.03em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
+                So arbeitet man am besten mit dir.
+              </h2>
+              <p className="text-bone-soft text-sm leading-[1.5] max-w-[60ch] mb-10">
+                Kompakt zum Weitergeben — an Spieler, Co-Trainer oder dein Umfeld. Aus deinem Profil wird ein gemeinsames Verständnis.
+              </p>
+
+              {/* Karte */}
+              <div className="bg-bone text-ink rounded-lg p-7 md:p-9 border-l-[3px] border-gold max-w-2xl">
+                <div className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-gold-deep mb-2">CoachCheck · Profilkarte</div>
+                <div className="font-display text-3xl tracking-[-0.02em] mb-2" style={{ fontVariationSettings: "'opsz' 144" }}>{manual.ueberschrift}</div>
+                <p className="font-editorial italic text-[1.05rem] leading-[1.5] text-ink mb-5">{manual.kernsatz}</p>
+                {manual.staerken.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    {manual.staerken.map((s, i) => (
+                      <span key={i} className="px-3 py-1 rounded-full bg-petrol text-bone font-mono text-[0.62rem] uppercase tracking-[0.12em]">{s}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 text-sm leading-[1.5]">
+                  <div>
+                    <div className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gold-deep mb-1">So erreichst du mich</div>
+                    <p>{manual.soErreichstDuMich}</p>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gold-deep mb-1">So gibst du mir Feedback</div>
+                    <p>{manual.soGibstDuFeedback}</p>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gold-deep mb-1">Unter Druck</div>
+                    <p>{manual.unterDruck}</p>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gold-deep mb-1">Bitte vermeiden</div>
+                    <p>{manual.vermeide}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <ShareCardButton assessmentId={id} initialToken={shareToken} initialEnabled={shareEnabled} />
+              </div>
             </div>
           </section>
         )}

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAssessmentActivated } from '@/lib/assessment/activation-gate';
 import { computeAxisScores, determineArchetypes, buildSignature, computeMaturityScores, type RawAnswer, type Archetype } from '@/lib/scoring';
 import { computeResponseQuality, type QualityAnswer } from '@/lib/insight/response-quality';
 
@@ -29,7 +30,13 @@ export async function POST(
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
-  // Ownership ist verifiziert. Antworten + Item-Join ab Migration 29 über
+  // Aktivierungssperre: ein Assessment darf nur abgeschlossen werden, wenn es
+  // freigeschaltet ist (pending/in_progress). Blockiert insbesondere
+  // 'awaiting_contract_confirmation' — sonst ließe sich die Vertragsbestätigungs-
+  // sperre durch direkten Aufruf der Finalize-API umgehen.
+  if (!isAssessmentActivated(assessment.status)) {
+    return NextResponse.json({ error: 'assessment not activated' }, { status: 409 });
+  }
   // service_role lesen — der Browser-/RLS-Client kann items nicht mehr lesen,
   // sonst kämen axis_weights als null und das Scoring wäre falsch.
   const admin = createAdminClient();

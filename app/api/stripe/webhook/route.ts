@@ -140,31 +140,59 @@ export async function POST(request: NextRequest) {
     //     dauerhaft ausgesperrt, aber die Leistung beginnt nicht vor der
     //     Bestätigung.
     if (!assessmentId) {
-      const { data: assessment, error: aErr } = await admin
-        .from('assessments')
-        // purchase_id sofort setzen → 1:1-Bindung an die bezahlte Purchase
-        // (Entitlement-Gate + Migration-27-Unique-Index). Ohne diese Bindung
-        // bekäme ein Assessment keinen Premium-Report.
-        .insert({
-          user_id: userId,
-          product_id: parseInt(productId),
-          status: 'awaiting_contract_confirmation',
-          purchase_id: purchaseId,
-          last_activity_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
-      if (aErr || !assessment) {
-        console.error('Assessment create error:', aErr);
-        return NextResponse.json({ error: 'Assessment creation failed' }, { status: 500 });
+      // SELBSTHEILUNG: Ein früherer Versuch kann das Assessment bereits angelegt
+      // haben, ist aber GENAU beim Verlinken (purchases.assessment_id) gescheitert.
+      // Dann ist purchase.assessment_id null, das Assessment existiert aber schon
+      // (mit purchase_id-Bindung + Unique-Index). Ein erneuter Insert würde am
+      // Unique-Index scheitern → Endlosfehler. Deshalb ZUERST nach vorhandenem
+      // Assessment für diese Purchase suchen und wiederverwenden.
+      let resolvedAssessmentId: string | null = null;
+      if (purchaseId) {
+        const { data: orphan } = await admin
+          .from('assessments')
+          .select('id')
+          .eq('purchase_id', purchaseId)
+          .maybeSingle();
+        resolvedAssessmentId = orphan?.id ?? null;
       }
-      assessmentId = assessment.id;
+
+      if (!resolvedAssessmentId) {
+        const { data: assessment, error: aErr } = await admin
+          .from('assessments')
+          // purchase_id sofort setzen → 1:1-Bindung an die bezahlte Purchase
+          // (Entitlement-Gate + Migration-27-Unique-Index). Ohne diese Bindung
+          // bekäme ein Assessment keinen Premium-Report.
+          .insert({
+            user_id: userId,
+            product_id: parseInt(productId),
+            status: 'awaiting_contract_confirmation',
+            purchase_id: purchaseId,
+            last_activity_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (aErr || !assessment) {
+          console.error('Assessment create error:', aErr);
+          return NextResponse.json({ error: 'Assessment creation failed' }, { status: 500 });
+        }
+        resolvedAssessmentId = assessment.id;
+      }
+
+      assessmentId = resolvedAssessmentId;
+
+      // Verlinkung ist beweis-/entitlement-relevant. Scheitert sie, NICHT nur
+      // loggen: 500 zurückgeben, damit Stripe das Event erneut zustellt — beim
+      // nächsten Lauf wird das (jetzt vorhandene) Assessment gefunden und die
+      // Verknüpfung repariert, statt den Kunden dauerhaft ohne Produkt zu lassen.
       if (purchaseId) {
         const { error: linkErr } = await admin
           .from('purchases')
           .update({ assessment_id: assessmentId })
           .eq('id', purchaseId);
-        if (linkErr) console.error('Purchase/assessment link error:', linkErr);
+        if (linkErr) {
+          console.error('Purchase/assessment link error (returning 500 for redelivery):', linkErr.message);
+          return NextResponse.json({ error: 'Purchase/assessment link failed' }, { status: 500 });
+        }
       }
     }
 

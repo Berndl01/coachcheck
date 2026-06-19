@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAssessmentActivated } from '@/lib/assessment/activation-gate';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -71,8 +72,14 @@ export async function POST(
     .single();
 
   if (!assessment) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  if (assessment.status === 'completed' || assessment.status === 'report_ready' || assessment.status === 'archived') {
-    return NextResponse.json({ error: 'assessment already finalized' }, { status: 409 });
+  // Aktivierungssperre (serverseitig, nicht nur UI): nur freigeschaltete
+  // Assessments dürfen Antworten annehmen. Blockiert insbesondere
+  // 'awaiting_contract_confirmation' (Vertragsbestätigung ausstehend) sowie alle
+  // Terminalzustände (completed/report_ready/archived). Ohne diese Prüfung könnte
+  // ein eingeloggter Käufer die Bestätigungssperre über einen direkten API-Aufruf
+  // umgehen.
+  if (!isAssessmentActivated(assessment.status)) {
+    return NextResponse.json({ error: 'assessment not activated' }, { status: 409 });
   }
   const tier = (assessment.product as any)?.tier;
   if (!tier) return NextResponse.json({ error: 'could not resolve tier' }, { status: 500 });

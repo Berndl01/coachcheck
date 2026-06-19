@@ -2,6 +2,7 @@ import { getAnthropic, REPORT_MODEL } from '@/lib/ai/anthropic';
 import type { AxisScores, AxisDiscrepancy, MaturityScores } from '@/lib/scoring';
 import { buildKnowledgeContext } from '@/lib/ai/trainer-knowledge';
 import { matchDevelopmentProgram, buildProgramPromptBlock } from '@/lib/knowledge/development-matcher';
+import { buildOperatingManual, buildPlayerTypeMatrix } from '@/lib/insight/operating-manual';
 
 export type SeasonPhase =
   | 'vorbereitung' | 'fruehe_saison' | 'erfolgslauf' | 'formkrise'
@@ -153,6 +154,18 @@ export type ReportOutput = {
   spielerbedarf?: string;                // Was Spieler von diesem Stil typischerweise brauchen
   beratungswuerdigkeit?: 'gering' | 'mittel' | 'hoch';
   fuehrungsenergie?: string;             // beruhigend, verdichtend, aktivierend, ordnend, ...
+
+  // === Wirkung je Spielertyp + Bedienungsanleitung (Tier ≥ 2) ===
+  wirkung_je_spielertyp?: Array<{ spielertyp: string; wirkung: string; anpassung: string }>;
+  bedienungsanleitung?: {
+    ueberschrift: string;
+    kernsatz: string;
+    staerken: string[];
+    unterDruck: string;
+    soErreichstDuMich: string;
+    soGibstDuFeedback: string;
+    vermeide: string;
+  };
 };
 
 const AXIS_LABELS: Record<keyof AxisScores, { low: string; high: string }> = {
@@ -437,7 +450,21 @@ WICHTIG für deine Texte: Greife diese Hinweise in teamcheck_narrative und team_
 
   "beratungswuerdigkeit": "Eines von: 'gering', 'mittel', 'hoch'. Wie hoch ist der Beratungsbedarf bei diesem Profil?",
 
-  "fuehrungsenergie": "Ein bis zwei Adjektive aus: beruhigend, verdichtend, aktivierend, verengend, ordnend, destabilisierend, verbindend, distanzierend, mobilisierend, stabilisierend. Beispiel: 'ordnend und stabilisierend' oder 'verdichtend und distanzierend'."`;
+  "fuehrungsenergie": "Ein bis zwei Adjektive aus: beruhigend, verdichtend, aktivierend, verengend, ordnend, destabilisierend, verbindend, distanzierend, mobilisierend, stabilisierend. Beispiel: 'ordnend und stabilisierend' oder 'verdichtend und distanzierend'.",
+
+  "wirkung_je_spielertyp": [
+    "Genau diese vier Spielertypen, je ein Objekt {\"spielertyp\", \"wirkung\", \"anpassung\"}. spielertyp WÖRTLICH: 'Der selbstbewusste Leistungsträger', 'Der unsichere, zurückhaltende Spieler', 'Der kreative Eigenständige', 'Der junge Entwicklungsspieler'. wirkung (~40 Wörter): wie DIESER konkrete Stil bei diesem Typ ankommt — Stärke UND mögliche Reibung, abgeleitet aus den Achsenwerten. anpassung (~25 Wörter): EINE konkrete, sofort umsetzbare Anpassung. Kein Pauschalurteil, keine Diagnose."
+  ],
+
+  "bedienungsanleitung": {
+    "ueberschrift": "Der Archetyp-Name dieses Trainers.",
+    "kernsatz": "Ein Wiedererkennungssatz (~25 Wörter), der den Stil auf den Punkt bringt.",
+    "staerken": ["3 Kernstärken als Kurzbegriffe (1-3 Wörter)."],
+    "unterDruck": "Ein Satz: wie der Stil unter Druck kippt (Stärke → Wirkungsgrenze).",
+    "soErreichstDuMich": "~30 Wörter: wie man diesen Trainer am besten erreicht und motiviert.",
+    "soGibstDuFeedback": "~30 Wörter: wie man IHM Feedback geben sollte, damit es ankommt.",
+    "vermeide": "~25 Wörter: was man im Umgang mit ihm vermeiden sollte."
+  }`;
   }
 
   // ============== ENTWICKLUNGSPROGRAMM OUTPUT (Tier ≥ 2) ==============
@@ -619,6 +646,8 @@ export function buildFallbackReport(input: ReportInput): ReportOutput {
       'In einem Training bewusst eine kleine Verhaltensänderung ausprobieren und ihre Wirkung beobachten.',
       'Das Ergebnis kurz reflektieren und daraus einen nächsten konkreten Schritt ableiten.',
     ],
+    wirkung_je_spielertyp: buildPlayerTypeMatrix(a, input.axisScores),
+    bedienungsanleitung: buildOperatingManual(a, input.axisScores),
   };
 }
 
@@ -679,6 +708,16 @@ export async function generateReportTextsWithMeta(input: ReportInput, maxAttempt
       const parsed = JSON.parse(raw) as ReportOutput;
       const problems = validateReportOutput(parsed);
       if (problems.length) throw new Error(`schema validation failed: ${problems.join(', ')}`);
+
+      // Wirkung-je-Spielertyp + Bedienungsanleitung garantiert vorhanden machen:
+      // liefert die KI sie nicht (oder unvollständig), deterministisch ergänzen.
+      // Damit hängen PDF, Ergebnisseite und öffentliche Karte nie an der KI.
+      if (!Array.isArray(parsed.wirkung_je_spielertyp) || parsed.wirkung_je_spielertyp.length === 0) {
+        parsed.wirkung_je_spielertyp = buildPlayerTypeMatrix(input.primaryArchetype, input.axisScores);
+      }
+      if (!parsed.bedienungsanleitung || !parsed.bedienungsanleitung.kernsatz) {
+        parsed.bedienungsanleitung = buildOperatingManual(input.primaryArchetype, input.axisScores);
+      }
 
       return {
         output: parsed,

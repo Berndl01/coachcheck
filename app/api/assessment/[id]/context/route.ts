@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAssessmentActivated } from '@/lib/assessment/activation-gate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -67,13 +68,19 @@ export async function POST(
 
   const { data: existing, error: loadError } = await supabase
     .from('assessments')
-    .select('id, metadata')
+    .select('id, status, metadata')
     .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
   if (loadError || !existing) {
     return NextResponse.json({ error: 'Assessment nicht gefunden.' }, { status: 404 });
+  }
+
+  // Aktivierungssperre: Kontext darf nur für freigeschaltete Assessments
+  // gespeichert werden. Blockiert insbesondere 'awaiting_contract_confirmation'.
+  if (!isAssessmentActivated(existing.status)) {
+    return NextResponse.json({ error: 'assessment not activated' }, { status: 409 });
   }
 
   // Ownership ist oben (id + user_id) verifiziert. Schreiben ab Migration 27

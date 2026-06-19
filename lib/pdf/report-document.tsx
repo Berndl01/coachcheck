@@ -1422,6 +1422,74 @@ export function ReportDocument(props: ReportProps) {
         </Page>
       )}
 
+      {/* WIRKUNG JE SPIELERTYP */}
+      {productTier >= 2 && texts.wirkung_je_spielertyp && texts.wirkung_je_spielertyp.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>06b — Wirkung je Spielertyp</Text>
+          <Text style={styles.h1}>Derselbe Stil,{'\n'}vier Wirkungen.</Text>
+          <View style={styles.dividerGold} />
+          <Text style={styles.bodyMuted}>
+            Dein Stil kommt nicht bei allen gleich an. So wirkt er auf vier typische Spielertypen — und was du je Typ konkret anpassen kannst.
+          </Text>
+          <View style={{ marginTop: 18 }}>
+            {texts.wirkung_je_spielertyp.map((p, i) => (
+              <View key={i} style={styles.moduleCard}>
+                <Text style={{ fontSize: 11, fontFamily: PDF_DISPLAY, color: COLORS.ink, marginBottom: 5 }}>
+                  {p.spielertyp}
+                </Text>
+                <Text style={{ ...styles.body, marginBottom: 6 }}>{p.wirkung}</Text>
+                <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 2 }}>ANPASSUNG</Text>
+                <Text style={styles.quote}>{p.anpassung}</Text>
+              </View>
+            ))}
+          </View>
+          <PageFooter pageNum={9} productName={productName} />
+        </Page>
+      )}
+
+      {/* BEDIENUNGSANLEITUNG */}
+      {productTier >= 2 && texts.bedienungsanleitung && texts.bedienungsanleitung.kernsatz && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.kicker}>06c — Deine Bedienungsanleitung</Text>
+          <Text style={styles.h1}>So arbeitet man{'\n'}am besten mit dir.</Text>
+          <View style={styles.dividerGold} />
+          <Text style={styles.bodyMuted}>
+            Eine kompakte Anleitung zum Weitergeben — an Spieler, Co-Trainer oder dein Umfeld. Sie macht aus deinem Profil ein gemeinsames Verständnis.
+          </Text>
+          <View style={{ marginTop: 18 }}>
+            <Text style={{ fontSize: 18, fontFamily: PDF_DISPLAY, color: COLORS.ink, marginBottom: 4 }}>
+              {texts.bedienungsanleitung.ueberschrift}
+            </Text>
+            <Text style={{ ...styles.quote, marginBottom: 16 }}>{texts.bedienungsanleitung.kernsatz}</Text>
+
+            {texts.bedienungsanleitung.staerken && texts.bedienungsanleitung.staerken.length > 0 && (
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 4 }}>KERNSTÄRKEN</Text>
+                <Text style={styles.body}>{texts.bedienungsanleitung.staerken.join('  ·  ')}</Text>
+              </View>
+            )}
+
+            <View style={styles.moduleCard}>
+              <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>SO ERREICHST DU MICH</Text>
+              <Text style={styles.body}>{texts.bedienungsanleitung.soErreichstDuMich}</Text>
+            </View>
+            <View style={styles.moduleCard}>
+              <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>SO GIBST DU MIR FEEDBACK</Text>
+              <Text style={styles.body}>{texts.bedienungsanleitung.soGibstDuFeedback}</Text>
+            </View>
+            <View style={styles.moduleCard}>
+              <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>UNTER DRUCK</Text>
+              <Text style={styles.body}>{texts.bedienungsanleitung.unterDruck}</Text>
+            </View>
+            <View style={styles.moduleCard}>
+              <Text style={{ fontSize: 8, color: COLORS.gold, letterSpacing: 2, marginBottom: 3 }}>BITTE VERMEIDEN</Text>
+              <Text style={styles.body}>{texts.bedienungsanleitung.vermeide}</Text>
+            </View>
+          </View>
+          <PageFooter pageNum={9} productName={productName} />
+        </Page>
+      )}
+
       {/* 30 DAYS */}
       {productTier >= 2 && texts.naechste_30_tage && texts.naechste_30_tage.length > 0 && (
         <Page size="A4" style={styles.page}>

@@ -147,6 +147,37 @@ export const SAMPLE_REPORT: ReportOutput = {
     'In der aktuellen Saisonphase wirkt dieser Stil grundsätzlich günstig: Struktur und Verlässlichkeit geben einer Mannschaft, die Ergebnisse liefern muss, einen klaren Rahmen. Der Vorteil ist Orientierung und Konstanz. Das Risiko liegt darin, dass eine zu enge Führung den nötigen Mut zu spielerischen Lösungen bremst, wenn ein Spiel von einem mutigen Impuls statt von Disziplin entschieden wird. Die Phase belohnt es, die vorhandene Ordnung zu halten und sie punktuell um aktivierende Akzente zu ergänzen.',
   coach_to_team_fit:
     'Zu einem gemischt erfahrenen Team passt dieser Stil über weite Strecken gut: Die Erfahreneren schätzen Klarheit und sauber verortete Verantwortung, die Jüngeren profitieren von der verlässlichen Struktur und den klaren Standards. Reibung entsteht dort, wo eigenständige, kreative Spielertypen mehr Gestaltungsraum suchen, als die Struktur zunächst hergibt. Funktionieren wird die Passung dann, wenn der Trainer diesen Typen gezielt umrissene Freiräume eröffnet — die Struktur bleibt Fundament, wird aber nicht zur Decke.',
+  wirkung_je_spielertyp: [
+    {
+      spielertyp: 'Der selbstbewusste Leistungsträger',
+      wirkung: 'Deine Klarheit und dein Anspruch geben ihm Orientierung und fordern ihn. Bei zu enger Vorgabe kann er sich aber kontrolliert fühlen und beginnt, gegen die Linie zu arbeiten statt mit ihr.',
+      anpassung: 'Gib ihm echte Verantwortung in einem klaren Rahmen und fordere seinen Vorschlag ein, bevor du die Lösung vorgibst.',
+    },
+    {
+      spielertyp: 'Der unsichere, zurückhaltende Spieler',
+      wirkung: 'Deine Verlässlichkeit gibt ihm Halt. Deine Direktheit meinst du als Klarheit — er erlebt sie unter Druck jedoch leicht als persönliche Kritik und macht sich kleiner.',
+      anpassung: 'Kritische Rückmeldung zuerst kurz unter vier Augen geben und immer mit einer konkreten nächsten Handlung verbinden.',
+    },
+    {
+      spielertyp: 'Der kreative Eigenständige',
+      wirkung: 'Deine Struktur gibt ihm Sicherheit, kann ihm aber den Gestaltungsraum nehmen, den er zum Aufblühen braucht. Aus Klarheit wird für ihn schnell Enge.',
+      anpassung: 'Eröffne ihm klar umrissene Freiräume: die Struktur bleibt Fundament, wird aber nicht zur Decke.',
+    },
+    {
+      spielertyp: 'Der junge Entwicklungsspieler',
+      wirkung: 'Deine verlässliche Struktur und die klaren Standards geben ihm genau die Orientierung, die er in dieser Phase braucht. Tempo und Härte können ihn allerdings überfordern.',
+      anpassung: 'Erkläre öfter das „Warum" hinter deinen Entscheidungen — Verstehen baut bei ihm Sicherheit auf.',
+    },
+  ],
+  bedienungsanleitung: {
+    ueberschrift: 'Der Strukturgeber',
+    kernsatz: 'Du führst über Berechenbarkeit, klare Standards und konsequente Verlässlichkeit — Orientierung ist deine stärkste Währung.',
+    staerken: ['Klarheit', 'Verlässlichkeit', 'Standardsicherheit'],
+    unterDruck: 'Unter Druck ziehst du die Zügel enger — was sonst Struktur ist, kann dann als Kontrolle ankommen.',
+    soErreichstDuMich: 'Über sichtbaren Fortschritt, klare Ziele und ehrliches, konkretes Feedback. Allgemeines Lob trägt bei dir wenig.',
+    soGibstDuFeedback: 'Sachlich, vorbereitet und mit konkretem Bezug — kein vages Andeuten, sondern Beispiel und nächster Schritt.',
+    vermeide: 'Unklare Vorgaben, ständig wechselnde Ziele und Rückmeldungen ohne konkreten Bezug.',
+  },
 };
 
 export const SAMPLE_META = {
