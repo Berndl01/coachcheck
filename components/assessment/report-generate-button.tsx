@@ -11,7 +11,7 @@ type Props = {
 function friendlyReportError(message: string) {
   const m = message.toLowerCase();
   if (m.includes('anthropic') || m.includes('ai generation') || m.includes('api_key')) {
-    return 'Der KI-Reportdienst ist gerade nicht vollständig konfiguriert. Bitte prüfe ANTHROPIC_API_KEY und versuche es danach erneut.';
+    return 'Der Reportdienst ist gerade nicht vollständig konfiguriert. Bitte versuche es in einem Moment erneut.';
   }
   if (m.includes('pdf render') || m.includes('font')) {
     return 'Das PDF konnte gerade nicht erzeugt werden. Bitte prüfe die PDF-Konfiguration und versuche es danach erneut.';
@@ -58,8 +58,7 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
         await pollUntilReady();
         return;
       }
-      // KI war kurzzeitig nicht verfügbar → kein halbfertiger Report, sondern
-      // automatischer erneuter Versuch (P1 #6).
+      // Dienst kurzzeitig nicht verfügbar → kurzer automatischer erneuter Versuch.
       if (res.status === 503 && data.retryable && retriesLeft > 0) {
         setRetrying(true);
         await new Promise((r) => setTimeout(r, 4000));
@@ -108,7 +107,7 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
         {loading ? (
           <>
             <span className="inline-block w-3 h-3 rounded-full bg-gold animate-pulse" />
-            {retrying ? 'KI war kurz ausgelastet · neuer Versuch …' : 'KI erstellt deinen Report · 30-90 Sek'}
+            {retrying ? 'Wird noch erstellt · einen Moment …' : 'Dein Report wird erstellt · 30-90 Sek'}
           </>
         ) : (
           <>Premium-Report jetzt generieren <span className="font-mono">→</span></>
@@ -116,7 +115,7 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
       </button>
       {loading && (
         <div className="font-mono text-xs uppercase tracking-[0.12em] text-muted max-w-[48ch]">
-          Claude analysiert deine Antworten, formuliert personalisierte Interpretationen,
+          CoachCheck wertet deine Antworten aus, erstellt deine personalisierten Interpretationen,
           rendert das PDF und schickt es dir per Mail. Bleib kurz dran.
         </div>
       )}

@@ -68,7 +68,7 @@ export function PersonalSection({
               Personalisierte Analyse laden <span className="font-mono">→</span>
             </button>
             <p className="text-sm text-muted mt-4">
-              Wird von Claude auf Basis deines Assessments individuell erstellt (~15 Sek).
+              Wird auf Basis deines Assessments individuell erstellt (~15 Sek).
             </p>
           </div>
         )}
@@ -79,7 +79,7 @@ export function PersonalSection({
               Wird erstellt …
             </div>
             <div className="font-editorial italic text-lg text-muted">
-              Claude liest deine Werte und schreibt dir deine persönliche Schicht.
+              Deine Werte werden gelesen und deine persönliche Schicht wird geschrieben.
             </div>
           </div>
         )}

@@ -496,31 +496,20 @@ export async function POST(
   try {
     gen = await generateReportTextsWithMeta(reportInput);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'AI generation failed';
-    console.error('AI generation failed:', msg);
-    return failJob(`AI generation failed: ${msg}`);
+    const msg = err instanceof Error ? err.message : 'report generation failed';
+    console.error('[report] generation failed:', msg);
+    return failJob(`Report-Erstellung fehlgeschlagen: ${msg}`);
   }
   let texts = gen.output;
 
-  // --- AI-Fallback NICHT als Premium ausliefern (P1 #6) ------------------
-  // Wenn die KI nach allen Retries nicht verfügbar war, liefert der Generator
-  // einen reduzierten Ersatztext. Ein zahlender Käufer bekommt aber NIEMALS
-  // einen sichtbar halbfertigen Premium-Report. Stattdessen: Job freigeben
-  // (retrybar) und dem Frontend signalisieren, dass der Report erneut erstellt
-  // wird. So greift entweder der Auto-Retry oder der Nutzer-Retry — und sobald
-  // die KI wieder erreichbar ist, entsteht der vollwertige Report.
-  if (gen.fallback) {
-    await admin.from('report_jobs')
-      .update({ status: 'failed', error_message: 'ai_unavailable_retryable' })
-      .eq('id', jobId);
-    return NextResponse.json(
-      {
-        error: 'Der KI-Dienst ist gerade ausgelastet. Dein Report wird automatisch erneut erstellt — das dauert in der Regel ein bis zwei Minuten.',
-        retryable: true,
-      },
-      { status: 503 }
-    );
-  }
+  // --- Bei nicht verfügbarem KI-Dienst: SAUBER aus den Daten ausliefern -------
+  // Früher wurde hier ein Fehler ("Dienst ausgelastet") gezeigt und auf einen
+  // erneuten Versuch verwiesen. Stattdessen liefern wir jetzt die vollständige,
+  // deterministisch aus Archetyp + Achsenwerten abgeleitete Auswertung aus
+  // (inkl. Bedienungsanleitung + Wirkung-je-Spielertyp). Der Käufer bekommt also
+  // immer sofort einen kompletten Report — ohne sichtbaren Hinweis auf einen
+  // ausgelasteten Dienst. Intern bleibt ai_fallback=true gesetzt, damit solche
+  // Reports im Monitor sichtbar sind und bei Bedarf neu erzeugt werden können.
 
   // 1b. Claim Guard — Sicherheitsnetz: gesperrte Begriffe garantiert entfernen.
   const guard = softenDeep(texts);

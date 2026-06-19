@@ -35,10 +35,15 @@ export async function POST(request: NextRequest) {
     update.club_type = club_type;
   }
 
-  // Upsert profile row
+  // Upsert profile row.
+  // WICHTIG: email IMMER mitgeben. profiles.email ist NOT NULL; existiert die
+  // Zeile noch nicht (Signup-Trigger nicht aktiv / Altbestand), wäre ein Upsert
+  // ohne email ein INSERT mit email = null → NOT-NULL-Verletzung. Mit der
+  // E-Mail des eingeloggten Users ist die Route unabhängig vom Trigger.
+  // (Im Update-Fall bleibt es derselbe Wert — keine anderen Felder werden berührt.)
   const { error } = await supabase
     .from('profiles')
-    .upsert({ id: user.id, ...update }, { onConflict: 'id' });
+    .upsert({ id: user.id, email: user.email, ...update }, { onConflict: 'id' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
