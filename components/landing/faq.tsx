@@ -1,51 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-
-const faqs = [
-  {
-    q: 'Was kosten die fünf Pakete?',
-    a: 'Der Schnelltest startet bei 19 €, der volle Selbsttest bei 79 €. Der 360° Spiegel mit Fremdbild-Abgleich kostet 199 €, der TeamCheck mit persönlichem Auswertungs-Call startet bei 890 €, und die komplette Saisonbegleitung mit 1:1-Coaching beginnt bei 3.900 €. Alle Pakete sind Einmalzahlungen ohne Abo. Der Preis richtet sich nach Tiefe, Dauer und Umfang der Begleitung.',
-  },
-  {
-    q: 'Wie funktioniert die Anonymität bei Spieler- und 360°-Antworten?',
-    a: 'Antworten von Spielern und 360°-Einschätzern werden anonymisiert und ausschließlich aggregiert ausgewertet. Du als Trainer siehst niemals eine einzelne Antwort, sondern erst ab einer Mindestanzahl von vollständigen Antworten (3 bei 360°, 5 bei TeamCheck/Pulse) die zusammengefassten Werte. Zur sicheren Zuordnung von Einladungen werden technische Einmal-Tokens verarbeitet; die App speichert keine E-Mail-Adressen von Spielern. Wir geben keine Daten an Dritte weiter.',
-  },
-  {
-    q: 'Für welche Sportarten ist das gedacht?',
-    a: 'Der Check funktioniert für alle Mannschaftssportarten — Fußball, Handball, Eishockey, Volleyball, Basketball. Auch Individualsportarten mit Team-Struktur (Leichtathletik-Gruppen, Schwimm-Teams) sind abgedeckt.',
-  },
-  {
-    q: 'Wie unterscheidet sich das von Coaching?',
-    a: 'Coaching gibt dir Rat. Der Mindset Check gibt dir Struktur. Er macht sichtbar, wo du stehst, wie dein Team dich erlebt, und welche Entwicklungsfelder strukturiert sichtbar werden. Die Interpretation und die Entscheidungen triffst du selbst.',
-  },
-  {
-    q: 'Kann ich den TeamCheck auch ohne Selbsttest machen?',
-    a: 'Technisch ja. Wir empfehlen aber dringend, beide zu kombinieren — der Vergleich Selbstbild vs. Fremdbild ist oft der entscheidende Aha-Moment. Bei der Buchung des TeamChecks ist der Selbsttest bereits inkludiert.',
-  },
-  {
-    q: 'Wie wissenschaftlich ist das System?',
-    a: 'Der Check basiert auf sechs analytischen Modulen (Führungsarchitektur, Führungswirkung, Teamklima, Teamstruktur, Performance Climate, Saisondynamik) und sechs Kernachsen. Die 12 Archetypen entstehen nicht durch direkte Abfrage, sondern durch die Kombination dieser Dimensionen. Das Modell ist wissenschaftlich anschlussfähig an etablierte Konstrukte (u. a. Coach-Athlete Relationship, Teamkohäsion, Self-Determination Theory, Psychological Safety) — es ist allerdings ein laufend weiterentwickeltes Coaching- und Reflexionsmodell, keine klinisch validierte Persönlichkeitsdiagnostik. Die Archetypen sind Coachingprofile, keine harten Typen-Zuweisungen.',
-  },
-  {
-    q: 'Wer steht hinter dem Produkt?',
-    a: 'Humatrix — The Mind Club Company aus Tirol. Wir entwickeln Premium-Coaching-Systeme an der Schnittstelle von Mindset, Führung und Teamdynamik. Der Sport Mindset Check ist die Sport-Edition unseres Kern-Frameworks — entwickelt in enger Zusammenarbeit mit Trainern aus dem Mannschaftssport.',
-  },
-];
+import { useT } from '@/components/i18n/locale-provider';
 
 export function FaqSection() {
+  const t = useT();
   const [openIdx, setOpenIdx] = useState<number | null>(0);
+
+  const faqs = [
+    { q: t('faq.q1'), a: t('faq.a1') },
+    { q: t('faq.q2'), a: t('faq.a2') },
+    { q: t('faq.q3'), a: t('faq.a3') },
+    { q: t('faq.q4'), a: t('faq.a4') },
+    { q: t('faq.q5'), a: t('faq.a5') },
+    { q: t('faq.q6'), a: t('faq.a6') },
+    { q: t('faq.q7'), a: t('faq.a7') },
+  ];
 
   return (
     <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-28">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-10 lg:gap-20 items-start">
         <div className="lg:sticky lg:top-24">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-6 flex items-center gap-3">
-            <span className="w-10 h-px bg-ink" /> 08 — Fragen & Antworten
+            <span className="w-10 h-px bg-ink" /> {t('faq.kicker')}
           </div>
           <h2 className="font-display font-light text-[clamp(2rem,4.5vw,3.2rem)] leading-[1.02] tracking-[-0.03em]">
-            Alles, was du<br />
-            <em className="font-editorial">wissen willst.</em>
+            {t('faq.h2a')}<br />
+            <em className="font-editorial">{t('faq.h2emph')}</em>
           </h2>
         </div>
         <div className="border-t border-ink">

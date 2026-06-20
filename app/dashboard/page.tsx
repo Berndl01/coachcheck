@@ -1,56 +1,57 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/top-nav';
+import { FocusTracker } from '@/components/assessment/focus-tracker';
 import { Footer } from '@/components/landing/footer';
+import { getT, getLocale } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Bereit zum Start',
-  in_progress: 'Läuft',
-  completed: 'Abgeschlossen',
-  report_ready: 'Ergebnis bereit',
-  archived: 'Archiviert',
-};
-
-const LEVEL_LABELS: Record<string, string> = {
-  amateur_hobby: 'Amateur · Hobby',
-  amateur_ambitioniert: 'Amateur · Ambitioniert',
-  semi_profi: 'Semi-Profi',
-  profi: 'Profi',
-};
-
-const AGE_LABELS: Record<string, string> = {
-  kids_u12: 'Kids U12',
-  jugend_u16: 'Jugend U13-U16',
-  jugend_u18: 'Jugend U17-U19',
-  erwachsene: 'Erwachsene',
-  gemischt: 'Gemischt',
-};
-
-const SPORT_LABELS: Record<string, string> = {
-  fussball: 'Fußball',
-  handball: 'Handball',
-  basketball: 'Basketball',
-  volleyball: 'Volleyball',
-  eishockey: 'Eishockey',
-  andere: 'Sport',
-};
-
-function statusCTA(status: string, id: string) {
-  if (status === 'report_ready' || status === 'completed') {
-    return { href: `/assessment/${id}/result`, label: 'Ergebnis ansehen' };
-  }
-  if (status === 'in_progress') {
-    return { href: `/assessment/${id}`, label: 'Fortsetzen' };
-  }
-  return { href: `/assessment/${id}`, label: 'Starten' };
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+  const t = await getT();
+  const locale = await getLocale();
+
+  // DB-Schlüssel -> übersetzte Labels (Schlüssel bleiben stabil, nur Labels lokalisiert).
+  const STATUS_LABELS: Record<string, string> = {
+    pending: t('dashboard.statusPending'),
+    in_progress: t('dashboard.statusInProgress'),
+    completed: t('dashboard.statusCompleted'),
+    report_ready: t('dashboard.statusReportReady'),
+    archived: t('dashboard.statusArchived'),
+  };
+  const LEVEL_LABELS: Record<string, string> = {
+    amateur_hobby: t('dashboard.levelHobby'),
+    amateur_ambitioniert: t('dashboard.levelAmb'),
+    semi_profi: t('dashboard.levelSemi'),
+    profi: t('dashboard.levelProfi'),
+  };
+  const AGE_LABELS: Record<string, string> = {
+    kids_u12: t('dashboard.ageKids'),
+    jugend_u16: t('dashboard.ageJugend16'),
+    jugend_u18: t('dashboard.ageJugend18'),
+    erwachsene: t('dashboard.ageErwachsene'),
+    gemischt: t('dashboard.ageGemischt'),
+  };
+  const SPORT_LABELS: Record<string, string> = {
+    fussball: t('dashboard.sportFussball'),
+    handball: t('dashboard.sportHandball'),
+    basketball: t('dashboard.sportBasketball'),
+    volleyball: t('dashboard.sportVolleyball'),
+    eishockey: t('dashboard.sportEishockey'),
+    andere: t('dashboard.sportAndere'),
+  };
+  function statusCTA(status: string, id: string) {
+    if (status === 'report_ready' || status === 'completed') {
+      return { href: `/assessment/${id}/result`, label: t('dashboard.ctaResult') };
+    }
+    if (status === 'in_progress') {
+      return { href: `/assessment/${id}`, label: t('dashboard.ctaContinue') };
+    }
+    return { href: `/assessment/${id}`, label: t('dashboard.ctaStart') };
+  }
 
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single();
@@ -66,32 +67,76 @@ export default async function DashboardPage() {
   const { data: seasons } = await supabase
     .from('seasons').select('id, name, status').eq('user_id', user.id).order('created_at', { ascending: false });
 
-  // Pakete kategorisieren: gekauft vs. nicht gekauft
+  // Aktionsbereich (Bestcase §11/§12): aktive 7-Tage-Foki. RLS (owner-select) beschränkt automatisch.
+  const { data: activeFoci } = await supabase
+    .from('action_plans')
+    .select('id, title, action, assessment_id, created_at, target_days')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+
+  const { data: completedFoci } = await supabase
+    .from('action_plans')
+    .select('id, title, action, assessment_id, completed_at')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(8);
+
+  const focusPlanIds = [
+    ...(activeFoci ?? []).map((f: any) => f.id),
+    ...(completedFoci ?? []).map((f: any) => f.id),
+  ];
+  const checkinDatesByPlan: Record<string, string[]> = {};
+  if (focusPlanIds.length) {
+    const { data: checkins } = await supabase
+      .from('action_checkins')
+      .select('plan_id, checkin_date')
+      .in('plan_id', focusPlanIds);
+    for (const c of checkins ?? []) {
+      (checkinDatesByPlan[(c as any).plan_id] ??= []).push((c as any).checkin_date);
+    }
+  }
+  const todayStr = new Date().toISOString().slice(0, 10);
+  function focusProgress(planId: string) {
+    const dates = checkinDatesByPlan[planId] ?? [];
+    const set = new Set(dates);
+    const todayChecked = set.has(todayStr);
+    let streak = 0;
+    const cursor = new Date();
+    if (!set.has(cursor.toISOString().slice(0, 10))) {
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    while (set.has(cursor.toISOString().slice(0, 10))) {
+      streak++;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    return { count: set.size, todayChecked, streak };
+  }
+
   const ownedProductIds = new Set((assessments ?? []).map((a: any) => a.product?.id).filter(Boolean));
   const ownedProducts = (allProducts ?? []).filter((p: any) => ownedProductIds.has(p.id));
   const availableProducts = (allProducts ?? []).filter((p: any) => !ownedProductIds.has(p.id));
 
-  const firstName = profile?.full_name?.split(' ')[0] ?? user.email?.split('@')[0] ?? 'Trainer';
+  const firstName = profile?.full_name?.split(' ')[0] ?? user.email?.split('@')[0] ?? t('dashboard.nameFallback');
   const profileComplete = !!profile?.full_name && !!profile?.training_level;
 
-  // Meta-Chip zeigt Niveau + Alter + Sport wenn gesetzt
   const chips: string[] = [];
   if (profile?.training_level) chips.push(LEVEL_LABELS[profile.training_level] ?? profile.training_level);
   if (profile?.sport) chips.push(SPORT_LABELS[profile.sport] ?? profile.sport);
   if (profile?.age_group) chips.push(AGE_LABELS[profile.age_group] ?? profile.age_group);
   if (profile?.club) chips.push(profile.club);
 
+  const dayUnit = (n: number) => (n === 1 ? t('dashboard.dayOne') : t('dashboard.dayMany'));
+  const priceFmt = (cents: number) => (cents / 100).toLocaleString(locale === 'en' ? 'en-IE' : 'de-AT');
+
   return (
     <>
       <TopNav />
       <main className="max-w-[1200px] mx-auto px-4 md:px-8 py-10 md:py-14">
 
-        {/* ====================================================== */}
         {/* ZONE 1 — PROFIL-HEADER */}
-        {/* ====================================================== */}
         <header className="mb-12 pb-8 border-b border-bone-line">
           <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gold-deep mb-3">
-            Mein Profil
+            {t('dashboard.profileKicker')}
           </div>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="flex-grow">
@@ -107,37 +152,97 @@ export default async function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted italic">Profil noch nicht vervollständigt.</p>
+                <p className="text-muted italic">{t('dashboard.profileIncomplete')}</p>
               )}
             </div>
             <Link
               href="/profil/setup"
               className="font-mono text-xs uppercase tracking-[0.1em] px-4 py-2.5 border border-bone-line rounded-full text-muted hover:bg-ink hover:text-bone hover:border-ink transition whitespace-nowrap"
             >
-              {profileComplete ? 'Bearbeiten' : 'Vervollständigen'} →
+              {profileComplete ? t('dashboard.edit') : t('dashboard.complete')} →
             </Link>
           </div>
 
-          {/* Profil-Pflichthinweis wenn unvollständig */}
           {!profileComplete && (
             <div className="mt-6 p-4 bg-gold/10 border-l-4 border-gold rounded-r-md">
               <p className="text-sm">
-                <span className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep mr-2">Hinweis:</span>
-                Ohne Niveau-Angabe sind deine Reports allgemein gehalten. <Link href="/profil/setup" className="text-gold-deep hover:underline font-semibold">Jetzt vervollständigen →</Link>
+                <span className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep mr-2">{t('dashboard.noticeLabel')}</span>
+                {t('dashboard.noticeText')} <Link href="/profil/setup" className="text-gold-deep hover:underline font-semibold">{t('dashboard.noticeCta')}</Link>
               </p>
             </div>
           )}
         </header>
 
-        {/* ====================================================== */}
+        {/* ZONE 1.5 — AKTIVER FOKUS */}
+        {activeFoci && activeFoci.length > 0 && (
+          <section className="mb-16">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gold-deep mb-4">
+              {t('dashboard.activeFocus')}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {activeFoci.map((f: any) => {
+                const p = focusProgress(f.id);
+                return (
+                  <FocusTracker
+                    key={f.id}
+                    planId={f.id}
+                    assessmentId={f.assessment_id}
+                    title={f.title}
+                    action={f.action}
+                    targetDays={f.target_days ?? 7}
+                    initialCount={p.count}
+                    initialTodayChecked={p.todayChecked}
+                    initialStreak={p.streak}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ZONE 1.6 — ABGESCHLOSSENE FOKI */}
+        {completedFoci && completedFoci.length > 0 && (
+          <section className="mb-16">
+            <div className="flex items-baseline gap-3 mb-4">
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gold-deep">
+                {t('dashboard.completedFoci')}
+              </div>
+              <span className="font-mono text-[0.6rem] uppercase tracking-[0.12em] text-muted">
+                {completedFoci.length} {completedFoci.length === 1 ? t('dashboard.focusOne') : t('dashboard.focusMany')}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {completedFoci.map((f: any) => {
+                const c = focusProgress(f.id).count;
+                const when = f.completed_at
+                  ? new Date(f.completed_at).toLocaleDateString(locale === 'en' ? 'en-GB' : 'de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                  : null;
+                return (
+                  <div key={f.id} className="flex items-center justify-between gap-4 bg-bone-soft border border-bone-line rounded-md px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-ink truncate">{f.action}</p>
+                      {f.title && (
+                        <span className="font-mono text-[0.58rem] uppercase tracking-[0.12em] text-muted">{f.title}</span>
+                      )}
+                    </div>
+                    <div className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted whitespace-nowrap text-right">
+                      <span className="text-gold-deep">{c} {dayUnit(c)}</span>
+                      {when && <span> · {when}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* ZONE 2 — MEINE AUSWERTUNGEN */}
-        {/* ====================================================== */}
         <section className="mb-16">
           <div className="flex items-baseline justify-between mb-6">
-            <h2 className="font-display text-2xl tracking-[-0.02em]">Meine Auswertungen</h2>
+            <h2 className="font-display text-2xl tracking-[-0.02em]">{t('dashboard.myAssessments')}</h2>
             {(assessments && assessments.length > 0) && (
               <div className="font-mono text-xs uppercase tracking-[0.1em] text-muted">
-                {assessments.length} {assessments.length === 1 ? 'Assessment' : 'Assessments'}
+                {assessments.length} {assessments.length === 1 ? t('dashboard.assessmentOne') : t('dashboard.assessmentMany')}
               </div>
             )}
           </div>
@@ -145,10 +250,10 @@ export default async function DashboardPage() {
           {(!assessments || assessments.length === 0) ? (
             <div className="bg-bone-soft p-10 rounded-md border border-bone-line text-center">
               <div className="font-editorial text-xl italic text-muted mb-2">
-                Noch keine Auswertungen.
+                {t('dashboard.noAssessmentsTitle')}
               </div>
               <p className="text-sm text-muted mb-6 max-w-[40ch] mx-auto">
-                Starte mit deinem ersten Assessment — unten siehst du, welche Pakete du freischalten kannst.
+                {t('dashboard.noAssessmentsText')}
               </p>
             </div>
           ) : (
@@ -161,9 +266,7 @@ export default async function DashboardPage() {
                   <div
                     key={a.id}
                     className={`p-6 rounded-md border-2 transition ${
-                      ready
-                        ? 'bg-ink text-bone border-ink'
-                        : 'bg-bone border-bone-line hover:border-gold'
+                      ready ? 'bg-ink text-bone border-ink' : 'bg-bone border-bone-line hover:border-gold'
                     }`}
                   >
                     <div className={`font-mono text-[0.65rem] uppercase tracking-[0.15em] mb-2 ${ready ? 'text-gold' : 'text-gold-deep'}`}>
@@ -175,7 +278,7 @@ export default async function DashboardPage() {
                           {a.primary.name_de}
                         </div>
                         <div className={`font-mono text-[0.65rem] uppercase tracking-[0.12em] mb-4 ${ready ? 'text-bone-soft' : 'text-muted'}`}>
-                          {STATUS_LABELS[a.status]} · Tier {tier}
+                          {STATUS_LABELS[a.status]} · {t('dashboard.tier')} {tier}
                         </div>
                       </>
                     ) : (
@@ -184,7 +287,7 @@ export default async function DashboardPage() {
                           {STATUS_LABELS[a.status]}
                         </div>
                         {a.progress_pct > 0 && a.progress_pct < 100 && (
-                          <div className="font-mono text-xs text-muted mb-4">{a.progress_pct}% fortgeschritten</div>
+                          <div className="font-mono text-xs text-muted mb-4">{a.progress_pct}{t('dashboard.progressSuffix')}</div>
                         )}
                       </>
                     )}
@@ -202,7 +305,7 @@ export default async function DashboardPage() {
                           href={`/archetyp/${a.primary.code}?assessment=${a.id}`}
                           className="font-mono text-[0.65rem] uppercase tracking-[0.1em] px-4 py-2 rounded-full border border-gold text-gold hover:bg-gold hover:text-ink transition"
                         >
-                          Deep-Dive →
+                          {t('dashboard.deepDive')}
                         </Link>
                       )}
                     </div>
@@ -213,43 +316,39 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* ====================================================== */}
         {/* ZONE 3 — MEINE PAKETE + TOOLS */}
-        {/* ====================================================== */}
         {(ownedProducts.length > 0 || (seasons && seasons.length > 0)) && (
           <section className="mb-16">
-            <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Meine Pakete & Tools</h2>
+            <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">{t('dashboard.myPackages')}</h2>
             <div className="grid md:grid-cols-3 gap-4">
-              {/* Gekaufte Pakete anzeigen */}
               {ownedProducts.map((p: any) => (
                 <div key={p.id} className="p-5 bg-bone-soft rounded-md border border-bone-line">
                   <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-gold-deep mb-2">
-                    ✓ Freigeschaltet
+                    {t('dashboard.unlocked')}
                   </div>
                   <div className="font-display text-lg tracking-[-0.01em] mb-2">{p.name_de}</div>
                   <div className="text-xs text-muted leading-[1.5]">
-                    {p.tier >= 2 && 'Premium Report · Deep-Dive · '}
-                    {p.tier >= 3 && '360° Fremdeinschätzung · '}
-                    {p.tier >= 4 && 'TeamCheck · '}
-                    {p.tier >= 5 && 'Saison-Monitor · '}
+                    {p.tier >= 2 && t('dashboard.featPremium')}
+                    {p.tier >= 3 && t('dashboard.feat360')}
+                    {p.tier >= 4 && t('dashboard.featTeam')}
+                    {p.tier >= 5 && t('dashboard.featSeason')}
                   </div>
                 </div>
               ))}
 
-              {/* Saison-Link nur wenn Saison-Produkt aktiv ist */}
               {(seasons && seasons.length > 0) && (
                 <Link
                   href="/saison"
                   className="p-5 bg-petrol text-bone rounded-md hover:bg-petrol-soft transition block"
                 >
                   <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-gold-light mb-2">
-                    Tool · Saison-Monitor
+                    {t('dashboard.toolSeason')}
                   </div>
                   <div className="font-display text-lg tracking-[-0.01em] mb-2">
-                    {seasons.length} {seasons.length === 1 ? 'Saison' : 'Saisons'} aktiv
+                    {seasons.length} {seasons.length === 1 ? t('dashboard.seasonOne') : t('dashboard.seasonMany')} {t('dashboard.seasonActive')}
                   </div>
                   <div className="font-mono text-xs uppercase tracking-[0.1em] text-gold">
-                    Öffnen →
+                    {t('dashboard.open')}
                   </div>
                 </Link>
               )}
@@ -257,21 +356,17 @@ export default async function DashboardPage() {
           </section>
         )}
 
-        {/* ====================================================== */}
-        {/* ZONE 4 — WEITERE MÖGLICHKEITEN (nur wenn Pakete übrig) */}
-        {/* ====================================================== */}
+        {/* ZONE 4 — WEITERE MÖGLICHKEITEN */}
         {availableProducts.length > 0 && (
           <section className="mb-12">
             <div className="flex items-baseline justify-between mb-2">
-              <h2 className="font-display text-2xl tracking-[-0.02em]">Weitere Möglichkeiten</h2>
+              <h2 className="font-display text-2xl tracking-[-0.02em]">{t('dashboard.moreOptions')}</h2>
               <Link href="/#products" className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep hover:underline">
-                Alle Pakete →
+                {t('dashboard.allPackages')}
               </Link>
             </div>
             <p className="font-editorial italic text-muted mb-6 leading-[1.5]">
-              {ownedProducts.length > 0
-                ? 'Der nächste sinnvolle Schritt für dich.'
-                : 'Pakete, die du noch nicht freigeschaltet hast.'}
+              {ownedProducts.length > 0 ? t('dashboard.nextStep') : t('dashboard.notUnlocked')}
             </p>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
               {availableProducts.slice(0, 3).map((p: any) => (
@@ -281,14 +376,14 @@ export default async function DashboardPage() {
                   className="p-5 border border-bone-line rounded-md hover:border-gold hover:bg-bone-soft transition block"
                 >
                   <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-muted mb-2">
-                    Tier {p.tier}
+                    {t('dashboard.tier')} {p.tier}
                   </div>
                   <div className="font-display text-lg tracking-[-0.01em] mb-1">{p.name_de}</div>
                   <div className="font-mono text-xs text-gold-deep mb-3">
-                    {p.price_cents < 10000 ? `${Math.floor(p.price_cents / 100)} €` : `ab ${(p.price_cents / 100).toLocaleString('de-AT')} €`}
+                    {p.price_cents < 10000 ? `${Math.floor(p.price_cents / 100)} €` : `${t('dashboard.fromPrefix')} ${priceFmt(p.price_cents)} €`}
                   </div>
                   <div className="font-mono text-[0.65rem] uppercase tracking-[0.1em] text-muted">
-                    {p.tier >= 4 ? 'Anfragen →' : 'Freischalten →'}
+                    {p.tier >= 4 ? t('dashboard.inquire') : t('dashboard.unlock')}
                   </div>
                 </Link>
               ))}
@@ -299,11 +394,11 @@ export default async function DashboardPage() {
         {/* Logout */}
         <div className="pt-8 border-t border-bone-line flex flex-wrap gap-6 items-center">
           <a href="/konto/daten" className="font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition">
-            Meine Daten / Datenschutz →
+            {t('dashboard.myData')}
           </a>
           <form action="/auth/signout" method="post">
             <button type="submit" className="font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition">
-              Logout →
+              {t('dashboard.logout')}
             </button>
           </form>
         </div>

@@ -1,5 +1,5 @@
 /**
- * Humatrix Coach – Report PDF document (@react-pdf/renderer).
+ * CoachCheck – Report PDF document (@react-pdf/renderer).
  */
 import React from 'react';
 import {
@@ -690,6 +690,8 @@ export type ReportProps = {
     name_de: string;
     short_trait: string;
   };
+  /** Mischprofil-Einordnung (Bestcase §9): 'mixed' → PDF nennt es Mischprofil. */
+  profileType?: 'dominant' | 'mixed' | null;
   axisScores: AxisScores;
   texts: ReportOutput;
   // Optional 360° data
@@ -744,7 +746,7 @@ export function ReportDocument(props: ReportProps) {
 
   const {
     traineeName, sport, productName, productTier, date,
-    primaryArchetype, secondaryArchetype, axisScores, texts,
+    primaryArchetype, secondaryArchetype, profileType, axisScores, texts,
     fremdbildScores, discrepancies, fremdbildResponseCount,
     teamcheckScores, teamcheckResponseCount, teamcheckCareHints,
     maturityScores, context,
@@ -752,6 +754,7 @@ export function ReportDocument(props: ReportProps) {
   } = props;
 
   const showAllModules = productTier >= 2;
+  const isMixedProfile = profileType === 'mixed';
   const has360 = !!(fremdbildScores && discrepancies && discrepancies.length > 0);
   const hasTeamcheck = !!teamcheckScores;
   const hasPremium = productTier >= 2 && (texts.coach_signature_portrait || texts.paradoxien);
@@ -774,7 +777,7 @@ export function ReportDocument(props: ReportProps) {
 
   return (
     <Document
-      title={`Humatrix Coach Assessment — ${traineeName}`}
+      title={`CoachCheck Assessment — ${traineeName}`}
       author="Humatrix — The Mind Club Company"
     >
       {/* COVER */}
@@ -795,7 +798,7 @@ export function ReportDocument(props: ReportProps) {
                 profil.
               </Text>
               <Text style={styles.coverSubtitle}>
-                Ein hybrides Premium-Assessment für Führungsarchitektur, Coach Impact und Teamdynamik im Sport.
+                Ein hybrides Premium-Assessment für Führungsarchitektur, Coach-Wirkung und Teamdynamik im Sport.
               </Text>
             </View>
           </View>
@@ -825,7 +828,7 @@ export function ReportDocument(props: ReportProps) {
 
       {/* EXECUTIVE SUMMARY */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.kicker}>01 — Executive Summary</Text>
+        <Text style={styles.kicker}>01 — Überblick</Text>
         <Text style={styles.h1}>Die Kernbotschaft{'\n'}auf einen Blick.</Text>
         <View style={styles.dividerGold} />
         <Text style={styles.quote}>{texts.executive_summary}</Text>
@@ -838,28 +841,33 @@ export function ReportDocument(props: ReportProps) {
           </View>
         )}
         <View style={{ marginTop: 28 }}>
-          <Text style={styles.mono}>Primärer Archetyp</Text>
+          <Text style={styles.mono}>{isMixedProfile ? 'Dein Profil · Mischprofil' : 'Primärer Archetyp'}</Text>
           <Text style={styles.h3}>{primaryArchetype.name_de}</Text>
           <Text style={styles.bodyMuted}>{primaryArchetype.short_trait}</Text>
 
           <View style={{ marginTop: 14 }}>
-            <Text style={styles.mono}>Sekundärer Archetyp</Text>
+            <Text style={styles.mono}>{isMixedProfile ? 'Gleich starke Zweittendenz' : 'Sekundärer Archetyp'}</Text>
             <Text style={{ ...styles.h3, fontSize: 13 }}>{secondaryArchetype.name_de}</Text>
             <Text style={styles.bodyMuted}>{secondaryArchetype.short_trait}</Text>
           </View>
+          {isMixedProfile && (
+            <Text style={{ ...styles.bodyMuted, marginTop: 12 }}>
+              Dein Ergebnis ist ein Mischprofil aus {primaryArchetype.name_de} und {secondaryArchetype.name_de}. Beide Muster sind aktuell etwa gleich stark ausgeprägt; die folgenden Stärken und Hinweise gelten für beide Tendenzen.
+            </Text>
+          )}
         </View>
         <PageFooter pageNum={2} productName={productName} />
       </Page>
 
       {/* ARCHETYPE HERO */}
       <Page size="A4" style={styles.pagePetrol}>
-        <Text style={styles.archetypeLabel}>Dein Primärer Archetyp</Text>
+        <Text style={styles.archetypeLabel}>{isMixedProfile ? 'Dein Mischprofil' : 'Dein Primärer Archetyp'}</Text>
         <Text style={styles.archetypeName}>{primaryArchetype.name_de}</Text>
         <Text style={styles.archetypeTrait}>{primaryArchetype.short_trait}</Text>
         <Text style={styles.archetypeKernmuster}>{primaryArchetype.kernmuster}</Text>
 
         <View style={styles.secondarySection}>
-          <Text style={styles.secondaryLabel}>Sekundärer Archetyp</Text>
+          <Text style={styles.secondaryLabel}>{isMixedProfile ? 'Gleich starke Zweittendenz' : 'Sekundärer Archetyp'}</Text>
           <Text style={styles.secondaryName}>{secondaryArchetype.name_de}</Text>
           <Text style={styles.secondaryTrait}>{secondaryArchetype.short_trait}</Text>
         </View>
@@ -1186,8 +1194,8 @@ export function ReportDocument(props: ReportProps) {
           </View>
 
           <View style={{ ...styles.calloutGold, marginTop: 20 }}>
-            <Text style={styles.calloutLabel}>Blind Spots</Text>
-            <Text style={styles.body}>{texts.blind_spots ?? 'Keine signifikanten Blind Spots erkennbar.'}</Text>
+            <Text style={styles.calloutLabel}>Blinde Flecken</Text>
+            <Text style={styles.body}>{texts.blind_spots ?? 'Keine signifikanten blinden Flecken erkennbar.'}</Text>
           </View>
         </Page>
       )}
@@ -1268,7 +1276,7 @@ export function ReportDocument(props: ReportProps) {
 
           <View style={{ marginTop: 22 }}>
             {([
-              ['coach_impact', teamcheckScores.coachImpact, 'Coach Impact', 'Negativ', 'Positiv'],
+              ['coach_impact', teamcheckScores.coachImpact, 'Coach-Wirkung', 'Negativ', 'Positiv'],
               ['psy_safety', teamcheckScores.psySafety, 'Psychologische Sicherheit', 'Unsicher', 'Sicher'],
               ['team_klima', teamcheckScores.teamKlima, 'Teamklima', 'Schwach', 'Stark'],
               ['leistungsdr', teamcheckScores.leistungsdruck, 'Leistungsklima', 'Erdrückend', 'Inspirierend'],

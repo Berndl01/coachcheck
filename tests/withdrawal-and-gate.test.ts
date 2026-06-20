@@ -78,8 +78,9 @@ describe('Online-Widerrufsfunktion (Blocker 4)', () => {
   });
   it('Footer verlinkt die Widerrufsfunktion (leicht zugänglich)', () => {
     const f = read('components', 'landing', 'footer.tsx');
+    const de = read('lib', 'i18n', 'dictionaries', 'de.ts');
     expect(f).toMatch(/\/widerruf/);
-    expect(f).toMatch(/Vertrag widerrufen/);
+    expect(de).toMatch(/Vertrag widerrufen/);
   });
   it('Migration 34 legt withdrawals an', () => {
     const m = read('supabase', 'migrations', '34_withdrawals.sql');

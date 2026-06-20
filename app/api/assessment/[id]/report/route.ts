@@ -16,6 +16,7 @@ import {
   computeMaturityScores,
   computeDispersion,
   axisDistance,
+  classifyProfile,
   type AxisScores,
   type FremdbildAggregateRow,
   type MaturityScores,
@@ -451,12 +452,21 @@ export async function POST(
       }
     : null;
 
-  // Distanz-Differenz Primär vs Sekundär — flagged Mischtypen für AI-Prompt
+  // Distanz-Differenz Primär vs Sekundär + KANONISCHE Mischprofil-Einordnung.
+  // Wir benutzen exakt dieselbe Funktion/Schwelle wie Result-Seite & finalize
+  // (classifyProfile), damit nirgends eine abweichende Mischtyp-Logik entsteht
+  // (Bestcase §10). classifyProfile braucht nur die zwei nächsten Distanzen —
+  // das sind hier Primär und Sekundär. Funktioniert auch für Alt-Assessments.
   let archetypeDistanceDelta: number | null = null;
+  let profileType: 'dominant' | 'mixed' | null = null;
   if (primary?.axis_profile && secondary?.axis_profile) {
     const dPrimary = axisDistance(assessment.axis_scores as AxisScores, primary.axis_profile);
     const dSecondary = axisDistance(assessment.axis_scores as AxisScores, secondary.axis_profile);
     archetypeDistanceDelta = Math.abs(dSecondary - dPrimary);
+    profileType = classifyProfile([
+      { archetype: primary as never, distance: dPrimary },
+      { archetype: secondary as never, distance: dSecondary },
+    ]).type;
   }
 
   const reportInput: ReportInput = {
@@ -477,6 +487,7 @@ export async function POST(
       short_trait: secondary.short_trait,
     },
     archetypeDistanceDelta,
+    profileType,
     axisScores: assessment.axis_scores as AxisScores,
     moduleAverages,
     moduleGaps,
@@ -536,6 +547,7 @@ export async function POST(
       date: new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' }),
       primaryArchetype: reportInput.primaryArchetype,
       secondaryArchetype: reportInput.secondaryArchetype,
+      profileType,
       axisScores: reportInput.axisScores,
       texts,
       fremdbildScores: pdfFremdbildScores,
@@ -633,7 +645,7 @@ export async function POST(
 
       await sendEmailSafe({
         to: user.email,
-        subject: `Dein Humatrix Coach Report ist bereit — ${assessment.product.name_de}`,
+        subject: `Dein CoachCheck Report ist bereit — ${assessment.product.name_de}`,
         category: 'report-ready',
         html: `
           <div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; color: #1B1C1E;">

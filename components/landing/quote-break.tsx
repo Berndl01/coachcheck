@@ -1,4 +1,7 @@
-export function QuoteBreak() {
+import { getT } from '@/lib/i18n/server';
+
+export async function QuoteBreak() {
+  const t = await getT();
   return (
     <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-24 relative text-center">
       <span
@@ -10,11 +13,10 @@ export function QuoteBreak() {
       <p
         className="font-editorial italic font-normal text-[clamp(1.6rem,3.5vw,2.6rem)] leading-[1.25] max-w-[24ch] mx-auto relative z-10"
       >
-        Die meisten Trainer wissen alles über ihre Spieler — und überraschend wenig
-        darüber, wie sie selbst wirken.
+        {t('quoteBreak.quote')}
       </p>
       <div className="font-mono text-xs uppercase tracking-[0.18em] text-muted mt-8 relative z-10">
-        — Humatrix · Sport Mindset Lab
+        {t('quoteBreak.attribution')}
       </div>
     </section>
   );

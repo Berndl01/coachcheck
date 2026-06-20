@@ -108,6 +108,11 @@ const variants = [
       ],
     },
   },
+  {
+    // Bestcase §9: Mischprofil-Renderpfad muss fehlerfrei rendern.
+    name: '4-mischprofil',
+    props: { ...base, productTier: 2, profileType: 'mixed' },
+  },
 ];
 
 const outDir = join(ROOT, '.pdf-fulltest');

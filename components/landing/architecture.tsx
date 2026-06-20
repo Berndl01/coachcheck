@@ -1,56 +1,27 @@
-export function ArchitectureSection() {
+import { getT } from '@/lib/i18n/server';
+
+export async function ArchitectureSection() {
+  const t = await getT();
+  const mw = t('architecture.moduleWord');
+  const aw = t('architecture.axisWord');
+  // Modulnamen bleiben als kanonische Modellbegriffe deutsch (wie im Report).
   const modules = [
-    {
-      num: 'Modul A',
-      title: 'Führungs\u00ADidentität',
-      desc: 'Wofür du als Trainer stehst — Haltung, Selbstbild, innere Linie.',
-      subs: ['identität', 'haltung', 'werte', 'selbstbild', 'klarheit'],
-    },
-    {
-      num: 'Modul B',
-      title: 'Kommunikations\u00AD<em>architektur</em>',
-      desc: 'Wie deine Botschaften ankommen — Verständlichkeit, Ansprache, Tonlage.',
-      subs: ['verständlichkeit', 'ansprache', 'feedback', 'tonlage', 'dialog'],
-    },
-    {
-      num: 'Modul C',
-      title: 'Entscheidung & Priorität',
-      desc: 'Wie du Entscheidungen triffst und Verantwortung verortest.',
-      subs: ['entscheidung', 'priorität', 'verantwortung', 'konsequenz', 'tempo'],
-    },
-    {
-      num: 'Modul D',
-      title: 'Fehler- & <em>Lernkultur</em>',
-      desc: 'Wie aus Fehlern Lernen wird — Sicherheit, Analyse, Entwicklung.',
-      subs: ['fehlerkultur', 'lernen', 'sicherheit', 'analyse', 'wachstum'],
-    },
-    {
-      num: 'Modul E',
-      title: 'Führung unter Druck',
-      desc: 'Wie stabil dein Stil bleibt, wenn es wirklich zählt.',
-      subs: ['stabilität', 'druckreife', 'ruhe', 'präsenz', 'fokus'],
-    },
-    {
-      num: 'Modul F',
-      title: 'Motivation & <em>Aktivierung</em>',
-      desc: 'Wie du Energie erzeugst — Anspruch, Anerkennung, Antrieb.',
-      subs: ['anspruch', 'anerkennung', 'antrieb', 'energie', 'aktivierung'],
-    },
-    {
-      num: 'Modul G',
-      title: 'Beziehung & Vertrauen',
-      desc: 'Wie du Vertrauen aufbaust — Nähe, Verlässlichkeit, Anschluss.',
-      subs: ['vertrauen', 'nähe', 'verlässlichkeit', 'anschluss', 'respekt'],
-    },
+    { num: `${mw} A`, title: 'Führungs\u00ADidentität', desc: t('architecture.descA'), subs: t('architecture.subsA').split(','), pl: t('architecture.poleAl'), pr: t('architecture.poleAr') },
+    { num: `${mw} B`, title: 'Kommunikations\u00AD<em>architektur</em>', desc: t('architecture.descB'), subs: t('architecture.subsB').split(','), pl: t('architecture.poleBl'), pr: t('architecture.poleBr') },
+    { num: `${mw} C`, title: 'Entscheidung & Priorität', desc: t('architecture.descC'), subs: t('architecture.subsC').split(','), pl: t('architecture.poleCl'), pr: t('architecture.poleCr') },
+    { num: `${mw} D`, title: 'Fehler- & <em>Lernkultur</em>', desc: t('architecture.descD'), subs: t('architecture.subsD').split(','), pl: t('architecture.poleDl'), pr: t('architecture.poleDr') },
+    { num: `${mw} E`, title: 'Führung unter Druck', desc: t('architecture.descE'), subs: t('architecture.subsE').split(','), pl: t('architecture.poleEl'), pr: t('architecture.poleEr') },
+    { num: `${mw} F`, title: 'Motivation & <em>Aktivierung</em>', desc: t('architecture.descF'), subs: t('architecture.subsF').split(','), pl: t('architecture.poleFl'), pr: t('architecture.poleFr') },
+    { num: `${mw} G`, title: 'Beziehung & Vertrauen', desc: t('architecture.descG'), subs: t('architecture.subsG').split(','), pl: t('architecture.poleGl'), pr: t('architecture.poleGr') },
   ];
 
   const axes = [
-    { n: 'Achse 01', l: 'Struktur', r: 'Intuition', pos: '28%' },
-    { n: 'Achse 02', l: 'Autorität', r: 'Beteiligung', pos: '42%' },
-    { n: 'Achse 03', l: 'Leistung', r: 'Beziehung', pos: '66%' },
-    { n: 'Achse 04', l: 'Stabilität', r: 'Aktivierung', pos: '38%' },
-    { n: 'Achse 05', l: 'Reflexion', r: 'Direktheit', pos: '52%' },
-    { n: 'Achse 06', l: 'Standards', r: 'Anpassung', pos: '30%' },
+    { n: `${aw} 01`, l: t('architecture.ax1l'), r: t('architecture.ax1r'), pos: '28%' },
+    { n: `${aw} 02`, l: t('architecture.ax2l'), r: t('architecture.ax2r'), pos: '42%' },
+    { n: `${aw} 03`, l: t('architecture.ax3l'), r: t('architecture.ax3r'), pos: '66%' },
+    { n: `${aw} 04`, l: t('architecture.ax4l'), r: t('architecture.ax4r'), pos: '38%' },
+    { n: `${aw} 05`, l: t('architecture.ax5l'), r: t('architecture.ax5r'), pos: '52%' },
+    { n: `${aw} 06`, l: t('architecture.ax6l'), r: t('architecture.ax6r'), pos: '30%' },
   ];
 
   return (
@@ -61,22 +32,20 @@ export function ArchitectureSection() {
       />
       <div className="max-w-[1440px] mx-auto relative z-10">
         <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-light mb-6 flex items-center gap-3">
-          <span className="w-10 h-px bg-gold" /> 05 — Unter der Oberfläche
+          <span className="w-10 h-px bg-gold" /> {t('architecture.kicker')}
         </div>
         <h2 className="font-display font-light text-[clamp(2rem,5.5vw,4.2rem)] leading-none tracking-[-0.035em] max-w-[20ch] mb-5">
-          Was die 12 Typen<br />
-          <em className="font-editorial text-gold-light">wirklich tragen.</em>
+          {t('architecture.h2a')}<br />
+          <em className="font-editorial text-gold-light">{t('architecture.h2emph')}</em>
         </h2>
         <p className="font-editorial italic text-xl text-bone-soft max-w-[58ch] leading-[1.45] mb-12 md:mb-16 opacity-90">
-          Die 12 Archetypen sind die sichtbare Ergebnis-Schicht. Darunter liegt ein
-          analytisches System aus sieben Modulen und sechs Kernachsen — auf
-          Consulting-Niveau, für Trainer, die es ernst meinen.
+          {t('architecture.lead')}
         </p>
 
         {/* 7 Modules */}
         <div className="font-mono text-xs uppercase tracking-[0.22em] text-gold-light mb-5 flex items-center gap-3">
           <span className="flex-grow h-px bg-bone/15 max-w-[80px]" />
-          Sieben analytische Module
+          {t('architecture.modulesLabel')}
           <span className="w-10 h-px bg-bone/15" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-bone/12 border border-bone/12 mb-12 md:mb-16 rounded-sm overflow-hidden">
@@ -88,7 +57,12 @@ export function ArchitectureSection() {
                 style={{ fontVariationSettings: "'opsz' 144" }}
                 dangerouslySetInnerHTML={{ __html: m.title.replace('<em>', '<em class="font-editorial italic font-normal">') }}
               />
-              <p className="text-sm leading-[1.5] text-bone-soft opacity-75 mb-4">{m.desc}</p>
+              <p className="text-sm leading-[1.5] text-bone-soft opacity-75 mb-3">{m.desc}</p>
+              <div className="flex items-center gap-2.5 mb-4 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-gold-light/85">
+                <span>{m.pl}</span>
+                <span className="flex-grow h-px bg-bone/15" />
+                <span>{m.pr}</span>
+              </div>
               <ul className="flex flex-wrap gap-1.5 mt-auto">
                 {m.subs.map((s, j) => (
                   <li key={j} className="font-mono text-[0.65rem] px-2 py-0.5 bg-bone/7 border border-bone/10 text-bone-soft rounded-full lowercase">
@@ -104,9 +78,9 @@ export function ArchitectureSection() {
         <div className="my-10 md:my-14 p-6 md:p-10 bg-petrol/40 border border-bone/10 rounded-md">
           <div className="flex items-baseline justify-between flex-wrap gap-3 mb-8">
             <h3 className="font-display font-normal text-[clamp(1.3rem,2.5vw,1.7rem)] leading-tight tracking-[-0.02em] text-bone" style={{ fontVariationSettings: "'opsz' 144" }}>
-              Sechs Kernachsen<br />der <em className="font-editorial italic text-gold-light">Führungsarchitektur.</em>
+              {t('architecture.axesTitleA')}<br />{t('architecture.axesTitleMid')} <em className="font-editorial italic text-gold-light">{t('architecture.axesTitleEmph')}</em>
             </h3>
-            <span className="font-mono text-xs uppercase tracking-[0.14em] text-gold">Beispiel-Profil</span>
+            <span className="font-mono text-xs uppercase tracking-[0.14em] text-gold">{t('architecture.exampleProfile')}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-x-10 md:gap-y-5">
             {axes.map((a, i) => (
@@ -132,7 +106,7 @@ export function ArchitectureSection() {
           <div className="bg-ink text-bone p-8 flex flex-col gap-3 relative">
             <span className="absolute top-0 inset-x-0 h-[3px] bg-gold" />
             <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gold mb-2">
-              Auszug · Premium-Report
+              {t('architecture.rsKicker')}
             </span>
             <h4
               className="font-display text-[1.35rem] font-normal leading-tight tracking-[-0.02em]"
@@ -142,44 +116,39 @@ export function ArchitectureSection() {
             </h4>
             <div className="flex gap-6 mt-6 pt-6 border-t border-ink-line">
               <div>
-                <div className="font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted-dark mb-1">Score</div>
+                <div className="font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted-dark mb-1">{t('architecture.scoreLabel')}</div>
                 <div className="font-display text-[1.35rem] font-medium text-gold tracking-[-0.02em]">68</div>
               </div>
               <div>
-                <div className="font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted-dark mb-1">Spreizung</div>
-                <div className="font-display text-[1.35rem] font-medium text-gold tracking-[-0.02em]">hoch</div>
+                <div className="font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted-dark mb-1">{t('architecture.spreadLabel')}</div>
+                <div className="font-display text-[1.35rem] font-medium text-gold tracking-[-0.02em]">{t('architecture.spreadValue')}</div>
               </div>
             </div>
           </div>
           <div className="p-8">
             <div className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-gold-deep mb-3 flex items-center gap-2">
-              <span className="w-5 h-px bg-gold-deep" /> Interpretation
+              <span className="w-5 h-px bg-gold-deep" /> {t('architecture.interpretationLabel')}
             </div>
             <h4 className="font-display text-[1.3rem] font-medium leading-[1.15] tracking-[-0.02em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
-              Solide Wirkung,{' '}
-              <em className="font-editorial italic font-normal">uneinheitliche Anschlussfähigkeit.</em>
+              {t('architecture.rsH4a')}{' '}
+              <em className="font-editorial italic font-normal">{t('architecture.rsH4emph')}</em>
             </h4>
             <p className="font-editorial text-[1.02rem] leading-[1.55] text-ink mb-5">
-              Die Kommunikationswirkung des Trainers wird insgesamt als solide erlebt,
-              jedoch nicht gleichmäßig. Ein Teil der Mannschaft erlebt Orientierung und
-              Nachvollziehbarkeit, ein anderer Teil mehr Unklarheit. Diese Spreizung
-              spricht weniger für ein generelles Kommunikations&shy;problem als für eine
-              uneinheitliche Anschlussfähigkeit.
+              {t('architecture.rsPara')}
             </p>
             <div className="flex flex-col gap-1.5 p-4 bg-bone-soft border-l-2 border-gold rounded-r-md">
               <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-gold-deep">
-                Entwicklungshebel
+                {t('architecture.leverLabel')}
               </span>
               <span className="text-sm leading-[1.5] font-medium">
-                Nicht mehr Klarheit — differenziertere Adressierung. Welche
-                Spielergruppen erreichst du, welche nicht?
+                {t('architecture.leverText')}
               </span>
             </div>
           </div>
         </div>
 
         <p className="mt-8 text-center font-mono text-xs uppercase tracking-[0.16em] text-bone-soft opacity-70">
-          So liest sich ein Auszug aus dem Premium-Report — Analyse, Interpretation, Hebel.
+          {t('architecture.caption')}
         </p>
       </div>
     </section>

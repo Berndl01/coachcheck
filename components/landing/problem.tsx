@@ -1,30 +1,21 @@
-export function ProblemSection() {
+import { getT } from '@/lib/i18n/server';
+
+export async function ProblemSection() {
+  const t = await getT();
   const cards = [
-    {
-      num: '— 01',
-      title: 'Kein Team sagt dir die Wahrheit.',
-      text: 'Höflichkeit, Hierarchie, Angst vor Folgen. Was Spieler wirklich denken, erfährst du oft erst, wenn es zu spät ist.',
-    },
-    {
-      num: '— 02',
-      title: 'Selbstbild ≠ Fremdbild.',
-      text: 'Du hältst dich für ruhig und klar. Dein Team erlebt dich als hart und kontrollierend. Diese Lücke entscheidet Spiele.',
-    },
-    {
-      num: '— 03',
-      title: 'Stimmung kippt, bevor du\'s siehst.',
-      text: 'Konflikte, die Leistung kosten, brauen sich Wochen an. Ohne Messung merkst du es erst am Ergebnis.',
-    },
+    { num: t('problem.c1num'), title: t('problem.c1title'), text: t('problem.c1text') },
+    { num: t('problem.c2num'), title: t('problem.c2title'), text: t('problem.c2text') },
+    { num: t('problem.c3num'), title: t('problem.c3title'), text: t('problem.c3text') },
   ];
 
   return (
     <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-28">
       <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-6 flex items-center gap-3">
-        <span className="w-10 h-px bg-ink" /> 01 — Das Problem
+        <span className="w-10 h-px bg-ink" /> {t('problem.kicker')}
       </div>
       <h2 className="font-display font-light text-[clamp(2rem,5vw,3.8rem)] leading-[1.05] tracking-[-0.03em] max-w-[22ch] mb-8 md:mb-12">
-        Die meisten Trainer führen{' '}
-        <em className="font-editorial text-gold-deep">im Blindflug.</em>
+        {t('problem.h2a')}{' '}
+        <em className="font-editorial text-gold-deep">{t('problem.h2emph')}</em>
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

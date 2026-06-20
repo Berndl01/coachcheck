@@ -108,7 +108,7 @@ export async function POST(
         price_data: {
           currency: 'eur',
           product_data: {
-            name: `Humatrix Coach · ${product.name_de}`,
+            name: `CoachCheck · ${product.name_de}`,
             description: product.description ?? undefined,
           },
           unit_amount: product.price_cents,

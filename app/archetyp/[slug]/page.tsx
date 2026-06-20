@@ -5,6 +5,7 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ARCHETYPE_DEEP_DIVES } from '@/lib/archetype-deep-dive';
 import { PersonalSection } from './personal-section';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,7 @@ export default async function ArchetypePage({
 }) {
   const { slug } = await params;
   const { assessment: assessmentId } = await searchParams;
+  const t = await getT();
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -72,17 +74,16 @@ export default async function ArchetypePage({
         <TopNav />
         <main className="max-w-3xl mx-auto px-4 md:px-8 py-16 text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">
-            Premium-Feature
+            {t('archetypePage.gateKicker')}
           </div>
           <h1 className="font-display text-4xl tracking-[-0.03em] mb-4">
-            Deep-Dive <em className="font-editorial">verschlossen.</em>
+            {t('archetypePage.gateTitleA')} <em className="font-editorial">{t('archetypePage.gateTitleEmph')}</em>
           </h1>
           <p className="text-muted mb-8 max-w-[50ch] mx-auto leading-[1.5]">
-            Die ausführlichen Archetypen-Portraits sind Teil des Selbsttest Premium (79 €) und aller weiteren Pakete.
-            Im Schnelltest (19 €) siehst du nur die Kurzbeschreibung.
+            {t('archetypePage.gateBody')}
           </p>
           <Link href="/#products" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-ink hover:text-gold transition">
-            Premium freischalten <span className="font-mono">→</span>
+            {t('archetypePage.gateButton')} <span className="font-mono">→</span>
           </Link>
         </main>
         <Footer />
@@ -99,7 +100,7 @@ export default async function ArchetypePage({
           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top right, rgba(179, 142, 69, 0.15), transparent 50%)' }} />
           <div className="max-w-4xl mx-auto relative">
             <div className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-gold-light mb-6">
-              Deep Dive · Archetyp-Portrait
+              Deep-Dive · Archetyp-Portrait
             </div>
             <h1 className="font-display font-light text-[clamp(2.6rem,6vw,5rem)] leading-[1.02] tracking-[-0.035em] mb-3" style={{ fontVariationSettings: "'opsz' 144" }}>
               {archetype.name_de}
@@ -247,10 +248,10 @@ export default async function ArchetypePage({
         <section className="bg-ink text-bone py-16 px-4 md:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold mb-4">
-              Der nächste Schritt
+              {t('archetypePage.upsellKicker')}
             </div>
             <h2 className="font-display text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.1] tracking-[-0.03em] mb-5">
-              Jetzt kennst du dich. Aber wie sieht dich <em className="font-editorial text-gold">dein Team?</em>
+              {t('archetypePage.upsellTitleA')} <em className="font-editorial text-gold">{t('archetypePage.upsellTitleEmph')}</em>
             </h2>
             <p className="font-editorial italic text-lg text-bone-soft mb-8 max-w-[55ch] mx-auto leading-[1.5]">
               {deepDive.upsell_hinweis}
@@ -259,7 +260,7 @@ export default async function ArchetypePage({
               href="/#products"
               className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition"
             >
-              Weitere Pakete ansehen <span className="font-mono">→</span>
+              {t('archetypePage.upsellButton')} <span className="font-mono">→</span>
             </Link>
           </div>
         </section>

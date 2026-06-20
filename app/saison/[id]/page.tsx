@@ -6,6 +6,7 @@ import { requireSeasonEntitlement } from '@/lib/season/entitlement';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { SeasonControl } from './season-control';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,7 @@ export default async function SeasonDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const t = await getT();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
@@ -45,21 +47,18 @@ export default async function SeasonDetailPage({
         <TopNav />
         <main className="max-w-[860px] mx-auto px-4 md:px-8 py-12">
           <Link href="/saison" className="font-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-ink">
-            ← Alle Saisons
+            {t('seasonDetail.allSeasons')}
           </Link>
           <div className="mt-8 bg-bone-soft border border-bone-line p-8 rounded-md">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
-              Saison-Monitor · Zugriff gesperrt
+              {t('seasonDetail.lockedKicker')}
             </div>
             <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">{season.name}</h1>
             <p className="text-muted leading-relaxed">
-              Diese Saison ist derzeit nicht zugänglich. Das passiert, wenn der zugehörige
-              Kauf erstattet wurde oder die Saison archiviert ist. Pulse-Cycles, Tokens und
-              gespeicherte Auswertungen sind damit gesperrt.
+              {t('seasonDetail.lockedBody1')}
             </p>
             <p className="text-muted leading-relaxed mt-3 text-sm">
-              Wenn du den Saison-Monitor weiter nutzen möchtest, ist ein gültiges,
-              aktives Saison-Paket erforderlich. Bei Fragen wende dich an den Support.
+              {t('seasonDetail.lockedBody2')}
             </p>
           </div>
         </main>
@@ -90,16 +89,16 @@ export default async function SeasonDetailPage({
         {/* Hero */}
         <div className="mb-12">
           <Link href="/saison" className="font-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-ink">
-            ← Alle Saisons
+            {t('seasonDetail.allSeasons')}
           </Link>
           <div className="mt-4 mb-2 font-mono text-xs uppercase tracking-[0.2em] text-gold-deep">
-            Saison-Monitor
+            {t('seasonDetail.kicker')}
           </div>
           <h1 className="font-display text-5xl tracking-[-0.03em]">
             {season.name}
           </h1>
           <p className="text-muted mt-3">
-            {season.sport ? `${season.sport} · ` : ''}{season.team_size_estimate ? `~${season.team_size_estimate} Spieler · ` : ''}Pulse alle {season.pulse_interval_days} Tage · Status: {season.status}
+            {season.sport ? `${season.sport} · ` : ''}{season.team_size_estimate ? t('seasonDetail.metaPlayers').replace('{n}', String(season.team_size_estimate)) : ''}{t('seasonDetail.metaPulse').replace('{days}', String(season.pulse_interval_days))}{season.status}
           </p>
         </div>
 

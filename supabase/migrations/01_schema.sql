@@ -3,6 +3,11 @@
 -- Phase 1 Schema — Core Tables + RLS
 -- ============================================================
 
+-- Krypto-Funktionen explizit sicherstellen. Auf Supabase ist pgcrypto bereits
+-- aktiv (dann No-Op); auf einer frischen Postgres-Instanz wird es hier aktiviert,
+-- damit gen_random_bytes()/gen_random_uuid() (u. a. Migration 05) verfügbar sind.
+create extension if not exists pgcrypto;
+
 -- ------------------------------------------------------------
 -- 1. PROFILES — Erweiterung von auth.users
 -- ------------------------------------------------------------

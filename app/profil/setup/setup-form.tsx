@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   initialProfile: {
@@ -14,31 +15,33 @@ type Props = {
   };
 };
 
-const LEVELS = [
-  { key: 'amateur_hobby', title: 'Amateur · Hobby', desc: 'Freizeit, Spaß, Team aus Arbeitskollegen oder Freunden' },
-  { key: 'amateur_ambitioniert', title: 'Amateur · Ambitioniert', desc: 'Verein mit Liga-Ambition, regelmäßiges Training, Ergebnisse wichtig' },
-  { key: 'semi_profi', title: 'Semi-Profi / Nachwuchs-Leistungssport', desc: 'Höhere Amateurligen, Landesauswahl, NLZ-Jugend, ambitionierte Akademien' },
-  { key: 'profi', title: 'Profi · Vollzeit', desc: 'Berufsmäßiges Trainersein, Profi-Liga oder Vergleichbares' },
-];
-
-const AGE_GROUPS = [
-  { key: 'kids_u12', title: 'Kids (bis U12)' },
-  { key: 'jugend_u16', title: 'Jugend U13-U16' },
-  { key: 'jugend_u18', title: 'Jugend U17-U19' },
-  { key: 'erwachsene', title: 'Erwachsene' },
-  { key: 'gemischt', title: 'Gemischt / mehrere Teams' },
-];
-
-const CLUB_TYPES = [
-  { key: 'dorfverein', title: 'Dorf-/Gemeindeverein' },
-  { key: 'stadtverein', title: 'Stadtverein' },
-  { key: 'leistungszentrum', title: 'Leistungszentrum / NLZ' },
-  { key: 'akademie', title: 'Akademie / Profiverein' },
-  { key: 'sonstige', title: 'Sonstige' },
-];
-
 export function ProfileSetupForm({ initialProfile }: Props) {
+  const t = useT();
   const router = useRouter();
+
+  // Schlüssel (training_level/age_group/club_type) sind DB-Werte und bleiben stabil;
+  // nur die sichtbaren Labels werden übersetzt.
+  const LEVELS = [
+    { key: 'amateur_hobby', title: t('profileSetup.levelHobbyTitle'), desc: t('profileSetup.levelHobbyDesc') },
+    { key: 'amateur_ambitioniert', title: t('profileSetup.levelAmbTitle'), desc: t('profileSetup.levelAmbDesc') },
+    { key: 'semi_profi', title: t('profileSetup.levelSemiTitle'), desc: t('profileSetup.levelSemiDesc') },
+    { key: 'profi', title: t('profileSetup.levelProfiTitle'), desc: t('profileSetup.levelProfiDesc') },
+  ];
+  const AGE_GROUPS = [
+    { key: 'kids_u12', title: t('profileSetup.ageKidsU12') },
+    { key: 'jugend_u16', title: t('profileSetup.ageJugendU16') },
+    { key: 'jugend_u18', title: t('profileSetup.ageJugendU18') },
+    { key: 'erwachsene', title: t('profileSetup.ageErwachsene') },
+    { key: 'gemischt', title: t('profileSetup.ageGemischt') },
+  ];
+  const CLUB_TYPES = [
+    { key: 'dorfverein', title: t('profileSetup.clubDorf') },
+    { key: 'stadtverein', title: t('profileSetup.clubStadt') },
+    { key: 'leistungszentrum', title: t('profileSetup.clubLZ') },
+    { key: 'akademie', title: t('profileSetup.clubAkademie') },
+    { key: 'sonstige', title: t('profileSetup.clubSonstige') },
+  ];
+
   const [fullName, setFullName] = useState(initialProfile.full_name ?? '');
   const [sport, setSport] = useState(initialProfile.sport ?? 'fussball');
   const [club, setClub] = useState(initialProfile.club ?? '');
@@ -66,10 +69,10 @@ export function ProfileSetupForm({ initialProfile }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Fehler');
+      if (!res.ok) throw new Error(data.error ?? t('profileSetup.error'));
       router.push('/dashboard');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
+      setError(e instanceof Error ? e.message : t('profileSetup.error'));
     } finally {
       setSaving(false);
     }
@@ -80,28 +83,28 @@ export function ProfileSetupForm({ initialProfile }: Props) {
       {/* Basics */}
       <div className="grid gap-4">
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Dein Name *</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('profileSetup.nameLabel')}</label>
           <input
             type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-            placeholder="Vorname Nachname"
+            placeholder={t('profileSetup.namePlaceholder')}
             className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
           />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Sport *</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('profileSetup.sportLabel')}</label>
             <select value={sport} onChange={(e) => setSport(e.target.value)}
               className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none">
-              <option value="fussball">Fußball</option>
-              <option value="handball">Handball</option>
-              <option value="basketball">Basketball</option>
-              <option value="volleyball">Volleyball</option>
-              <option value="eishockey">Eishockey</option>
-              <option value="andere">Andere</option>
+              <option value="fussball">{t('options.sportFussball')}</option>
+              <option value="handball">{t('options.sportHandball')}</option>
+              <option value="basketball">{t('options.sportBasketball')}</option>
+              <option value="volleyball">{t('options.sportVolleyball')}</option>
+              <option value="eishockey">{t('options.sportEishockey')}</option>
+              <option value="andere">{t('options.sportAndere')}</option>
             </select>
           </div>
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Verein (optional)</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('profileSetup.clubLabel')}</label>
             <input
               type="text" value={club} onChange={(e) => setClub(e.target.value)}
               className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
@@ -113,7 +116,7 @@ export function ProfileSetupForm({ initialProfile }: Props) {
       {/* Niveau */}
       <div>
         <label className="block font-mono text-xs uppercase tracking-[0.15em] text-gold-deep mb-3">
-          Auf welchem Niveau trainierst du? *
+          {t('profileSetup.levelQ')}
         </label>
         <div className="grid gap-2">
           {LEVELS.map((l) => (
@@ -139,7 +142,7 @@ export function ProfileSetupForm({ initialProfile }: Props) {
       {/* Altersgruppe */}
       <div>
         <label className="block font-mono text-xs uppercase tracking-[0.15em] text-gold-deep mb-3">
-          Mit welcher Altersklasse arbeitest du?
+          {t('profileSetup.ageQ')}
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {AGE_GROUPS.map((a) => (
@@ -162,7 +165,7 @@ export function ProfileSetupForm({ initialProfile }: Props) {
       {/* Vereinstyp */}
       <div>
         <label className="block font-mono text-xs uppercase tracking-[0.15em] text-gold-deep mb-3">
-          Was für ein Verein ist das?
+          {t('profileSetup.clubTypeQ')}
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {CLUB_TYPES.map((c) => (
@@ -190,7 +193,7 @@ export function ProfileSetupForm({ initialProfile }: Props) {
           disabled={saving || !fullName || !level}
           className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-ink rounded-full font-semibold hover:bg-ink hover:text-gold disabled:opacity-50 transition"
         >
-          {saving ? 'Speichert …' : 'Weiter zum Dashboard'} <span className="font-mono">→</span>
+          {saving ? t('profileSetup.saving') : t('profileSetup.submit')} <span className="font-mono">→</span>
         </button>
       </div>
     </form>

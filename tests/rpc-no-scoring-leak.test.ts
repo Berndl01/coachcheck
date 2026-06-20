@@ -51,14 +51,21 @@ describe('Migration 30 — RPCs liefern keine Scoring-Metadaten', () => {
 
 describe('Landing-Zitate sind faktisch korrekt (verifiziert)', () => {
   const sci = read('components', 'landing', 'science-foundation.tsx');
+  // Quellen-Themen liegen seit der Zweisprachigkeit im i18n-Woerterbuch;
+  // die Autor->Themen-Bindung bleibt ueber den r-Key der Komponente pruefbar.
+  const dict = read('lib', 'i18n', 'dictionaries', 'de.ts');
+  const topicOf = (author: string) => {
+    const line = sci.split('\n').find((l) => l.includes(author)) ?? '';
+    const key = line.match(/science\.(r\d+)/)?.[1] ?? '';
+    return dict.match(new RegExp(`${key}: '([^']*)'`))?.[1] ?? '';
+  };
   it('Cooke et al. ist nicht als Review ausgewiesen', () => {
-    // Cooke-Zeile darf nicht das Wort "Review" tragen
-    const cookeLine = sci.split('\n').find((l) => l.includes('Cooke et al.')) ?? '';
-    expect(cookeLine).not.toMatch(/Review/);
-    expect(cookeLine).toMatch(/qualitative Studie/);
+    const topic = topicOf('Cooke et al.');
+    expect(topic).not.toMatch(/Review/);
+    expect(topic).toMatch(/qualitative Studie/);
   });
   it('Vella et al. (systematisches Review) ist als Quelle geführt', () => {
-    expect(sci).toMatch(/Vella et al\..*systematisches Review/);
+    expect(topicOf('Vella et al.')).toMatch(/systematisches Review/);
   });
   it('Glandorf ist als 2023 geführt', () => {
     const glandorf = sci.split('\n').find((l) => l.includes('Glandorf')) ?? '';

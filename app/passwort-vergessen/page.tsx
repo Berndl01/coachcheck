@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 export default function PasswortVergessenPage() {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -30,7 +32,6 @@ export default function PasswortVergessenPage() {
     }
 
     // Aus Sicherheitsgründen zeigen wir die Erfolgsmeldung immer
-    // (egal ob Account existiert oder nicht)
     setSent(true);
   }
 
@@ -41,27 +42,26 @@ export default function PasswortVergessenPage() {
       {sent ? (
         <>
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
-            ✓ E-Mail unterwegs
+            {t('passwordForgot.sentKicker')}
           </div>
-          <h1 className="font-display text-4xl tracking-[-0.03em] mb-3">Check dein Postfach.</h1>
+          <h1 className="font-display text-4xl tracking-[-0.03em] mb-3">{t('passwordForgot.sentTitle')}</h1>
           <p className="font-editorial italic text-lg text-muted leading-[1.5] mb-8">
-            Falls ein Account mit dieser E-Mail existiert, bekommst du gleich einen Link zum
-            Zurücksetzen deines Passworts. Schau auch im Spam-Ordner nach.
+            {t('passwordForgot.sentText')}
           </p>
           <Link href="/login" className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep hover:underline">
-            ← Zurück zum Login
+            {t('passwordForgot.backToLogin')}
           </Link>
         </>
       ) : (
         <>
-          <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">Passwort vergessen?</h1>
+          <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">{t('passwordForgot.title')}</h1>
           <p className="text-muted mb-8">
-            Kein Problem. Gib deine E-Mail-Adresse ein und wir schicken dir einen Link zum Zurücksetzen.
+            {t('passwordForgot.lead')}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">E-Mail</label>
+              <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('auth.emailLabel')}</label>
               <input
                 type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -75,12 +75,12 @@ export default function PasswortVergessenPage() {
               type="submit" disabled={loading}
               className="w-full py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition disabled:opacity-50"
             >
-              {loading ? 'Sendet …' : 'Reset-Link senden'}
+              {loading ? t('passwordForgot.submitting') : t('passwordForgot.submit')}
             </button>
           </form>
 
           <div className="mt-8 text-center text-sm text-muted">
-            <Link href="/login" className="text-ink underline hover:text-gold">← Zurück zum Login</Link>
+            <Link href="/login" className="text-ink underline hover:text-gold">{t('passwordForgot.backToLogin')}</Link>
           </div>
         </>
       )}

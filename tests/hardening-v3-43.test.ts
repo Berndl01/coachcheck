@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 const ROOT = process.cwd();
 const read = (...p: string[]) => readFileSync(join(ROOT, ...p), 'utf8');
+const DE_DICT = read('lib', 'i18n', 'dictionaries', 'de.ts');
 
 const ENT = read('lib', 'auth', 'assessment-entitlement.ts');
 const WEBHOOK = read('app', 'api', 'stripe', 'webhook', 'route.ts');
@@ -91,7 +92,8 @@ describe('P0/1 · Refund-Lockdown bei Report/Result/Share', () => {
   it('result-Seite gated mit checkPaidEntitlement', () => {
     const r = read('app', 'assessment', '[id]', 'result', 'page.tsx');
     expect(r).toMatch(/checkPaidEntitlement/);
-    expect(r).toMatch(/Zugriff gesperrt/);
+    expect(DE_DICT).toMatch(/Zugriff gesperrt/);
+    expect(r).toMatch(/resultPage\.lockedKicker/);
   });
   it('share-Aktivierung gated mit checkPaidEntitlement + 402', () => {
     const r = read('app', 'api', 'assessment', '[id]', 'share', 'route.ts');
@@ -106,7 +108,8 @@ describe('P0/1 · Refund-Lockdown bei Report/Result/Share', () => {
 describe('P0/2 · Saison-Lesezugriff serverseitig gated', () => {
   it('page lädt erst nach requireSeasonEntitlement', () => {
     expect(SEASON_PAGE).toMatch(/requireSeasonEntitlement/);
-    expect(SEASON_PAGE).toMatch(/Zugriff gesperrt/);
+    expect(SEASON_PAGE).toMatch(/seasonDetail\.lockedKicker/);
+    expect(DE_DICT).toMatch(/Saison-Monitor · Zugriff gesperrt/);
   });
   it('Daten werden via admin (service_role) geladen, nicht mit User-Client', () => {
     expect(SEASON_PAGE).toMatch(/admin\s*\n?\s*\.from\('pulse_cycles'\)/);
@@ -213,8 +216,12 @@ describe('P1 · keine falschen Pause-/Resume-/Auto-Link-Aussagen', () => {
   }
   it('pulse runner verspricht keinen automatischen Link', () => {
     const r = read('app', 'pulse', '[token]', 'runner.tsx');
+    // i18n: der nutzersichtbare Claim liegt im Wörterbuch. Dort den ehrlichen Wortlaut
+    // prüfen + sicherstellen, dass weder Wörterbuch noch Runner einen Auto-Link versprechen.
+    expect(r).toMatch(/pulseRunner\.doneText/);
+    expect(DE_DICT).toMatch(/denselben Link/);
+    expect(DE_DICT).not.toMatch(/automatisch wieder einen Link/);
     expect(r).not.toMatch(/automatisch wieder einen Link/);
-    expect(r).toMatch(/denselben Link/);
   });
 });
 
@@ -244,13 +251,13 @@ describe('P1 · Zod-Validierung Saison-Eingaben', () => {
 // ============================================================
 // P0 Blocker 4 · Deployment-Dokumentation aktualisiert
 // ============================================================
-describe('P0/4 · Deployment-Dokumentation auf v3.42 / 01→40', () => {
+describe('P0/4 · Deployment-Dokumentation auf v3.42 / 01→43', () => {
   const docs = ['GO-LIVE.md', 'LAUNCH_CHECKLIST.md', 'README.md'];
   for (const d of docs) {
-    it(`${d}: Header nennt v3.42 und Migrationen 01 → 40`, () => {
+    it(`${d}: Header nennt v3.42 und Migrationen 01 → 43`, () => {
       const r = read(d);
       expect(r).toMatch(/DEPLOYMENT-STAND v3\.42/);
-      expect(r).toMatch(/Migrationen 01 → 40/);
+      expect(r).toMatch(/Migrationen 01 → 43/);
     });
     it(`${d}: nennt korrekten Answer-Pfad statt rest/v1/answers-Write`, () => {
       const r = read(d);

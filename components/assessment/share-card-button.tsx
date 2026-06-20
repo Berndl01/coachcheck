@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   assessmentId: string;
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export function ShareCardButton({ assessmentId, initialToken, initialEnabled }: Props) {
+  const t = useT();
   const initialUrl =
     initialEnabled && initialToken && typeof window !== 'undefined'
       ? `${window.location.origin}/karte/${initialToken}`
@@ -25,11 +27,11 @@ export function ShareCardButton({ assessmentId, initialToken, initialEnabled }: 
     try {
       const res = await fetch(`/api/assessment/${assessmentId}/share`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? 'Fehler');
+      if (!res.ok) throw new Error(data?.error ?? t('shareCard.errGeneric'));
       setUrl(data.url);
       setEnabled(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Teilen fehlgeschlagen');
+      setError(e instanceof Error ? e.message : t('shareCard.errShare'));
     } finally {
       setLoading(false);
     }
@@ -42,12 +44,12 @@ export function ShareCardButton({ assessmentId, initialToken, initialEnabled }: 
       const res = await fetch(`/api/assessment/${assessmentId}/share`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? 'Fehler');
+        throw new Error(data?.error ?? t('shareCard.errGeneric'));
       }
       setEnabled(false);
       setUrl(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Deaktivieren fehlgeschlagen');
+      setError(e instanceof Error ? e.message : t('shareCard.errDisable'));
     } finally {
       setLoading(false);
     }
@@ -72,10 +74,10 @@ export function ShareCardButton({ assessmentId, initialToken, initialEnabled }: 
           disabled={loading}
           className="px-6 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition disabled:opacity-60"
         >
-          {loading ? 'Wird erstellt …' : 'Profilkarte teilen'}
+          {loading ? t('shareCard.creating') : t('shareCard.share')}
         </button>
         <p className="text-bone-soft text-[0.72rem] leading-[1.5] mt-3 max-w-[46ch]">
-          Erstellt einen öffentlichen Link zu deiner Profilkarte (ohne deine persönlichen Daten). Du kannst ihn jederzeit wieder deaktivieren.
+          {t('shareCard.shareHint')}
         </p>
         {error && <p className="text-gold-light text-xs mt-2">{error}</p>}
       </div>
@@ -92,11 +94,11 @@ export function ShareCardButton({ assessmentId, initialToken, initialEnabled }: 
           className="flex-1 min-w-[220px] px-4 py-2.5 rounded-full bg-bone text-ink text-sm font-mono"
         />
         <button onClick={copy} className="px-5 py-2.5 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition text-sm">
-          {copied ? 'Kopiert ✓' : 'Link kopieren'}
+          {copied ? t('shareCard.copied') : t('shareCard.copy')}
         </button>
       </div>
       <button onClick={disable} disabled={loading} className="mt-3 text-bone-soft text-xs underline hover:text-bone transition disabled:opacity-60">
-        {loading ? '…' : 'Teilen deaktivieren'}
+        {loading ? '…' : t('shareCard.disable')}
       </button>
       {error && <p className="text-gold-light text-xs mt-2">{error}</p>}
     </div>

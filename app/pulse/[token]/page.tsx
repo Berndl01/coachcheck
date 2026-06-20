@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PulseRunner } from './runner';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,6 +12,7 @@ export default async function PulsePage({
 }) {
   const { token } = await params;
   const admin = createAdminClient();
+  const t = await getT();
 
   // Look up token → season → active cycle
   const { data: invitation } = await admin
@@ -23,8 +25,8 @@ export default async function PulsePage({
     return (
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
-          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">Link ungültig</h1>
-          <p className="text-muted">Wende dich an deinen Trainer.</p>
+          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('pulsePage.invalidTitle')}</h1>
+          <p className="text-muted">{t('pulsePage.invalidText')}</p>
         </div>
       </main>
     );
@@ -35,8 +37,8 @@ export default async function PulsePage({
     return (
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
-          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">Saison pausiert</h1>
-          <p className="text-muted">Aktuell läuft kein Pulse-Check.</p>
+          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('pulsePage.pausedTitle')}</h1>
+          <p className="text-muted">{t('pulsePage.pausedText')}</p>
         </div>
       </main>
     );
@@ -56,8 +58,8 @@ export default async function PulsePage({
     return (
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
-          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">Kein offener Pulse-Check</h1>
-          <p className="text-muted">Schau später nochmal vorbei.</p>
+          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('pulsePage.noOpenTitle')}</h1>
+          <p className="text-muted">{t('pulsePage.noOpenText')}</p>
         </div>
       </main>
     );
@@ -67,8 +69,8 @@ export default async function PulsePage({
     return (
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
-          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">Pulse-Check abgelaufen</h1>
-          <p className="text-muted">Der nächste Pulse-Check startet in Kürze.</p>
+          <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('pulsePage.expiredTitle')}</h1>
+          <p className="text-muted">{t('pulsePage.expiredText')}</p>
         </div>
       </main>
     );

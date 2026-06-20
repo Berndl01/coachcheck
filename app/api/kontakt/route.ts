@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
 
   await sendEmailSafe({
     to: email,
-    subject: 'Wir haben deine Anfrage erhalten — Humatrix Coach',
+    subject: 'Wir haben deine Anfrage erhalten — CoachCheck',
     html: confirmHtml,
     category: 'contact-form-confirm',
   });

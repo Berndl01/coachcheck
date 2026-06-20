@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { Item } from './item-renderer';
+import { useT } from '@/components/i18n/locale-provider';
 
 const MODULE_TITLES: Record<string, string> = {
   A: 'Führungsidentität',
@@ -34,6 +35,7 @@ export function AssessmentIntro({
   resuming: boolean;
   onStart: () => void;
 }) {
+  const t = useT();
   const { total, moduleNames, minutes } = useMemo(() => {
     const total = items.length;
     // Distinct Module in Reihenfolge ihres ersten Auftretens.
@@ -61,28 +63,26 @@ export function AssessmentIntro({
     <main className="min-h-screen bg-bone flex items-center justify-center px-4 py-12">
       <div className="max-w-2xl">
         <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">
-          {productName ?? 'Coach-Assessment'} · Bevor du startest
+          {productName ?? t('assessmentIntro.kickerFallback')} · {t('assessmentIntro.kickerSuffix')}
         </div>
         <h1 className="font-display text-[clamp(2.2rem,5vw,3.6rem)] tracking-[-0.03em] leading-[1.05] mb-6">
           {resuming ? (
-            <>Weiter geht’s — <em className="font-editorial">dein Assessment</em> wartet.</>
+            <>{t('assessmentIntro.h1ResumingA')} <em className="font-editorial">{t('assessmentIntro.h1ResumingEmph')}</em> {t('assessmentIntro.h1ResumingB')}</>
           ) : (
-            <>Gleich geht’s los — <em className="font-editorial">nimm dir kurz Zeit</em>.</>
+            <>{t('assessmentIntro.h1FreshA')} <em className="font-editorial">{t('assessmentIntro.h1FreshEmph')}</em>{t('assessmentIntro.h1FreshB')}</>
           )}
         </h1>
         <p className="font-editorial italic text-xl text-muted leading-[1.5] mb-8">
-          {resuming
-            ? 'Du hast schon angefangen. Wir setzen genau dort fort, wo du aufgehört hast — deine bisherigen Antworten sind gespeichert.'
-            : 'Dieser Fragebogen ist die Grundlage für deinen persönlichen Report. Es gibt kein Richtig oder Falsch — antworte so, wie es für dich stimmt.'}
+          {resuming ? t('assessmentIntro.leadResuming') : t('assessmentIntro.leadFresh')}
         </p>
 
         <div className="grid gap-4 mb-8">
           <div className="flex gap-4 items-start">
             <span className="font-mono text-xs text-gold mt-1 shrink-0">01</span>
             <div>
-              <div className="font-medium">~{minutes} Minuten · {total} Fragen</div>
+              <div className="font-medium">{t('assessmentIntro.step1Title').replace('{minutes}', String(minutes)).replace('{total}', String(total))}</div>
               <div className="text-sm text-muted">
-                Am besten in Ruhe und ohne Unterbrechung. Du kannst jederzeit pausieren — dein Fortschritt wird automatisch gespeichert.
+                {t('assessmentIntro.step1Desc')}
               </div>
             </div>
           </div>
@@ -90,9 +90,9 @@ export function AssessmentIntro({
             <div className="flex gap-4 items-start">
               <span className="font-mono text-xs text-gold mt-1 shrink-0">02</span>
               <div>
-                <div className="font-medium">Das erwartet dich</div>
+                <div className="font-medium">{t('assessmentIntro.step2Title')}</div>
                 <div className="text-sm text-muted">
-                  {moduleNames.length} Themenbereiche: {moduleLine}. Mal Skalen, mal kurze Szenarien oder Abwägungen — abwechslungsreich und konkret aus dem Trainingsalltag.
+                  {t('assessmentIntro.step2Desc').replace('{count}', String(moduleNames.length)).replace('{modules}', moduleLine ?? '')}
                 </div>
               </div>
             </div>
@@ -100,24 +100,23 @@ export function AssessmentIntro({
           <div className="flex gap-4 items-start">
             <span className="font-mono text-xs text-gold mt-1 shrink-0">{moduleLine ? '03' : '02'}</span>
             <div>
-              <div className="font-medium">Am Ende: dein Report</div>
+              <div className="font-medium">{t('assessmentIntro.step3Title')}</div>
               <div className="text-sm text-muted">
-                Direkt nach der letzten Frage wird dein Report erstellt — mit deinem Profil, allen Auswertungen und einem konkreten Entwicklungspfad, online und als PDF.
+                {t('assessmentIntro.step3Desc')}
               </div>
             </div>
           </div>
         </div>
 
         <p className="text-sm text-muted mb-8 leading-relaxed">
-          Ein Tipp: Antworte spontan und ehrlich statt taktisch. Je echter deine
-          Antworten, desto treffsicherer wird dein Report.
+          {t('assessmentIntro.tip')}
         </p>
 
         <button
           onClick={onStart}
           className="inline-flex items-center gap-2 px-8 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition"
         >
-          {resuming ? 'Fortsetzen' : 'Jetzt starten'} <span className="font-mono">→</span>
+          {resuming ? t('assessmentIntro.resume') : t('assessmentIntro.start')} <span className="font-mono">→</span>
         </button>
       </div>
     </main>

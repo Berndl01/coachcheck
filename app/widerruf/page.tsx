@@ -3,7 +3,7 @@ import { Footer } from '@/components/landing/footer';
 import { WiderrufForm } from './widerruf-form';
 
 export const metadata = {
-  title: 'Vertrag widerrufen · Humatrix Coach',
+  title: 'Vertrag widerrufen · CoachCheck',
 };
 
 // TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss die

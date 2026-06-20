@@ -1,20 +1,23 @@
-export function TrustBand() {
+import { getT } from '@/lib/i18n/server';
+
+export async function TrustBand() {
+  const t = await getT();
   const items = [
     {
       num: <>5<sup className="font-mono text-[0.28em] text-gold-deep align-super font-medium tracking-normal">SPORTS</sup></>,
-      lbl: 'Fußball · Handball · Basketball · Volleyball · Eishockey',
+      lbl: t('trustBand.l1'),
     },
     {
       num: <>25<em className="font-editorial italic">min</em></>,
-      lbl: 'Vom ersten Premium-Item bis zum ausführlichen Report',
+      lbl: t('trustBand.l2'),
     },
     {
       num: <>Anon<em className="font-editorial italic">·</em></>,
-      lbl: 'Anonymisierte Spieler-Aggregation ab 3 Antworten',
+      lbl: t('trustBand.l3'),
     },
     {
       num: <>AT<em className="font-editorial italic">·</em></>,
-      lbl: 'Entwickelt in Tirol · praxisnah, wissenschaftlich anschlussfähig',
+      lbl: t('trustBand.l4'),
     },
   ];
 

@@ -1,11 +1,8 @@
-export function Ticker() {
-  const items = [
-    'Verstehe, wie dein Team dich wirklich erlebt',
-    'Erkenne Spannungen, bevor sie Leistung kosten',
-    'Schluss mit dem Blindflug',
-    '12 Sport-Archetypen · Eine Coaching-Sprache',
-  ];
-  // Duplicate for seamless loop
+import { getT } from '@/lib/i18n/server';
+
+export async function Ticker() {
+  const t = await getT();
+  const items = [t('ticker.i1'), t('ticker.i2'), t('ticker.i3'), t('ticker.i4')];
   const loop = [...items, ...items];
 
   return (

@@ -2,7 +2,7 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 
 export const metadata = {
-  title: 'Datenschutz · Humatrix Coach',
+  title: 'Datenschutz · CoachCheck',
 };
 
 // TopNav liest die Server-Side Supabase-Session aus Cookies — daher muss

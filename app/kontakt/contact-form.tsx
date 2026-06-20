@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '@/components/i18n/locale-provider';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export function ContactForm({ defaultPlan }: Props) {
+  const t = useT();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -67,10 +69,10 @@ export function ContactForm({ defaultPlan }: Props) {
         body: JSON.stringify({ name, email, phone, club, plan, message, website, turnstileToken }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Fehler');
+      if (!res.ok) throw new Error(data.error ?? t('contactForm.errGeneric'));
       setSent(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
+      setError(e instanceof Error ? e.message : t('contactForm.errGeneric'));
     } finally {
       setSending(false);
     }
@@ -79,10 +81,10 @@ export function ContactForm({ defaultPlan }: Props) {
   if (sent) {
     return (
       <div className="text-center py-16">
-        <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">✓ Eingegangen</div>
-        <h2 className="font-display text-3xl tracking-[-0.02em] mb-3">Danke für deine Nachricht.</h2>
+        <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">{t('contactForm.sentKicker')}</div>
+        <h2 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('contactForm.sentTitle')}</h2>
         <p className="font-editorial italic text-lg text-muted leading-[1.5] max-w-[45ch] mx-auto">
-          Wir melden uns innerhalb von 24 Stunden bei dir. Wenn&apos;s dringend ist, erreichst du uns auch unter{' '}
+          {t('contactForm.sentBody')}{' '}
           <a href="mailto:office@humatrix.cc" className="text-gold-deep hover:underline">office@humatrix.cc</a>.
         </p>
       </div>
@@ -93,14 +95,14 @@ export function ContactForm({ defaultPlan }: Props) {
     <form onSubmit={submit} className="grid gap-4">
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Name *</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('contactForm.labelName')}</label>
           <input
             type="text" required value={name} onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
           />
         </div>
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">E-Mail *</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('contactForm.labelEmail')}</label>
           <input
             type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
@@ -110,14 +112,14 @@ export function ContactForm({ defaultPlan }: Props) {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Telefon</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('contactForm.labelPhone')}</label>
           <input
             type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
             className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
           />
         </div>
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Verein / Team</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('contactForm.labelClub')}</label>
           <input
             type="text" value={club} onChange={(e) => setClub(e.target.value)}
             className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
@@ -126,34 +128,34 @@ export function ContactForm({ defaultPlan }: Props) {
       </div>
 
       <div>
-        <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Interessantes Paket</label>
+        <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('contactForm.labelPlan')}</label>
         <select
           value={plan} onChange={(e) => setPlan(e.target.value)}
           className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none"
         >
-          <option value="">— nicht sicher —</option>
-          <option value="schnelltest">Schnelltest (19 €)</option>
-          <option value="selbsttest">Selbsttest (79 €)</option>
-          <option value="spiegel_360">360° Spiegel (199 €)</option>
-          <option value="teamcheck">TeamCheck (ab 890 €)</option>
-          <option value="saison_beratung">Saison &amp; Beratung (ab 3.900 €)</option>
-          <option value="custom">Custom / Individuell</option>
+          <option value="">{t('contactForm.optNotSure')}</option>
+          <option value="schnelltest">{t('contactForm.optSchnelltest')}</option>
+          <option value="selbsttest">{t('contactForm.optSelbsttest')}</option>
+          <option value="spiegel_360">{t('contactForm.optSpiegel')}</option>
+          <option value="teamcheck">{t('contactForm.optTeamcheck')}</option>
+          <option value="saison_beratung">{t('contactForm.optSaison')}</option>
+          <option value="custom">{t('contactForm.optCustom')}</option>
         </select>
       </div>
 
       <div>
-        <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">Nachricht *</label>
+        <label className="block font-mono text-xs uppercase tracking-[0.12em] text-muted mb-2">{t('contactForm.labelMessage')}</label>
         <textarea
           required value={message} onChange={(e) => setMessage(e.target.value)}
           rows={5}
-          placeholder="Kurz: In welchem Kontext bist du unterwegs? Welche Fragestellung treibt dich gerade?"
+          placeholder={t('contactForm.messagePlaceholder')}
           className="w-full px-4 py-3 bg-bone border border-bone-line rounded-md focus:border-gold focus:outline-none leading-[1.5]"
         />
       </div>
 
       <p className="text-xs text-muted leading-[1.5]">
-        Mit dem Absenden erlaubst du uns, dir per E-Mail zu antworten. Weitere Infos in unserer{' '}
-        <a href="/legal/datenschutz" className="text-gold-deep hover:underline">Datenschutzerklärung</a>.
+        {t('contactForm.privacyA')}{' '}
+        <a href="/legal/datenschutz" className="text-gold-deep hover:underline">{t('contactForm.privacyLink')}</a>.
       </p>
 
       {error && <div className="text-red-600 font-mono text-sm">{error}</div>}
@@ -161,7 +163,7 @@ export function ContactForm({ defaultPlan }: Props) {
       {/* Honeypot: für Menschen unsichtbar; nur Bots füllen es aus. */}
       <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
         <label>
-          Website (bitte leer lassen)
+          {t('contactForm.honeypot')}
           <input
             type="text" tabIndex={-1} autoComplete="off"
             value={website} onChange={(e) => setWebsite(e.target.value)}
@@ -176,7 +178,7 @@ export function ContactForm({ defaultPlan }: Props) {
         type="submit" disabled={sending}
         className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink disabled:opacity-50 transition"
       >
-        {sending ? 'Sendet …' : 'Nachricht senden'} <span className="font-mono">→</span>
+        {sending ? t('contactForm.sending') : t('contactForm.submit')} <span className="font-mono">→</span>
       </button>
     </form>
   );

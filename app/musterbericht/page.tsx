@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,8 @@ function Page({ kicker, children, tone = 'light' }: { kicker: string; children: 
   );
 }
 
-export default function MusterberichtPage() {
+export default async function MusterberichtPage() {
+  const t = await getT();
   return (
     <>
       <TopNav />
@@ -54,7 +56,7 @@ export default function MusterberichtPage() {
         <div className="bg-gold/15 border-b border-gold/30 px-4 md:px-8 py-3">
           <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-between gap-3">
             <span className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-gold-deep">
-              Anonymisiertes Beispiel · kein realer Trainer
+              {t('musterbericht.bannerTag')}
             </span>
             <div className="flex items-center gap-4">
               <a
@@ -62,10 +64,10 @@ export default function MusterberichtPage() {
                 download="CoachCheck-Beispielreport.pdf"
                 className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-ink underline underline-offset-4"
               >
-                Als PDF herunterladen ↓
+                {t('musterbericht.downloadPdf')}
               </a>
               <Link href="/#products" className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-ink underline underline-offset-4">
-                Eigenen Report starten →
+                {t('musterbericht.startOwn')}
               </Link>
             </div>
           </div>
@@ -73,7 +75,7 @@ export default function MusterberichtPage() {
 
         <div className="max-w-3xl mx-auto px-4 md:px-8 py-10 md:py-16 space-y-6">
           {/* Cover */}
-          <Page kicker="Humatrix Coach · Premium-Report" tone="petrol">
+          <Page kicker="CoachCheck · Premium-Report" tone="petrol">
             <div className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-gold mb-3">Primärer Archetyp</div>
             <h1 className="font-display font-light text-[clamp(2.4rem,6vw,4rem)] leading-[1.02] tracking-[-0.035em] mb-3" style={{ fontVariationSettings: "'opsz' 144" }}>
               Der Strategische Architekt
@@ -219,12 +221,12 @@ export default function MusterberichtPage() {
 
           {/* CTA */}
           <div className="text-center py-8">
-            <h3 className="font-display text-3xl tracking-[-0.02em] mb-3">Das ist dein Report — über dich.</h3>
+            <h3 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('musterbericht.ctaTitle')}</h3>
             <p className="font-editorial italic text-lg text-muted mb-8 max-w-[44ch] mx-auto">
-              Dieses Beispiel ist generisch. Dein echter Report liest deine konkreten Werte.
+              {t('musterbericht.ctaText')}
             </p>
             <Link href="/#products" className="inline-flex items-center gap-2 px-7 py-3.5 bg-gold text-ink rounded-full font-semibold hover:bg-ink hover:text-gold transition">
-              Paket wählen <span className="font-mono">→</span>
+              {t('musterbericht.ctaButton')} <span className="font-mono">→</span>
             </Link>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { copyToClipboard } from '@/lib/utils/clipboard';
+import { useT, useLocale } from '@/components/i18n/locale-provider';
 
 type Invitation = {
   id: string;
@@ -21,17 +22,21 @@ type Props = {
   appUrl: string;
 };
 
-const STATUS_LABELS: Record<string, { de: string; color: string }> = {
-  pending: { de: 'Bereit', color: 'bg-bone-line text-ink' },
-  sent: { de: 'Aktiv', color: 'bg-petrol text-bone' },
-  opened: { de: 'Geöffnet', color: 'bg-gold-light text-ink' },
-  completed: { de: 'Eingegangen', color: 'bg-gold text-ink' },
-  expired: { de: 'Abgelaufen', color: 'bg-muted text-bone' },
-};
-
 const MIN_PLAYERS = 5;
 
 export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: Props) {
+  const t = useT();
+  const locale = useLocale();
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString(locale === 'en' ? 'en-GB' : 'de-AT');
+
+  const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    pending: { label: t('teamcheck.statusPending'), color: 'bg-bone-line text-ink' },
+    sent: { label: t('teamcheck.statusSent'), color: 'bg-petrol text-bone' },
+    opened: { label: t('teamcheck.statusOpened'), color: 'bg-gold-light text-ink' },
+    completed: { label: t('teamcheck.statusCompleted'), color: 'bg-gold text-ink' },
+    expired: { label: t('teamcheck.statusExpired'), color: 'bg-muted text-bone' },
+  };
+
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
   const [tokenCount, setTokenCount] = useState(15);
   const [creating, setCreating] = useState(false);
@@ -58,12 +63,12 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Fehler');
+      if (!res.ok) throw new Error(data.error ?? t('teamcheck.errGeneric'));
 
       setInvitations([...(data.invitations ?? []), ...invitations]);
-      setBulkSuccess(`${data.count} Token-Link${data.count === 1 ? '' : 's'} erstellt`);
+      setBulkSuccess(t('teamcheck.tokensCreated').replace('{n}', String(data.count)).replace('{s}', data.count === 1 ? '' : 's'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
+      setError(e instanceof Error ? e.message : t('teamcheck.errGeneric'));
     } finally {
       setCreating(false);
       setTimeout(() => setBulkSuccess(null), 4000);
@@ -80,10 +85,14 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
   function copyAllLinks() {
     const lines = invitations
       .filter((i) => i.status !== 'completed' && i.status !== 'expired')
-      .map((i, idx) => `Spieler ${String(idx + 1).padStart(2, '0')}: ${appUrl}/teamcheck/${i.token}`)
+      .map((i, idx) =>
+        t('teamcheck.copyAllLine')
+          .replace('{n}', String(idx + 1).padStart(2, '0'))
+          .replace('{url}', `${appUrl}/teamcheck/${i.token}`)
+      )
       .join('\n');
     copyToClipboard(lines);
-    setBulkSuccess('Alle Links kopiert');
+    setBulkSuccess(t('teamcheck.allCopied'));
     setTimeout(() => setBulkSuccess(null), 3000);
   }
 
@@ -93,12 +102,12 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
       <div className="bg-bone-soft p-6 rounded-md border border-bone-line">
         <div className="flex justify-between items-baseline mb-3">
           <span className="font-mono text-xs uppercase tracking-[0.15em] text-muted">
-            Spieler-Antworten
+            {t('teamcheck.responses')}
           </span>
           <div className="flex gap-6 items-baseline">
-            <span className="text-sm text-muted">{activeCount} Links aktiv</span>
+            <span className="text-sm text-muted">{t('teamcheck.linksActive').replace('{n}', String(activeCount))}</span>
             <span className="font-display text-2xl tracking-[-0.02em]">
-              {completedCount}<span className="text-muted text-base"> / {MIN_PLAYERS}+ benötigt</span>
+              {completedCount}<span className="text-muted text-base"> / {MIN_PLAYERS}{t('teamcheck.requiredSuffix')}</span>
             </span>
           </div>
         </div>
@@ -110,24 +119,21 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
         </div>
         <div className="font-mono text-xs uppercase tracking-[0.1em] text-muted mt-3">
           {completedCount >= MIN_PLAYERS
-            ? '✓ Genug Spieler-Antworten — du kannst den TeamCheck-Report jetzt generieren.'
-            : `Noch ${MIN_PLAYERS - completedCount} Spieler-Antworten bis zur Auswertung. Anonymität ist erst ab 5 Antworten gewährleistet.`}
+            ? t('teamcheck.canGenerate')
+            : t('teamcheck.remaining').replace('{n}', String(MIN_PLAYERS - completedCount))}
         </div>
       </div>
 
       {/* Token generator (anonymous-only) */}
       <div className="bg-ink text-bone p-6 rounded-md">
         <div className="font-mono text-xs uppercase tracking-[0.18em] text-gold mb-3">
-          Spieler-Links erzeugen
+          {t('teamcheck.genKicker')}
         </div>
         <h3 className="font-display text-xl tracking-[-0.02em] mb-2">
-          Anonyme Token-Links erstellen
+          {t('teamcheck.genH3')}
         </h3>
         <p className="text-bone-soft text-sm mb-4 leading-[1.5] max-w-[60ch]">
-          Erzeuge anonyme Token-Links und verteile sie selbst per QR-Code, WhatsApp,
-          Slack oder Aushang. <strong className="text-gold">Die App speichert keine
-          Spieler-E-Mail-Adressen</strong> — die Antworten der Spieler kannst du
-          nachher ausschließlich aggregiert sehen.
+          {t('teamcheck.genDesc1')} <strong className="text-gold">{t('teamcheck.genDescEmph')}</strong> {t('teamcheck.genDesc2')}
         </p>
 
         <div className="flex items-center gap-4">
@@ -141,7 +147,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
             }
             className="w-24 px-4 py-3 bg-ink-soft border border-ink-line rounded-md text-bone text-center font-display text-2xl focus:border-gold focus:outline-none"
           />
-          <span className="text-bone-soft">anonyme Token-Links generieren</span>
+          <span className="text-bone-soft">{t('teamcheck.generateN')}</span>
         </div>
 
         <div className="flex gap-3 mt-4">
@@ -150,7 +156,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
             disabled={creating}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-bone disabled:opacity-50 transition"
           >
-            {creating ? 'Erstellt …' : 'Token-Links erstellen'} <span className="font-mono">→</span>
+            {creating ? t('teamcheck.creating') : t('teamcheck.createLinks')} <span className="font-mono">→</span>
           </button>
         </div>
 
@@ -163,13 +169,13 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="font-mono text-xs uppercase tracking-[0.18em] text-muted">
-              Spieler-Token ({invitations.length})
+              {t('teamcheck.playerTokens')} ({invitations.length})
             </div>
             <button
               onClick={copyAllLinks}
               className="font-mono text-[0.65rem] uppercase tracking-[0.12em] px-3 py-1.5 bg-ink text-bone rounded-full hover:bg-gold hover:text-ink transition"
             >
-              Alle aktiven Links kopieren
+              {t('teamcheck.copyAll')}
             </button>
           </div>
 
@@ -185,16 +191,16 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
                   <span
                     className={`font-mono text-[0.65rem] uppercase tracking-[0.14em] px-3 py-1 rounded-full ${status.color}`}
                   >
-                    {status.de}
+                    {status.label}
                   </span>
                   <div className="flex-grow min-w-0">
                     <div className="font-medium text-sm truncate">
-                      Spieler-Token #{String(idx + 1).padStart(2, '0')}
+                      {t('teamcheck.tokenRow').replace('{n}', String(idx + 1).padStart(2, '0'))}
                     </div>
                     <div className="font-mono text-xs text-muted mt-0.5 truncate">
                       {inv.completed_at
-                        ? `Eingegangen ${new Date(inv.completed_at).toLocaleDateString('de-AT')}`
-                        : `Token: …${inv.token.slice(-8)}`}
+                        ? t('teamcheck.receivedShort').replace('{date}', fmtDate(inv.completed_at))
+                        : t('teamcheck.tokenTail').replace('{tail}', inv.token.slice(-8))}
                     </div>
                   </div>
                   {inv.status !== 'completed' && (
@@ -202,7 +208,7 @@ export function TeamcheckManager({ assessmentId, initialInvitations, appUrl }: P
                       onClick={() => copyLink(inv)}
                       className="font-mono text-xs uppercase tracking-[0.1em] px-3 py-2 border border-ink rounded-full hover:bg-ink hover:text-bone transition"
                     >
-                      {isCopied ? '✓ Kopiert' : 'Link kopieren'}
+                      {isCopied ? t('teamcheck.copied') : t('teamcheck.copyLink')}
                     </button>
                   )}
                 </div>

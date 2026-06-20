@@ -4,11 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { CreateSeasonForm } from './create-form';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SaisonOverviewPage() {
   const supabase = await createClient();
+  const t = await getT();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
@@ -23,23 +25,23 @@ export default async function SaisonOverviewPage() {
       <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-12">
         <div className="mb-12">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-2">
-            Saison-Monitor
+            {t('seasonOverview.kicker')}
           </div>
           <h1 className="font-display text-5xl tracking-[-0.03em]">
-            Deine <em className="font-editorial">Saisons.</em>
+            {t('seasonOverview.h1a')} <em className="font-editorial">{t('seasonOverview.h1emph')}</em>
           </h1>
           <p className="text-muted mt-3 max-w-[55ch]">
-            Monatliche Pulse-Checks, Frühwarnsystem für Konflikte, Entwicklungsdynamik über Zeit.
+            {t('seasonOverview.desc')}
           </p>
         </div>
 
         {/* Existing seasons */}
         <section className="mb-16">
-          <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Aktive & Vergangene</h2>
+          <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">{t('seasonOverview.activePast')}</h2>
           {(!seasons || seasons.length === 0) ? (
             <div className="bg-bone-soft p-8 rounded-md border border-bone-line">
               <div className="font-editorial text-lg italic text-muted">
-                Noch keine Saison gestartet.
+                {t('seasonOverview.empty')}
               </div>
             </div>
           ) : (
@@ -58,8 +60,8 @@ export default async function SaisonOverviewPage() {
                       <div>
                         <div className="font-display text-xl">{s.name}</div>
                         <div className="font-mono text-xs uppercase tracking-[0.12em] text-muted mt-1">
-                          {s.sport ?? 'Sport'} · {s.status} · {totalCycles} Pulse-Cycles
-                          {openCycle && <> · <span className="text-gold-deep">offener Pulse #{openCycle.cycle_number}</span></>}
+                          {s.sport ?? t('seasonOverview.sportFallback')} · {s.status} · {totalCycles} {t('seasonOverview.cyclesSuffix')}
+                          {openCycle && <> · <span className="text-gold-deep">{t('seasonOverview.openPulse').replace('{n}', String(openCycle.cycle_number))}</span></>}
                         </div>
                       </div>
                       <span className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep">→</span>
@@ -73,7 +75,7 @@ export default async function SaisonOverviewPage() {
 
         {/* Create new season */}
         <section>
-          <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">Neue Saison starten</h2>
+          <h2 className="font-display text-2xl tracking-[-0.02em] mb-6">{t('seasonOverview.newSeason')}</h2>
           <CreateSeasonForm />
         </section>
       </main>

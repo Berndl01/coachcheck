@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ItemRenderer, type Item, type AnswerValue } from '@/components/assessment/item-renderer';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   token: string;
@@ -16,6 +17,7 @@ type Props = {
 export function TeamcheckRunner({
   token, items, existingAnswers, trainerName, sport, club,
 }: Props) {
+  const t = useT();
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(existingAnswers);
@@ -58,7 +60,7 @@ export function TeamcheckRunner({
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body?.error ?? 'Fehler beim Speichern');
+      throw new Error(body?.error ?? t('teamcheckRunner.errSave'));
     }
   }
 
@@ -75,14 +77,14 @@ export function TeamcheckRunner({
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error ?? 'Fehler beim Abschließen');
+          throw new Error(body?.error ?? t('teamcheckRunner.errComplete'));
         }
         setFinished(true);
       } else {
         setIndex(index + 1);
       }
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Speichern');
+      setError(e?.message ?? t('teamcheckRunner.errSave'));
     } finally {
       setSaving(false);
     }
@@ -100,36 +102,35 @@ export function TeamcheckRunner({
           <HumatrixLogo />
           <div className="mt-12">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">
-              TeamCheck · Anonyme Spielerumfrage
+              {t('teamcheckRunner.kicker')}
             </div>
             <h1 className="font-display text-[clamp(2.2rem,5vw,3.6rem)] tracking-[-0.03em] leading-[1.05] mb-6">
-              Wie geht es dir wirklich <em className="font-editorial">in diesem Team?</em>
+              {t('teamcheckRunner.h1a')} <em className="font-editorial">{t('teamcheckRunner.h1emph')}</em>
             </h1>
             <p className="font-editorial italic text-xl text-muted leading-[1.5] mb-6">
-              {firstName} möchte verstehen, wie das Team {club ? `bei ${club} ` : ''}wirklich tickt — wie ihr Klima, Druck, Vertrauen und Coaching erlebt.
-              Diese Umfrage hilft dabei.
+              {club ? t('teamcheckRunner.leadWithClub').replace('{name}', firstName).replace('{club}', club) : t('teamcheckRunner.leadNoClub').replace('{name}', firstName)}
             </p>
 
             <div className="grid gap-4 mb-8">
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">01</span>
                 <div>
-                  <div className="font-medium">Anonymisierte Auswertung</div>
-                  <div className="text-sm text-muted">Niemand sieht einzelne Antworten. {firstName} bekommt nur aggregierte Werte aus mindestens 5 Spielern.</div>
+                  <div className="font-medium">{t('teamcheckRunner.step1Title')}</div>
+                  <div className="text-sm text-muted">{t('teamcheckRunner.step1Desc').replace(/\{name\}/g, firstName)}</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">02</span>
                 <div>
-                  <div className="font-medium">Ehrlich, nicht freundlich</div>
-                  <div className="text-sm text-muted">Es bringt nichts wenn du höflich antwortest. Echte Verbesserung beginnt mit echter Wahrheit.</div>
+                  <div className="font-medium">{t('teamcheckRunner.step2Title')}</div>
+                  <div className="text-sm text-muted">{t('teamcheckRunner.step2Desc')}</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">03</span>
                 <div>
-                  <div className="font-medium">~5 Minuten</div>
-                  <div className="text-sm text-muted">Kurz und knackig. Bitte in einem Durchgang ausfüllen — deine Antworten werden erst am Ende gespeichert.</div>
+                  <div className="font-medium">{t('teamcheckRunner.step3Title')}</div>
+                  <div className="text-sm text-muted">{t('teamcheckRunner.step3Desc')}</div>
                 </div>
               </div>
             </div>
@@ -138,7 +139,7 @@ export function TeamcheckRunner({
               onClick={() => setStarted(true)}
               className="inline-flex items-center gap-2 px-8 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition"
             >
-              Umfrage starten <span className="font-mono">→</span>
+              {t('teamcheckRunner.start')} <span className="font-mono">→</span>
             </button>
           </div>
         </div>
@@ -152,16 +153,16 @@ export function TeamcheckRunner({
       <main className="min-h-screen bg-petrol text-bone flex items-center justify-center px-4 py-12">
         <div className="max-w-xl text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold mb-6">
-            ✓ Eingegangen · Anonym
+            {t('teamcheckRunner.finishedKicker')}
           </div>
           <h1 className="font-display text-[clamp(2.4rem,5vw,3.6rem)] tracking-[-0.03em] leading-[1.05] mb-5">
-            Danke. Wirklich.
+            {t('teamcheckRunner.finishedTitle')}
           </h1>
           <p className="font-editorial italic text-xl text-bone-soft leading-[1.5]">
-            Deine Stimme zählt. Sobald genug Spieler geantwortet haben, fließt sie aggregiert in den Team-Report ein — niemand wird je deine Antworten zuordnen können.
+            {t('teamcheckRunner.finishedText')}
           </p>
           <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold-light mt-10">
-            Du kannst diese Seite jetzt schließen.
+            {t('teamcheckRunner.closeHint')}
           </p>
         </div>
       </main>
@@ -171,7 +172,7 @@ export function TeamcheckRunner({
   if (!current) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-bone">
-        <p className="text-muted">Keine Items verfügbar.</p>
+        <p className="text-muted">{t('assessmentRunner.noItems')}</p>
       </main>
     );
   }
@@ -211,14 +212,14 @@ export function TeamcheckRunner({
             disabled={index === 0 || saving}
             className="font-mono text-xs uppercase tracking-[0.12em] px-4 py-3 rounded-full border border-ink-line text-bone-soft hover:bg-bone hover:text-ink hover:border-bone disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            ← Zurück
+            {t('assessmentRunner.back')}
           </button>
           <button
             onClick={handleNext}
             disabled={!pending || saving}
             className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-ink rounded-full font-semibold hover:bg-bone disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            {saving ? 'Speichert …' : isLast ? 'Abschließen' : 'Weiter'}
+            {saving ? t('assessmentRunner.saving') : isLast ? t('assessmentRunner.finish') : t('assessmentRunner.next')}
             {!saving && <span className="font-mono">→</span>}
           </button>
         </div>

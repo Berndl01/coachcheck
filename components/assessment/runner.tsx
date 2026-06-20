@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ItemRenderer, type Item, type AnswerValue } from './item-renderer';
 import { AssessmentIntro } from './assessment-intro';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   assessmentId: string;
@@ -20,6 +21,7 @@ export function AssessmentRunner({
   startIndex,
   productName,
 }: Props) {
+  const t = useT();
   const router = useRouter();
   // Intro-Screen vor dem Fragebogen: erklärt Dauer, Themen und Ablauf, damit
   // man weiß, was kommt. Wird übersprungen, sobald gestartet wurde.
@@ -61,7 +63,7 @@ export function AssessmentRunner({
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error ?? 'Antwort konnte nicht gespeichert werden');
+      throw new Error(data.error ?? t('assessmentRunner.errSaveAnswer'));
     }
   }
 
@@ -86,11 +88,12 @@ export function AssessmentRunner({
           const data = await res.json().catch(() => ({}));
           if (data.missingItemIds && Array.isArray(data.missingItemIds) && data.expected) {
             throw new Error(
-              `Es fehlen noch ${data.expected - (data.submitted ?? 0)} von ${data.expected} Antworten. ` +
-              'Bitte beantworte alle Fragen, um die Auswertung abzuschließen.'
+              t('assessmentRunner.errMissing')
+                .replace('{missing}', String(data.expected - (data.submitted ?? 0)))
+                .replace('{expected}', String(data.expected))
             );
           }
-          throw new Error(data.error ?? 'Finalisierung fehlgeschlagen');
+          throw new Error(data.error ?? t('assessmentRunner.errFinalize'));
         }
         router.push(`/assessment/${assessmentId}/result`);
         router.refresh();
@@ -99,7 +102,7 @@ export function AssessmentRunner({
       }
     } catch (e: any) {
       setFinishing(false);
-      setError(e.message ?? 'Fehler beim Speichern');
+      setError(e.message ?? t('assessmentRunner.errSaveGeneric'));
     } finally {
       setSaving(false);
     }
@@ -112,7 +115,7 @@ export function AssessmentRunner({
   if (!current) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-muted">Keine Items verfügbar.</p>
+        <p className="text-muted">{t('assessmentRunner.noItems')}</p>
       </div>
     );
   }
@@ -168,7 +171,7 @@ export function AssessmentRunner({
             disabled={index === 0 || saving}
             className="font-mono text-xs uppercase tracking-[0.12em] px-4 py-3 rounded-full border border-ink-line text-bone-soft hover:bg-bone hover:text-ink hover:border-bone disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            ← Zurück
+            {t('assessmentRunner.back')}
           </button>
 
           <button
@@ -176,7 +179,7 @@ export function AssessmentRunner({
             disabled={!pending || saving || finishing}
             className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-ink rounded-full font-semibold hover:bg-bone disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            {finishing ? 'Wertet aus …' : saving ? 'Speichert …' : isLast ? 'Abschließen' : 'Weiter'}
+            {finishing ? t('assessmentRunner.finishing') : saving ? t('assessmentRunner.saving') : isLast ? t('assessmentRunner.finish') : t('assessmentRunner.next')}
             {!saving && !finishing && <span className="font-mono">→</span>}
           </button>
         </div>

@@ -1,3 +1,528 @@
+FIX v3_66 — 2026-06-20
+================================================================
+Modul-Pole in der Architektur-Sektion (Landing) ergaenzt.
+
+In der Architektur-Sektion zeigten die Achsen Pol-Paare (links<->rechts), die Module nur
+Schlagwort-Pills. Jetzt zeigt jedes der 7 Module sein Pol-Paar als kompakte Spektrum-Zeile
+(links - Haarlinie - rechts), visuell an die Achsen angelehnt, ohne Positions-Marker (Landing ist
+generisch). Pills bleiben erhalten. 14 neue Dict-Keys poleAl..poleGr, DE/EN strukturgleich.
+
+WICHTIG (Modell-Inhalt, Wortlaut von Bernie zu bestaetigen): es gab NIRGENDS Modul-Pol-Daten (DB,
+scoring, Wissensschicht, PDF, Beispieldaten). Pole sind NEU, aus den vorhandenen Modul-Beschreibungen
+abgeleitet: A Diffus<->Konturiert, B Sendend<->Dialogisch, C Abwaegend<->Entschlossen, D Bedrohung<->
+Lernchance, E Kontrolle<->Gelassenheit, F Fordernd<->Ermutigend, G Distanziert<->Verbunden. Aenderung
+des Wortlauts = 1 Zeile pro Modul im Woerterbuch.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4 · DE/EN-Paritaet 4/4.
+
+
+FIX v3_65 — 2026-06-20
+================================================================
+i18n Welle 3d-ii — Saison-Monitor zweisprachig. ABSCHLUSS WELLE 3.
+
+saison (+ [id]) + season-control (432 Z) + create-form auf t(): Hero/Header, Zyklus-Steuerung
+(starten/schliessen mit >=5-Gate/archivieren), Token-Verwaltung (erzeugen/kopieren/widerrufen/
+rotieren/reaktivieren), notify/confirm, Datum via useLocale. Sport-Optionen reuse options.sport*.
+4 neue Woerterbuch-Sektionen (seasonOverview, seasonDetail, seasonControl, seasonCreate) -> 63 gesamt.
+
+INSTRUMENT/REPORT bleibt deutsch (geflaggt): DIM_LABELS (Pulse-Dimensionen) wie AXIS/MATURITY;
+care_hints-Inhalt (Snapshot) deutsch; severity/direction/status Roh-Daten. "Saison-Monitor ·
+Zugriff gesperrt" -> seasonDetail.lockedKicker; Saison-Assertion in hardening-v3-43 mit-repointet.
+
+WELLE 3 KOMPLETT: gesamte App-Oberflaeche zweisprachig (Landing -> Auth/Konto -> Dashboard ->
+Assessment -> Result/Report-Tooling -> Token-Flows -> Content -> Saison-Monitor). 63 Sektionen,
+DE=EN ueber Typ erzwungen. Durchgaengig deutsch/geflaggt: Instrument (Items, Anker, Modul-/Archetyp-
+Namen, rephrase, Pulse-Fragen) + Report-Inhalt (lib/insight, lib/scoring, AXIS/MATURITY/DIM-Labels,
+Portraits, Musterbericht, care_hints).
+
+Verbleibend (keine Blocker): i18n-Welle 4 (E-Mail-Templates), Welle 5 (Test-Assertions). Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_64 — 2026-06-20
+================================================================
+i18n Welle 3d-i — Content-Seiten (kontakt/musterbericht/archetyp) zweisprachig.
+
+Uebersetzt: kontakt-Hero + Plan-Labels + Metadata (generateMetadata) + vollstaendiges
+Kontaktformular (Labels, Optionen, Sende-Zustand, Datenschutz, Honeypot); musterbericht NUR
+Banner + CTA; archetyp NUR Premium-Gate + Upsell-CTA. 4 neue Woerterbuch-Sektionen (kontaktPage,
+contactForm, musterbericht, archetypePage), DE/EN strukturgleich (59 gesamt).
+
+REPORT/PORTRAIT bleibt deutsch (geflaggt): musterbericht = vollstaendige Report-Probe (Achsen,
+Reife, 7 Module, Executive Summary, Paradoxien, Entwicklungsprogramm); archetyp = Archetyp-Portrait
+aus ARCHETYPE_DEEP_DIVES + DB (DNA, Alltags-Szenen, Spieler, Shadow Pattern, Reifestufen) inkl.
+gebundener Ueberschriften + Hero-Kicker; personal-section (KI) unangetastet deutsch.
+
+Keine Test-Repoints noetig.
+
+Verbleibend Welle 3 (letzter Schritt): 3d-ii Saison-Monitor (saison + [id], season-control 432 Z,
+create-form), inkl. Saison Zugriff-gesperrt + Test-Repoint. Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_63 — 2026-06-20
+================================================================
+i18n Welle 3c — Token-Flows (externe Bewerter/Teilnehmer) zweisprachig.
+
+4 Token-Strecken: einschaetzung/teamcheck/pulse/karte. Uebersetzt: alle Seiten-Zustaende +
+Runner-Chrome (Intro mit {name}/{sport}/{club}-Templates, Finished/Done, Navigation, Submit,
+Fehler). Navigations-Strings aus assessmentRunner wiederverwendet. 7 neue Woerterbuch-Sektionen
+(einschaetzungPage/Runner, teamcheckPage/Runner, pulsePage/Runner, cardPage), DE/EN strukturgleich
+(55 gesamt).
+
+INSTRUMENT/REPORT bleibt deutsch (geflaggt): ItemRenderer unveraendert; rephraseForFremdbild-
+Heuristik (Regex ich/mir/mich) bleibt deutsch; Pulse-Frage-Block (Zaehler "Frage X/Y", text_de,
+Anker "Trifft voll/nicht zu") bleibt deutsch; karte-Profilkarte aus lib/insight + Labels bleibt
+deutsch (nur not-found/CTA/Metadata uebersetzt).
+
+1 Claim-Disziplin-Assertion (hardening-v3-43 pulse Auto-Link) aufs Woerterbuch umgezogen:
+"denselben Link" wird in de.ts geprueft, kein Auto-Link-Versprechen. Intent erhalten.
+
+Verbleibend Welle 3: 3d Content-Seiten (saison + [id] inkl. Zugriff-gesperrt, kontakt,
+musterbericht, archetyp/[slug]). Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_62 — 2026-06-20
+================================================================
+i18n Welle 3b-2b — Result/Report: operatives Tooling zweisprachig.
+
+result-Seite (chirurgisch) + 7 Komponenten auf t(): Zugriff-gesperrt, Dein-Ergebnis/Deep-Dive,
+360°/TeamCheck/Kontext/Premium-CTA/Next-Steps (Abschnitts-Chrome); report-generate-button,
+action-focus-card, share-card-button, context-form, recognition-feedback, invitations-manager,
+teamcheck-manager. STATUS_LABELS → {label,color} via t(); Datum via useLocale; DB-Keys + Options-
+Keys bleiben. 8 neue Woerterbuch-Sektionen (resultPage, reportGenerate, actionFocus, shareCard,
+invitations, teamcheck, contextForm, recognitionFeedback), DE/EN strukturgleich (48 gesamt).
+
+REPORT-GRENZE (bewusst Deutsch/geflaggt): analytischer Report-Inhalt bleibt deutsch — result-reveal,
+Signatur, Verlauf, Funktionale Signatur + AXIS_LABELS, Fuehrungsreife + MATURITY_LABELS/maturityBand,
+Staerken/Risiken/Hebel, Spielertyp-Matrix, Bedienungsanleitung. Eng gebundene Abschnitts-Ueberschriften
+bleiben mit-deutsch (Kohaerenz je Report-Block). lever/plan.action (Inhalts-Props) bleiben deutsch.
+Volle EN-Report-Ausgabe = Fachuebersetzung + lib/insight/lib/scoring-EN + revalidierte Modell-Labels.
+
+3 Source-Assertions aufs Woerterbuch umgezogen (action-area, hardening result-Teil, result-feedback).
+Saison-Seite (app/saison/[id]) noch unkonvertiert -> Saison-Assertion (Zugriff gesperrt) unveraendert,
+wird in 3d behandelt.
+
+Verbleibend Welle 3: 3c Token-Flows, 3d Content-Seiten (inkl. Saison Zugriff-gesperrt). Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_61 — 2026-06-20
+================================================================
+i18n Welle 3b-2a — Assessment-Durchfuehrung (App-Chrome) zweisprachig.
+
+Durchfuehrungs-Flow: assessment/[id] (Seiten-Zustaende) + runner (Navigation/Fortschritt/
+Fehlermeldungen) + assessment-intro (Onboarding) auf t(). 3 neue Woerterbuch-Sektionen
+(assessmentPage, assessmentRunner, assessmentIntro), DE/EN strukturgleich (40 gesamt).
+
+INSTRUMENT-GRENZE (bewusst Deutsch/geflaggt): item-renderer bleibt VOLLSTAENDIG deutsch —
+Item-Text (text_de aus DB), Antwort-Anker, Format-Hinweise, Modul-Titel ueber der Frage =
+Einheit. Teiluebersetzung waere psychometrisch unsauber + inkohaerent. Volles EN-Instrument =
+Fachuebersetzung + Revalidierung + text_en/Anker-Spalten. Modul-Namen bleiben deutsch
+(Instrument-Eigennamen, wie Archetyp-Namen), konsistent in item-renderer + intro.
+
+Verbleibend Welle 3: 3b-2b result-Seite (740 Z) + result-Komponenten (Report-Inhalt
+psychometrisch geflaggt), 3c Token-Flows, 3d Content-Seiten. Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_60 — 2026-06-20
+================================================================
+i18n Welle 3b Teil 1 — Dashboard + FocusTracker zweisprachig.
+
+Die meistgesehene Login-Seite (Dashboard, 429 Z, Server) + interaktiver Aktionsbereich
+(FocusTracker, 213 Z, Client) sind DE/EN. DB->Label-Maps via t() (Schluessel bleiben, nur
+Labels lokalisiert); sprachabhaengiges Datum (de-AT/en-GB) + Preis (de-AT/en-IE); Plurale ueber
+Singular/Plural-Keys; Zaehler ueber {count}-Templates fuer korrekte Wortstellung. 2 neue
+Woerterbuch-Sektionen (dashboard, focusTracker), DE/EN strukturgleich (37 gesamt).
+
+3 Source-Assertions auf deutsche UI-Strings aufs Woerterbuch umgezogen (de.ts geprueft +
+Key-Referenz in der Komponente) — Intention erhalten.
+
+Verbleibend Welle 3: 3b Teil 2 (assessment/[id] + result + uebrige assessment-Komponenten,
+Report-Inhalt psychometrisch geflaggt), 3c Token-Flows, 3d Content-Seiten. Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_59 — 2026-06-20
+================================================================
+i18n Welle 3a — Kaeufer-Reise zweisprachig (Bernie: "Welle 3", Teil 1).
+
+App-Seiten hinter dem Login, Teil 1: globales Chrome + Auth + Checkout + Konto sind DE/EN.
+14 Dateien umgestellt, 16 neue Woerterbuch-Sektionen, DE/EN strukturgleich. Client via
+useT(), Server via getT(); cookie-banner schliesst zugleich eine Landing-Luecke (Root-Layout).
+checkout: sprachabhaengige Waehrung de-DE/en-IE.
+
+Flags: consent-form = rechtlich operativer Text (FAGG-Widerruf, DSGVO) -> EN ist
+Verstaendnis-Entwurf, anwaltlich freizugeben (wie Rechtsseiten). Checkout name_de/description
+aus DB bleibt deutsch (EN = spaetere Spalten name_en/description_en). Korrektur: Consent-Hinweis
+"drei" -> "vier" Punkte. DB-Auswahlwerte bleiben, nur Labels uebersetzt.
+
+Verbleibend Welle 3: 3b Dashboard + Assessment-Erlebnis, 3c Token-Flows, 3d Content-Seiten.
+Admin + Rechtsseiten bewusst ausgeschlossen. Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_58 — 2026-06-20
+================================================================
+i18n Welle 2 — Landing vollstaendig zweisprachig (Bernie: "Welle 2").
+
+Alle 17 Landing-Komponenten auf das i18n-Woerterbuch umgestellt; EN-Umschalter macht jetzt
+die komplette Startseite englisch. 19 Woerterbuch-Sektionen, DE/EN strukturgleich (per
+Dictionary-Typ erzwungen). Client-Komponenten (mini-check, faq) via useT(), Rest via getT().
+
+Bewusst Deutsch belassen: Produktnamen, 12 Archetyp-Namen, akademische Zitate. FAQ-Markenfix
+"Mindset Check" -> "CoachCheck". Verifiziert: kein durchgerutschtes Deutsch in en.ts,
+19 Sektionen DE=EN.
+
+Offen (gleiche Methodik): App-Seiten, E-Mail-Templates, Test-Assertions. Recht + Psychometrik
+= gekennzeichnete Spuren (Anwalt / Fachuebersetzung). Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_57 — 2026-06-20
+================================================================
+Zweisprachigkeit DE/EN — Fundament + erste Welle (Bernie: "zweisprachig").
+
+Cookie-basiertes i18n ohne [locale]-Routen-Umbau. Neu: lib/i18n/ (config, index/makeT,
+server/getT, dictionaries de+en mit erzwungener Strukturparitaet), components/i18n/
+(LocaleProvider/useT, LanguageToggle). app/layout.tsx verdrahtet (html lang dynamisch,
+Provider, lokalisierte Metadaten). Vollstaendig zweisprachig: top-nav (inkl. Umschalter)
++ hero. Deutsch bleibt Standard.
+
+Guard: tests/i18n-foundation.test.ts (DE/EN-Paritaet, Fallback, de=Standard).
+brand-consistency-Test angepasst: CoachCheck-Praesenz jetzt im Woerterbuch geprueft.
+
+Offen (gleiche Methodik, naechste Wellen): 15 restliche Landing-Komponenten (~1300 Z.),
+App-Seiten, E-Mail-Templates, Test-Assertions. Gekennzeichnete Spuren NICHT maschinell:
+Rechtstexte (Anwalt) + Psychometrik (Fachuebersetzung/Revalidierung). Siehe I18N.md.
+
+Gates: tsc OK · claimcheck 65 · vitest 355/355 (34) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+VERIFIKATION v3_56 — 2026-06-20
+================================================================
+Vollstaendige Schluss-Durchsicht: alle Tests, alle Ablaeufe, alle Feedbacks —
+ausgefuehrt gegen echtes PostgreSQL 16.14 (frische DB). Keine Code-Aenderung.
+
+Gates: tsc OK · claimcheck 65 · vitest 351/351 (33 Dateien) · eslint OK · build Exit 0
+  · npm audit 0 · PDF 4/4.
+DB: 43 Migrationen (01->43) auf frischer DB -> 43 OK / 0 FAIL.
+Feedbacks: Recognition-CHECK (0-10, >80 Zeichen, UNIQUE/Assessment), Check-in-Loop
+  (UNIQUE plan+date) — ausgefuehrt.
+Ablaeufe: 7-Tage-Fokus (partial unique, target_days, Status, Archiv->neu, Abschluss),
+  Entitlement (paid->Zugang, Refund->Entzug), Refund-Cascade (Einladung entwertet),
+  Pulse-Zaehlfunktion — ausgefuehrt.
+RLS: Owner sieht eigenes (3/2/1), Angreifer 0/0/0 in allen drei Tabellen.
+Logik: Mischprofil-Klassifikation, Signatur (Grammatik-Fix bestaetigt, kein
+  "Humatrix Coach"), Bedienungsanleitung — ausgefuehrt.
+Artefakte reproduzierbar gesichert: verification/ (harness + flow_a/b/c + runner) +
+VERIFIKATION_v3_56.md.
+
+
+FIX v3_55 — 2026-06-20
+================================================================
+Markenname vereinheitlicht: "CoachCheck" ueberall (Bernies Entscheidung).
+
+"Humatrix Coach" (Produkt-Zweitname) -> "CoachCheck": 25 Vorkommen in 21 Dateien +
+Signup-Sonderfall (beide Account-Verweise -> "CoachCheck-Account"). Betrifft Hero,
+Seitentitel, Rechtsseiten-Titel, E-Mail-Betreffs, Stripe-Line-Item, resend Fallback,
+Admin-Hinweis, KI-Prompt-Persona, PDF-Titel, README/GO-LIVE.
+
+Firma "Humatrix" ERHALTEN: HumatrixLogo (3x), Footer-Spalte + Copyright, Impressum-
+Anbieter, Mail-Domain humatrix.cc. Widerruf-Consent-Text nannte bereits "CoachCheck"
+-> kein Rechtstext beruehrt, kein Anwalt noetig.
+
+Neuer Guard: tests/brand-consistency-v3-55.test.ts (scannt app/components/lib auf
+"Humatrix Coach"; prueft Erhalt von "Humatrix" + "CoachCheck"). +3 Tests.
+
+Gates: tsc OK · claimcheck 65 · vitest 351/351 · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_54 — 2026-06-20
+================================================================
+Premium-Sprach-/Ton-Durchgang ueber kundenseitige Texte.
+
+Behoben: hero "Sample Insight"->"Beispiel-Einblick"; report-document.tsx 5 Anglizismen
+(Executive Summary->Ueberblick, Blind Spots->Blinde Flecken x2, Coach Impact->
+Coach-Wirkung x2, Datenschluessel unveraendert); report-prompt.ts 4 Terminologie-
+Angleichungen (KI-Prosa bleibt deutsch); dashboard "Premium Report"->"Premium-Report";
+archetyp "Deep Dive"->"Deep-Dive" (Konsistenz).
+
+Bewusst belassen (Befunde, keine Fehler): Markenname-Split CoachCheck/Humatrix Coach
+(Marken-+Rechtsentscheidung -> Bernie/Anwalt); Produktterm "Deep-Dive" + Tagline
+"Premium Edition"; Tarifnamen per DB; Footer-Eigennamen anderer Humatrix-Produkte.
+Verifiziert bereits premium: operating-manual, R1/R2-Komponenten, E-Mails.
+
+Gates: tsc OK · claimcheck 65 · vitest 348/348 · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_53 — 2026-06-20
+================================================================
+Premium-Sprachfix (kundenseitiger Text). Aus Verifikation v3_52.
+
+Instant-Signatur: attributive Adjektiv-Deklination fehlte ("deine fuehrungsstark
+Auspraegung" -> "fuehrungsstarke"). Erster Satz in der Enthuellung -> Premium-Makel.
+Fix: Helper adjAttributiv() (Nominativ feminin nach Possessiv -> "-e"); praedikative
+Verwendung bleibt korrekt undekliniert. Durch Ausfuehrung ueber mehrere Profile belegt
+(fuehrungsstarke/intuitive/konsequente Auspraegung). Fehlerklasse auf 1 Zeile isoliert.
+
+Gates: tsc OK · claimcheck 65 · vitest 348/348 · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_52 — 2026-06-20
+================================================================
+Empirischer Verifikationsdurchgang + Robustheitsfix (kein Feature).
+
+Geprueft durch AUSFUEHRUNG, nicht durch Zusehen:
+- DB: echtes PostgreSQL 16 installiert, Stub-Harness (auth/storage/Rollen), ALLE 43
+  Migrationen in Reihenfolge angewendet -> sauber, alle Verifikations-DO-Bloecke OK.
+- BEFUND+FIX: Migration 05 braucht pgcrypto (gen_random_bytes), war nicht deklariert
+  (auf Supabase aktiv, auf frischer DB Abbruch). -> create extension if not exists
+  pgcrypto in Migration 01. Neu bewiesen: frische DB ohne manuelles pgcrypto, 0 vorher,
+  43 durch, 1 nachher. Migrationen jetzt selbsttragend.
+- Laufzeit gegen echte Engine (simulierte auth.uid()): RLS isoliert wirklich
+  (Owner 1 / Fremd 0 fuer plans+checkins); Partial-Unique blockt 2. aktiven Fokus;
+  Upsert-Targets (plan_id,checkin_date) und (assessment_id) == echte Constraints
+  (je 1 Zeile); recognition-CHECK blockt 11.
+- Logik real ausgefuehrt: classifyProfile (dominant/mixed/Grenze 0.12/degeneriert d2=0
+  ohne Crash), profileHeadline, buildInstantSignature (liest echte %, liefert
+  reading/underPressure/lever), buildOperatingManual (Staerken max 3).
+- Notiz (Kosmetik, kein Bug): Signatur "deine fuehrungsstark Auspraegung" -> fehlende
+  Adjektiv-Deklination ("fuehrungsstarke"). Optionaler Sprach-Feinschliff.
+
+Neu: VERIFIKATION_v3_52.md (vollstaendiger Befund). Migrationsstand 01->43.
+
+Gates: tsc OK · claimcheck 65 · vitest 348/348 · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_51 — 2026-06-20
+================================================================
+Launch-Finalisierung (kein Feature). Sauberer Abschluss + Verifikation.
+
+Verifikation: Migrationen lueckenlos 01->43; keine TODO/FIXME im neuen Code; alle 4
+neuen Komponenten eingebunden; "beworben=geliefert" via claim-guard testabgedeckt.
+LAUNCH.md (neu): das eine verbindliche Startdokument von "jetzt" bis "verkaufen" -
+  geordnete Schritte 1-7 (Supabase/Migrationen, ENV, Stripe inkl. Webhook-Events,
+  Resend, Vercel, Live-Smoke-Test mit Refund-Pfad, Live-E2E-Test), Rechts-Gate
+  (FAGG/AGB/Datenschutz/AVV -> Anwalt, bewusst offen), "Du bist live"-Definition,
+  Nicht-Blocker-Liste.
+GO-LIVE.md verweist oben auf LAUNCH.md (Historie bleibt dort).
+Test launch-doc-v3-51 (selbstwartend): erzwingt LAUNCH.md == hoechste Migration,
+  nennt neue Tabellen + exakte Webhook-Events + Rechts-Gate.
+Migrationsstand bleibt 01->43, kein neues Schema.
+
+Ehrlicher Stand: Code fertig+bewiesen (Release 0/1/2). Offen = nur deine Schritte:
+  Migrationen live anwenden, ENV/Webhook/Resend, Live-Smoke + Live-E2E-Refund-Test,
+  Rechts-Signoff. Danach verkaufsbereit.
+
+Gates: tsc OK · claimcheck 65 · vitest 348/348 (+7) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_50 — 2026-06-20
+================================================================
+Release 2 / Baustein 3: Abschluss-Wuerdigung + Fokus-Historie (Bestcase §11/§12). Feature.
+
+Erreichter Fokus verschwindet nicht mehr stumm: Erfolgskarte + Anstoss zum naechsten,
+plus Historie auf dem Dashboard. KEIN neues Schema (nutzt status=completed/completed_at
++ action_checkins). Migrationsstand bleibt 01->43.
+
+FocusTracker: Abschluss-Zustand (setCompleted) statt sofortigem refresh ->
+  "X Tage drangeblieben" + "Neuen Fokus setzen" (Link Ergebnis) + "Fertig" (refresh).
+Dashboard: neue Zone "Abgeschlossene Foki" (bis 8, neueste zuerst) mit Aktion,
+  Tage-Zahl, Abschlussdatum. Check-in-Load deckt jetzt aktive UND abgeschlossene Plaene.
+Bewusst offen: Nudges (Erinnerungs-Mails via Resend/Cron) = letzter Aktionsbereich-Rest.
+
+RELEASE 2 KERN KOMPLETT: v3_48 Fokus setzen · v3_49 Check-in-Schleife ·
+  v3_50 Abschluss+Historie. Bogen verstehen->umsetzen->dranbleiben->abschliessen.
+
+Gates: tsc OK · claimcheck 65 · vitest 341/341 (+7) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_49 — 2026-06-20
+================================================================
+Release 2 / Baustein 2: Taegliche Check-in-Schleife (Bestcase §12). Feature.
+
+Schliesst den Aktionsbereich-Loop: gesetzter 7-Tage-Fokus -> taeglicher Check-in,
+Fortschritt, Streak, Abschluss. Bogen "verstehen -> umsetzen -> dranbleiben".
+
+Migration 43 action_checkins:
+  - unique(plan_id, checkin_date): genau 1 Check-in pro Plan und Tag (Vorhandensein
+    = erledigt); optionale Notiz <=300.
+  - RLS nur Owner-SELECT, KEINE Schreib-Policy (nur service_role); Verifikationsblock.
+Route /api/action/[planId] (POST+DELETE+PATCH):
+  - POST Check-in heute (Upsert plan_id,checkin_date; nur bei aktivem Fokus),
+    DELETE Undo heute, PATCH Abschluss (status=completed, completed_at).
+  - Ownership via action_plans.user_id; alles via service_role; kein Scoring.
+FocusTracker (client) ersetzt statische Dashboard-Karte: Fortschrittsbalken,
+  "X von 7 Tagen", Streak, optionale Notiz, "Heute erledigt" (+Undo),
+  "Fokus abschliessen" (hervorgehoben bei Zielerreichung) -> router.refresh.
+Dashboard: laedt Check-ins der aktiven Foki (RLS-scoped), berechnet Fortschritt+Streak
+  serverseitig (konsekutive Tage endend heute/gestern).
+Doku: GO-LIVE/LAUNCH/README auf 01->43 (Prod ...->42->43).
+Test-Anpassung: v3_48-Dashboard-Assertion (7-Tage-Fokus-Label jetzt im Tracker);
+  v3_48/hardening Doku-Tests auf dauerhafte Form / 01->43.
+Bewusst offen (Baustein 3): Abschluss->naechster Fokus, Historie, Nudges.
+
+Gates: tsc OK · claimcheck 65 · vitest 334/334 (+12) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_48 — 2026-06-20
+================================================================
+Release 2 / Baustein 1: Aktionsbereich - 7-Tage-Fokus (Bestcase §11/§12/§24). Feature.
+
+Macht aus dem naechsten Schritt einen trackbaren 7-Tage-Fokus, sichtbar auf dem
+Dashboard. Schritt von "verstehen" zu "umsetzen".
+
+Migration 42 action_plans:
+  - title/action/source/status(active/completed/archived)/target_days(7).
+  - Partial-Unique ux_action_plans_one_active: hoechstens 1 aktiver Fokus pro
+    Nutzer+Assessment.
+  - RLS nur Owner-SELECT, KEINE Schreib-Policy (nur service_role); Verifikationsblock.
+Route /api/assessment/[id]/action (POST+DELETE):
+  - POST setzt/ersetzt (Update-in-place statt Konflikt), DELETE archiviert.
+  - auth + Eigentum + nur nach Abschluss; Zod (Titel<=160, Aktion<=600);
+    schreibt via service_role nur in action_plans, kein Scoring.
+ActionFocusCard (client) im Ergebnis: setzt signature.lever als Fokus oder zeigt
+  aktiven Fokus (Dashboard-Link / entfernen). Im "Was kommt als Naechstes?"-Block.
+Dashboard: neue Zone "Aktiver Fokus" (RLS-scoped), Karten mit "seit X Tagen aktiv".
+Doku: GO-LIVE/LAUNCH/README auf 01->42 (Prod ...->41->42).
+Test-Fix: result-feedback-v3-45 Doku-Test prueft jetzt nur noch die dauerhafte
+  Migration-41-Beschreibung statt des wandernden Header-Stands.
+Bewusst offen (Baustein 2): taegliche Check-in-Schleife (action_checkins, §12).
+
+Gates: tsc OK · claimcheck 64 · vitest 322/322 (+14) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_47 — 2026-06-20
+================================================================
+Release 1 / Baustein 4: Coach-Card-Pass (Bestcase §16). RELEASE 1 ABGESCHLOSSEN.
+
+Schliesst den in v3_44 bewusst ausgesparten Mischprofil-Konsistenzpunkt:
+Coach Card (app/karte/[token]/page.tsx) zeigt jetzt:
+  - Sekundaer-Archetyp als "Starke Zweittendenz" (§16).
+  - Mischprofil-bewusst aus gespeichertem signature.profile.type (kein Neuberechnen);
+    Mischprofil -> "Coachingprofil · Mischprofil" + "Mischprofil mit Zweittendenz".
+    Fallback 'dominant' fuer Alt-Assessments.
+  - §16-konform genau zwei Staerken (vorher bis 3).
+Datenschutz geprueft: keine Scores/Team/Fremdbild/Email gerendert; weiter als
+  "keine Diagnose" gerahmt. Per Test abgesichert.
+Bewusst offen (groessere §16-Features, eigener Track): Foto-Upload/Freistellung,
+  QR-Code, granulare Vorab-Toggles, Bild-Export-Formate.
+Keine neue Migration (Stand 01->41).
+
+Gates: tsc OK · claimcheck 63 · vitest 308/308 (+6) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+RELEASE 1 KOMPLETT: v3_44 Mischprofile · v3_45 Treffer-Feedback ·
+  v3_46 Wow-Enthuellung · v3_47 Coach-Card. Naechstes: Release 2 Aktionsbereich.
+
+
+FIX v3_46 — 2026-06-20
+================================================================
+Release 1 / Baustein 3: Gestaffelte Wow-Enthuellung (Bestcase §8 Ablauf D). Feature.
+
+Ergebnis-Seite oeffnet mit 5 fokussierten Bildschirmen statt statischem Hero.
+Alle Bildschirme DETERMINISTISCH (Instant-Signatur + Bedienungsanleitung) -> kein
+KI-Report noetig. Wirkung messbar via Treffer-Feedback (v3_45) darunter.
+
+5 Bildschirme:
+  1 Fuehrungsprofil (mischprofil-bewusst) + signature.reading
+  2 Staerken (manual.staerken)
+  3 Unter Druck (signature.underPressure + tension), nicht verurteilend
+  4 Team-Wirkung (manual.soErreichst/soGibst) als HYPOTHESE (kein echtes Fremdbild)
+  5 Naechster Schritt (signature.lever), auf 7 Tage gerahmt
+Danach unveraendert der volle Report.
+
+Neu: components/assessment/result-reveal.tsx (client, Fortschritt/Weiter/Ueberspringen,
+  localStorage je Assessment -> Wiederkehrer eingeklappt, hydration-sicher).
+Ersetzt statischen Hero auf der Ergebnis-Seite; Deep-Dive-Link bleibt; Mischprofil-
+  Formulierung wandert in den Reveal (Typ als Prop, Quelle = signature.profile).
+Test-Fix: mischprofil-v3-44 Result-Assertion -> prueft jetzt isMixed-Prop statt Literal.
+Bewusst offen: Coach-Card-Pass (§16) = letzter Release-1-Baustein.
+
+Gates: tsc OK · claimcheck 63 · vitest 302/302 (+11) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_45 — 2026-06-20
+================================================================
+Release 1 / Baustein 2: Treffer-Feedback (Bestcase §27). Feature.
+
+Erfasst nach Ergebnis: Wiedererkennung 0-10 + hilfreichster Abschnitt.
+Garantie §27: veraendert das berechnete Ergebnis NICHT (eigene Tabelle, Route
+ruehrt kein Scoring an, per Test abgesichert).
+
+Migration 41 result_feedback:
+  - recognition smallint CHECK 0-10, most_helpful text (Whitelist), unique(assessment_id).
+  - RLS: nur Owner-SELECT, KEINE Schreib-Policy (nur service_role schreibt);
+    Verifikationsblock erzwingt das.
+Route POST /api/assessment/[id]/feedback:
+  - auth + Eigentum + nur nach Abschluss; Zod recognition 0-10, most_helpful enum;
+    Upsert via service_role nur in result_feedback (onConflict assessment_id).
+Widget RecognitionFeedback (client): 0-10 Skala + Abschnitt-Chips, zeigt
+  abgegebenen Stand, eingebunden auf Ergebnis-Seite (serverseitig vorbefuellt).
+Doku: GO-LIVE/LAUNCH/README auf Migrationen 01->41 (Prod ...->40->41).
+Test-Fix: hardening-v3-43 Doku-Assertion 01->40 => 01->41 (Migrationsstand erhoeht).
+Bewusst offen: Admin-Auswertung der Metrik + volles §27-Analytics.
+
+Gates: tsc OK · claimcheck 63 · vitest 291/291 (+14) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
+FIX v3_44 — 2026-06-20
+================================================================
+Release 1 / Baustein 1: Mischprofile (Bestcase §9/§10). Feature, kein Hotfix.
+
+Korrektheit: keine starre Typzuweisung mehr. Primär+Sekundär nah => Mischprofil,
+ueberall identisch formuliert. Kein neues Schema/Migration.
+
+Quelle der Wahrheit lib/scoring.ts:
+  - classifyProfile(distances) -> {type:'dominant'|'mixed', primary, secondary,
+    gap, dominance}; dominance=(d2-d1)/d2, skaleninvariant; THRESHOLD=0.12;
+    degenerate (d=0) abgefangen.
+  - profileHeadline(c) -> gemeinsame Ueberschrift (nie "eindeutig").
+Sweep:
+  - finalize: classifyProfile einmal, speichert signature.profile (typ/headline).
+  - result page: liest gespeicherten typ, "Mischprofil aus X und Y" + Fallback.
+  - report route: dieselbe classifyProfile-Funktion, reicht profileType an Prompt+PDF.
+  - report-prompt: Entscheidung jetzt ueber profileType (Fallback Delta), nicht mehr
+    abweichende absolute Schwelle 0.05.
+  - PDF report-document: profileType -> Mischprofil-Labels + erklaerender Satz.
+  - pdf-fulltest: neue Variante 4-mischprofil.
+Bewusst offen: Coach Card (single-archetype operating-manual; eigener Release-1-Pass).
+
+Gates: tsc OK · claimcheck 62 · vitest 277/277 (+15) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4 inkl. Mischprofil.
+
+
 FIX v3_43 — 2026-06-20
 ================================================================
 6. Audit: 4 P0-Blocker + Migration-39-Preflight + P1 geschlossen.

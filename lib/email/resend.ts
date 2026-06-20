@@ -14,12 +14,12 @@ export function getResend() {
  * - Domain muss in Resend verifiziert sein (SPF + DKIM + DMARC)
  * - Format: "Name <email@domain>" — sonst landen Mails häufiger im Spam
  *
- * Production: RESEND_FROM_EMAIL="Humatrix Coach <noreply@humatrix.cc>"
- * Fallback (nur Dev): "Humatrix Coach <onboarding@resend.dev>"
+ * Production: RESEND_FROM_EMAIL="CoachCheck <noreply@humatrix.cc>"
+ * Fallback (nur Dev): "CoachCheck <onboarding@resend.dev>"
  *   ⚠ Bei Resend-Test-Domain kann nur an Account-Owner-Email gesendet werden.
  *   ⚠ Mails von resend.dev landen bei externen Empfängern fast immer im Spam.
  */
-export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'Humatrix Coach <onboarding@resend.dev>';
+export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'CoachCheck <onboarding@resend.dev>';
 
 /**
  * Reply-To: hier landen Antworten. Niemals auf noreply@ —

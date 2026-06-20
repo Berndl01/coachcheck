@@ -14,8 +14,12 @@ import { getReportSignedUrl } from '@/lib/pdf/storage';
 import { buildInstantSignature } from '@/lib/insight/instant-signature';
 import { buildOperatingManual, buildPlayerTypeMatrix } from '@/lib/insight/operating-manual';
 import { ShareCardButton } from '@/components/assessment/share-card-button';
+import { RecognitionFeedback } from '@/components/assessment/recognition-feedback';
+import { ResultReveal } from '@/components/assessment/result-reveal';
+import { ActionFocusCard } from '@/components/assessment/action-focus-card';
 import { buildProgressComparison } from '@/lib/insight/progress';
 import { computeMaturityScores, MATURITY_KEYS, MATURITY_LABELS, type AxisScores } from '@/lib/scoring';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +55,7 @@ export default async function ResultPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const t = await getT();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -77,18 +82,16 @@ export default async function ResultPage({
         <main className="max-w-[860px] mx-auto px-4 md:px-8 py-16">
           <div className="bg-bone-soft border border-bone-line p-8 rounded-md">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
-              Zugriff gesperrt
+              {t('resultPage.lockedKicker')}
             </div>
             <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-              Dieses Ergebnis ist nicht mehr verfügbar
+              {t('resultPage.lockedTitle')}
             </h1>
             <p className="text-muted leading-relaxed">
-              Für dieses Assessment besteht keine aktive Berechtigung mehr. Das passiert,
-              wenn der zugehörige Kauf erstattet wurde. Report, Ergebnisansicht und ein
-              eventueller öffentlicher Link sind damit gesperrt.
+              {t('resultPage.lockedBody1')}
             </p>
             <p className="text-muted leading-relaxed mt-3 text-sm">
-              Bei Fragen zur Erstattung oder für einen erneuten Zugang wende dich bitte an den Support.
+              {t('resultPage.lockedBody2')}
             </p>
           </div>
         </main>
@@ -165,6 +168,27 @@ export default async function ResultPage({
 
   const primary = assessment.primary as any;
   const secondary = assessment.secondary as any;
+  const profileMeta = (assessment.signature as any)?.profile as
+    | { type?: string; headline?: string }
+    | undefined;
+  const isMixedProfile = profileMeta?.type === 'mixed';
+
+  // Treffer-Feedback (Bestcase §27): vorhandenes Feedback serverseitig laden,
+  // damit das Widget den bereits abgegebenen Stand zeigt (service_role).
+  const { data: existingFeedback } = await createAdminClient()
+    .from('result_feedback')
+    .select('recognition, most_helpful')
+    .eq('assessment_id', id)
+    .maybeSingle();
+
+  // Aktionsbereich (Bestcase §11/§12): aktiven 7-Tage-Fokus für dieses
+  // Assessment laden, damit die Fokus-Karte den gesetzten Stand zeigt.
+  const { data: activePlan } = await createAdminClient()
+    .from('action_plans')
+    .select('action, title')
+    .eq('assessment_id', id)
+    .eq('status', 'active')
+    .maybeSingle();
   const axisScores = assessment.axis_scores as Record<string, number>;
   const signature = buildInstantSignature(axisScores as any);
   const manual = primary ? buildOperatingManual(primary, axisScores as any) : null;
@@ -237,54 +261,42 @@ export default async function ResultPage({
     <>
       <TopNav />
       <main>
-        {/* Hero */}
-        <section className="bg-petrol text-bone py-16 md:py-24 px-4 md:px-8 relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top right, rgba(179, 142, 69, 0.15), transparent 50%)' }} />
-          <div className="max-w-4xl mx-auto relative">
-            <div className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-gold-light mb-6">
-              Dein Ergebnis · {assessment.product?.name_de}
+        {/* Gestaffelte Wow-Enthüllung (§8 Ablauf D) — ersetzt den statischen Hero.
+            Alle 5 Bildschirme deterministisch aus Signatur + Bedienungsanleitung. */}
+        {primary && manual && (
+          <ResultReveal
+            assessmentId={id}
+            primaryName={primary.name_de}
+            secondaryName={secondary?.name_de ?? null}
+            isMixed={isMixedProfile}
+            headline={profileMeta?.headline ?? primary.short_trait}
+            kernsatz={primary.kernmuster}
+            reading={signature.reading}
+            strengths={manual.staerken}
+            underPressure={signature.underPressure}
+            tension={signature.tension}
+            teamReach={manual.soErreichstDuMich}
+            teamFeedback={manual.soGibstDuFeedback}
+            nextLever={signature.lever}
+          />
+        )}
+        {primary && (
+          <div className="bg-petrol text-bone px-4 md:px-8 pb-12">
+            <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-4 border-t border-bone/10 pt-6">
+              <div className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-bone-soft/70">
+                {t('resultPage.yourResult')} · {assessment.product?.name_de}
+              </div>
+              {productTier >= 2 && (
+                <Link
+                  href={`/archetyp/${primary.code}?assessment=${id}`}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition text-sm"
+                >
+                  {t('resultPage.deepDive')} <span className="font-mono">→</span>
+                </Link>
+              )}
             </div>
-            {primary && (
-              <>
-                <div className="font-mono text-xs uppercase tracking-[0.18em] text-gold mb-3">
-                  Primärer Archetyp
-                </div>
-                <h1 className="font-display font-light text-[clamp(2.6rem,6vw,5rem)] leading-[1.02] tracking-[-0.035em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
-                  {primary.name_de}
-                </h1>
-                <p className="font-mono text-xs uppercase tracking-[0.12em] text-bone-soft mb-8">
-                  {primary.short_trait}
-                </p>
-                <p className="font-editorial italic text-xl leading-[1.5] max-w-[58ch] text-bone-soft">
-                  {primary.kernmuster}
-                </p>
-                {productTier >= 2 && (
-                  <div className="mt-6">
-                    <Link
-                      href={`/archetyp/${primary.code}?assessment=${id}`}
-                      className="inline-flex items-center gap-2 px-5 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition text-sm"
-                    >
-                      Deep-Dive lesen <span className="font-mono">→</span>
-                    </Link>
-                  </div>
-                )}
-                {secondary && (
-                  <div className="mt-8 pt-8 border-t border-bone/10">
-                    <div className="font-mono text-xs uppercase tracking-[0.18em] text-gold mb-2">
-                      Sekundärer Archetyp
-                    </div>
-                    <div className="font-display text-2xl font-normal tracking-[-0.02em]" style={{ fontVariationSettings: "'opsz' 144" }}>
-                      {secondary.name_de}
-                    </div>
-                    <div className="font-mono text-xs uppercase tracking-[0.12em] text-bone-soft mt-1">
-                      {secondary.short_trait}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
           </div>
-        </section>
+        )}
 
         {/* PERSONALISIERTE SIGNATUR — der WOW-Moment, sofort, individuell */}
         <section className="bg-bone py-14 md:py-20 px-4 md:px-8">
@@ -383,16 +395,13 @@ export default async function ResultPage({
           <section className="bg-bone-soft py-12 md:py-16 px-4 md:px-8">
             <div className="max-w-4xl mx-auto">
               <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4 flex items-center gap-3">
-                <span className="w-10 h-px bg-gold" /> 360° Spiegel · Fremdbild
+                <span className="w-10 h-px bg-gold" /> 360° Spiegel {t('resultPage.threeSixtyTag')}
               </div>
               <h2 className="font-display font-light text-[clamp(1.6rem,3.5vw,2.4rem)] leading-[1.05] tracking-[-0.025em] mb-3" style={{ fontVariationSettings: "'opsz' 144" }}>
-                Lass dein Team <em className="font-editorial">ehrlich</em> einschätzen.
+                {t('resultPage.threeSixtyH2a')} <em className="font-editorial">{t('resultPage.threeSixtyH2emph')}</em> {t('resultPage.threeSixtyH2b')}
               </h2>
               <p className="text-muted mb-8 max-w-[55ch] leading-[1.5]">
-                Lade 5–10 Personen ein, die dich kennen. Sie füllen denselben Test
-                aus dem Fremdbild aus — anonymisiert und ausschließlich aggregiert ausgewertet;
-                Einzelantworten sind für dich als Trainer nicht abrufbar. Sobald 3+ Antworten
-                da sind, vergleicht der Premium-Report dein Selbstbild mit dem Team-Bild.
+                {t('resultPage.threeSixtyDesc')}
               </p>
               <InvitationsManager
                 assessmentId={id}
@@ -408,16 +417,13 @@ export default async function ResultPage({
           <section className="bg-petrol/5 py-12 md:py-16 px-4 md:px-8 border-t border-bone-line">
             <div className="max-w-4xl mx-auto">
               <div className="font-mono text-xs uppercase tracking-[0.2em] text-petrol mb-4 flex items-center gap-3">
-                <span className="w-10 h-px bg-petrol" /> TeamCheck · Spielerstimmen
+                <span className="w-10 h-px bg-petrol" /> TeamCheck {t('resultPage.teamTag')}
               </div>
               <h2 className="font-display font-light text-[clamp(1.6rem,3.5vw,2.4rem)] leading-[1.05] tracking-[-0.025em] mb-3" style={{ fontVariationSettings: "'opsz' 144" }}>
-                Lass dein <em className="font-editorial">Team selbst sprechen.</em>
+                {t('resultPage.teamH2a')} <em className="font-editorial">{t('resultPage.teamH2emph')}</em>
               </h2>
               <p className="text-muted mb-8 max-w-[55ch] leading-[1.5]">
-                Lade alle Spieler über anonyme Token-Links ein. Sie beantworten 12 ehrliche Fragen zu Coach-Impact,
-                Teamklima, psychologischer Sicherheit und Druck-Erleben. Antworten werden anonymisiert
-                und ausschließlich aggregiert ausgewertet — Einzelantworten sind für dich nicht abrufbar.
-                Auswertung ab 5 vollständigen Antworten.
+                {t('resultPage.teamDesc')}
               </p>
               <TeamcheckManager
                 assessmentId={id}
@@ -426,13 +432,10 @@ export default async function ResultPage({
               />
               <div className="mt-8 p-5 md:p-6 bg-petrol text-bone rounded-md border-l-[3px] border-gold">
                 <div className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-gold mb-2">
-                  ★ Dein persönlicher Teil
+                  {t('resultPage.teamPersonalKicker')}
                 </div>
                 <p className="text-[0.95rem] leading-[1.55] text-bone-soft">
-                  Sobald die Team-Antworten ausgewertet sind, gehen wir gemeinsam in einen
-                  persönlichen Auswertungs-Call und priorisieren deinen 14-Tage-Maßnahmenplan.
-                  Hier kommt das Know-how des Mind-Club-Teams direkt zu dir — den Termin
-                  vereinbaren wir nach dem Eingang der Antworten.
+                  {t('resultPage.teamPersonalText')}
                 </p>
               </div>
             </div>
@@ -461,15 +464,13 @@ export default async function ResultPage({
         <section className="bg-ink text-bone py-12 md:py-16 px-4 md:px-8">
           <div className="max-w-4xl mx-auto">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold mb-4 flex items-center gap-3">
-              <span className="w-10 h-px bg-gold" /> Premium-Report
+              <span className="w-10 h-px bg-gold" /> {t('resultPage.premiumKicker')}
             </div>
             <h2 className="font-display font-light text-[clamp(1.6rem,3.5vw,2.4rem)] leading-[1.05] tracking-[-0.025em] mb-3" style={{ fontVariationSettings: "'opsz' 144" }}>
-              Dein <em className="font-editorial text-gold">vollständiger Report.</em>
+              {t('resultPage.premiumH2a')} <em className="font-editorial text-gold">{t('resultPage.premiumH2emph')}</em>
             </h2>
             <p className="text-bone-soft mb-6 max-w-[55ch] leading-[1.5]">
-              Personalisierte Interpretationen, dein Druckprofil, ein konkreter
-              Entwicklungspfad und ein Gesprächsleitfaden — auf Basis deiner
-              Antworten erstellt, als Premium-PDF.
+              {t('resultPage.premiumDesc')}
             </p>
             <ReportGenerateButton
               assessmentId={id}
@@ -674,27 +675,48 @@ export default async function ResultPage({
           </section>
         )}
 
+        {/* Treffer-Feedback (Bestcase §27): die wichtigste Produktmetrik —
+            verändert das berechnete Ergebnis nicht. */}
+        <section className="max-w-4xl mx-auto px-4 md:px-8 pt-4 pb-8">
+          <RecognitionFeedback
+            assessmentId={id}
+            initialRecognition={existingFeedback?.recognition ?? null}
+            initialHelpful={existingFeedback?.most_helpful ?? null}
+          />
+        </section>
+
+        {/* Aktionsbereich: 7-Tage-Fokus (Bestcase §11/§12) — der Schritt von
+            „verstehen" zu „umsetzen". */}
+        {primary && (
+          <section className="max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-2">
+            <ActionFocusCard
+              assessmentId={id}
+              title={primary.name_de}
+              lever={signature.lever}
+              initialPlan={activePlan ?? null}
+            />
+          </section>
+        )}
+
         {/* Next steps */}
         <section className="max-w-4xl mx-auto px-4 md:px-8 py-16 text-center">
-          <h3 className="font-display text-3xl tracking-[-0.02em] mb-3">Was kommt als Nächstes?</h3>
+          <h3 className="font-display text-3xl tracking-[-0.02em] mb-3">{t('resultPage.nextTitle')}</h3>
           <p className="font-editorial italic text-lg text-muted mb-8 max-w-[50ch] mx-auto">
-            {isThreeSixty
-              ? 'Sobald genug Fremdbilder eingegangen sind, kannst du den 360°-Report generieren.'
-              : 'Mit dem 360° Spiegel siehst du, wie deine Spieler dich wirklich erleben — der Moment, an dem aus Selbstreflexion echte Entwicklung wird.'}
+            {isThreeSixty ? t('resultPage.nextDesc360') : t('resultPage.nextDescSelf')}
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/dashboard" className="px-6 py-3 border border-ink text-ink rounded-full font-semibold hover:bg-ink hover:text-bone transition">
-              Zum Dashboard
+              {t('resultPage.toDashboard')}
             </Link>
             {!isThreeSixty && (
               <Link href="/#products" className="px-6 py-3 bg-gold text-ink rounded-full font-semibold hover:bg-ink hover:text-gold transition">
-                Nächstes Paket: 360° Spiegel →
+                {t('resultPage.nextPackage')}
               </Link>
             )}
           </div>
           {!progress && (
             <p className="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-muted mt-8">
-              Tipp: Wiederhole den Check in 8–12 Wochen — dann zeigt dir CoachCheck deinen Fortschritt direkt an.
+              {t('resultPage.repeatTip')}
             </p>
           )}
         </section>

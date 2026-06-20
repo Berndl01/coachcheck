@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { EinschaetzungRunner } from './runner';
 import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,6 +16,7 @@ export default async function EinschaetzungPage({
   const { token } = await params;
   const { unsubscribe } = await searchParams;
   const admin = createAdminClient();
+  const t = await getT();
 
   // Load invitation by token
   const { data: invitation } = await admin
@@ -28,13 +30,13 @@ export default async function EinschaetzungPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-4">
-            Einschätzung nicht gefunden
+            {t('einschaetzungPage.notFoundKicker')}
           </div>
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Dieser Link ist ungültig.
+            {t('einschaetzungPage.notFoundTitle')}
           </h1>
           <p className="text-muted">
-            Der Einladungslink ist nicht (mehr) gültig oder wurde widerrufen. Wende dich an den Trainer, der dir den Link geschickt hat.
+            {t('einschaetzungPage.notFoundText')}
           </p>
         </div>
       </main>
@@ -54,13 +56,13 @@ export default async function EinschaetzungPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-4">
-            Abgemeldet
+            {t('einschaetzungPage.unsubKicker')}
           </div>
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Du wurdest abgemeldet.
+            {t('einschaetzungPage.unsubTitle')}
           </h1>
           <p className="text-muted">
-            Zu dieser Einladung erhältst du keine weiteren E-Mails. Du musst nichts weiter tun.
+            {t('einschaetzungPage.unsubText')}
           </p>
         </div>
       </main>
@@ -72,13 +74,13 @@ export default async function EinschaetzungPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">
-            ✓ Bereits abgeschlossen
+            {t('einschaetzungPage.doneKicker')}
           </div>
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Du hast bereits geantwortet.
+            {t('einschaetzungPage.doneTitle')}
           </h1>
           <p className="text-muted font-editorial italic text-lg">
-            Danke! Deine Einschätzung ist eingegangen und fließt anonym in den Report ein.
+            {t('einschaetzungPage.doneText')}
           </p>
         </div>
       </main>
@@ -90,13 +92,13 @@ export default async function EinschaetzungPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-4">
-            Link abgelaufen
+            {t('einschaetzungPage.expiredKicker')}
           </div>
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Dieser Link ist nicht mehr gültig.
+            {t('einschaetzungPage.expiredTitle')}
           </h1>
           <p className="text-muted">
-            Der Einladungszeitraum von 14 Tagen ist vorbei.
+            {t('einschaetzungPage.expiredText')}
           </p>
         </div>
       </main>

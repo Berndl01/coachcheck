@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   assessmentId: string;
@@ -8,25 +9,26 @@ type Props = {
   productTier: number;
 };
 
-function friendlyReportError(message: string) {
-  const m = message.toLowerCase();
-  if (m.includes('anthropic') || m.includes('ai generation') || m.includes('api_key')) {
-    return 'Der Reportdienst ist gerade nicht vollständig konfiguriert. Bitte versuche es in einem Moment erneut.';
-  }
-  if (m.includes('pdf render') || m.includes('font')) {
-    return 'Das PDF konnte gerade nicht erzeugt werden. Bitte prüfe die PDF-Konfiguration und versuche es danach erneut.';
-  }
-  if (m.includes('upload') || m.includes('storage') || m.includes('bucket')) {
-    return 'Das PDF wurde erzeugt, konnte aber nicht gespeichert werden. Bitte prüfe den Supabase Storage Bucket reports.';
-  }
-  return message || 'Der Report konnte gerade nicht erstellt werden.';
-}
-
 export function ReportGenerateButton({ assessmentId, existingReportUrl, productTier }: Props) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [url, setUrl] = useState<string | null>(existingReportUrl ?? null);
+
+  function friendlyReportError(message: string) {
+    const m = message.toLowerCase();
+    if (m.includes('anthropic') || m.includes('ai generation') || m.includes('api_key')) {
+      return t('reportGenerate.errService');
+    }
+    if (m.includes('pdf render') || m.includes('font')) {
+      return t('reportGenerate.errPdf');
+    }
+    if (m.includes('upload') || m.includes('storage') || m.includes('bucket')) {
+      return t('reportGenerate.errUpload');
+    }
+    return message || t('reportGenerate.errFallback');
+  }
 
   async function pollUntilReady(): Promise<void> {
     for (let i = 0; i < 60; i++) { // max ~3 Min
@@ -37,13 +39,13 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
         if (data.status === 'ready' && data.signedUrl) { setUrl(data.signedUrl); return; }
         if (data.status === 'failed') {
           if (data.retryable) { setRetrying(true); await generate(2); return; }
-          throw new Error(friendlyReportError(data.error ?? 'Fehler'));
+          throw new Error(friendlyReportError(data.error ?? t('reportGenerate.errGeneric')));
         }
       } catch (e) {
-        throw e instanceof Error ? e : new Error('Fehler beim Abrufen des Report-Status');
+        throw e instanceof Error ? e : new Error(t('reportGenerate.errStatus'));
       }
     }
-    throw new Error('Der Report dauert ungewöhnlich lange. Bitte lade die Seite in einer Minute neu.');
+    throw new Error(t('reportGenerate.errSlow'));
   }
 
   async function generate(retriesLeft = 2) {
@@ -53,23 +55,20 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
       const res = await fetch(`/api/assessment/${assessmentId}/report`, { method: 'POST' });
       const data = await res.json();
       if (res.status === 409 && data.inProgress) {
-        // Ein Lauf ist bereits aktiv (z. B. zweiter Tab/Reload) → pollen statt
-        // einen zweiten teuren Lauf zu starten.
         await pollUntilReady();
         return;
       }
-      // Dienst kurzzeitig nicht verfügbar → kurzer automatischer erneuter Versuch.
       if (res.status === 503 && data.retryable && retriesLeft > 0) {
         setRetrying(true);
         await new Promise((r) => setTimeout(r, 4000));
         await generate(retriesLeft - 1);
         return;
       }
-      if (!res.ok) throw new Error(friendlyReportError(data.error ?? 'Fehler beim Erstellen'));
+      if (!res.ok) throw new Error(friendlyReportError(data.error ?? t('reportGenerate.errGeneric')));
       setRetrying(false);
       setUrl(data.signedUrl);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
+      setError(e instanceof Error ? e.message : t('reportGenerate.errGeneric'));
     } finally {
       setLoading(false);
     }
@@ -84,14 +83,14 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-6 py-4 bg-gold text-ink rounded-full font-semibold hover:bg-bone transition"
         >
-          Report herunterladen <span className="font-mono">↓</span>
+          {t('reportGenerate.download')} <span className="font-mono">↓</span>
         </a>
         <button
           onClick={() => { setUrl(null); generate(); }}
           disabled={loading}
           className="font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink disabled:opacity-30"
         >
-          {loading ? 'Wird aktualisiert…' : 'Download-Link neu abrufen'}
+          {loading ? t('reportGenerate.refreshing') : t('reportGenerate.refreshLink')}
         </button>
       </div>
     );
@@ -107,16 +106,15 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
         {loading ? (
           <>
             <span className="inline-block w-3 h-3 rounded-full bg-gold animate-pulse" />
-            {retrying ? 'Wird noch erstellt · einen Moment …' : 'Dein Report wird erstellt · 30-90 Sek'}
+            {retrying ? t('reportGenerate.retrying') : t('reportGenerate.creating')}
           </>
         ) : (
-          <>Premium-Report jetzt generieren <span className="font-mono">→</span></>
+          <>{t('reportGenerate.generate')} <span className="font-mono">→</span></>
         )}
       </button>
       {loading && (
         <div className="font-mono text-xs uppercase tracking-[0.12em] text-muted max-w-[48ch]">
-          CoachCheck wertet deine Antworten aus, erstellt deine personalisierten Interpretationen,
-          rendert das PDF und schickt es dir per Mail. Bleib kurz dran.
+          {t('reportGenerate.loadingDesc')}
         </div>
       )}
       {error && (
@@ -126,13 +124,13 @@ export function ReportGenerateButton({ assessmentId, existingReportUrl, productT
       )}
       <div className="grid gap-2 font-mono text-xs uppercase tracking-[0.12em] text-muted mt-2 max-w-[62ch]">
         <div>
-          Bitte erst starten, wenn du ungestört bist und den Kontext oben gespeichert hast. Die Erstellung kann je nach Paket 30-90 Sekunden dauern.
+          {t('reportGenerate.startHint')}
         </div>
         <div>
-          {productTier === 1 ? 'ab 7 Seiten · Executive Summary + Axis-Profil + Stärken/Risiken' :
-           productTier === 2 ? 'ab 12 Seiten · Alle 7 Module + Entwicklungsprogramm + Gesprächsleitfaden' :
-           productTier === 3 ? 'ab 15 Seiten · Vollreport mit 360°-Diskrepanz-Analyse' :
-           'ab 17 Seiten · Vollreport mit 360° + TeamCheck'}
+          {productTier === 1 ? t('reportGenerate.tier1') :
+           productTier === 2 ? t('reportGenerate.tier2') :
+           productTier === 3 ? t('reportGenerate.tier3') :
+           t('reportGenerate.tier4')}
         </div>
       </div>
     </div>

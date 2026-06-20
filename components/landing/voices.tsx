@@ -1,29 +1,20 @@
-export function VoicesSection() {
+import { getT } from '@/lib/i18n/server';
+
+export async function VoicesSection() {
+  const t = await getT();
   const voices = [
-    {
-      text: 'Ich dachte, ich wäre der Ruhige im Team. Der Check hat mir gezeigt: Für meine Spieler bin ich der Druck. Das war ein Schlag — im besten Sinn.',
-      name: 'Markus W.',
-      role: 'Handball · Regionalliga · Tirol',
-    },
-    {
-      text: 'Nach zwölf Jahren als Coach dachte ich, ich kenne mein Team. Der TeamCheck hat zwei Spannungen sichtbar gemacht, die ich komplett übersehen hatte.',
-      name: 'Lena B.',
-      role: 'Volleyball · Bundesliga · Österreich',
-    },
-    {
-      text: 'Sieben Minuten. Das ist das ehrlichste Feedback, das ich in meiner Karriere bekommen habe — und niemand musste sich trauen, es mir zu sagen.',
-      name: 'Tobias F.',
-      role: 'Fußball · Jugend-Akademie · DE',
-    },
+    { text: t('voices.v1text'), name: 'Markus W.', role: t('voices.v1role') },
+    { text: t('voices.v2text'), name: 'Lena B.', role: t('voices.v2role') },
+    { text: t('voices.v3text'), name: 'Tobias F.', role: t('voices.v3role') },
   ];
 
   return (
     <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-28">
       <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-6 flex items-center gap-3">
-        <span className="w-10 h-px bg-ink" /> 07 — Stimmen aus der Praxis
+        <span className="w-10 h-px bg-ink" /> {t('voices.kicker')}
       </div>
       <h2 className="font-display font-light text-[clamp(2rem,5vw,3.6rem)] leading-[1.02] tracking-[-0.03em] max-w-[18ch] mb-10 md:mb-16">
-        Was <em className="font-editorial">Trainer sagen</em>, die<br />den Check schon gemacht haben.
+        {t('voices.h2a')} <em className="font-editorial">{t('voices.h2emph')}</em>{t('voices.h2b')}<br />{t('voices.h2c')}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">

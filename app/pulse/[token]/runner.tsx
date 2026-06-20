@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 type PulseItem = {
   id: number;
@@ -22,6 +23,7 @@ type Props = {
 export function PulseRunner({
   token, cycleNumber, items, existingResponses, seasonName,
 }: Props) {
+  const t = useT();
   const [responses, setResponses] = useState<Record<number, number>>(existingResponses);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,11 +51,11 @@ export function PulseRunner({
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? 'Fehler');
+        throw new Error(body?.error ?? t('pulseRunner.errGeneric'));
       }
       setDone(true);
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler');
+      setError(e?.message ?? t('pulseRunner.errGeneric'));
     } finally {
       setSubmitting(false);
     }
@@ -64,13 +66,13 @@ export function PulseRunner({
       <main className="min-h-screen bg-petrol text-bone flex items-center justify-center px-4 py-12">
         <div className="max-w-xl text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold mb-6">
-            ✓ Pulse #{cycleNumber} eingegangen · Anonym
+            {t('pulseRunner.doneKicker').replace('{n}', String(cycleNumber))}
           </div>
           <h1 className="font-display text-[clamp(2.4rem,5vw,3.6rem)] tracking-[-0.03em] leading-[1.05] mb-5">
-            Danke. Wirklich.
+            {t('pulseRunner.doneTitle')}
           </h1>
           <p className="font-editorial italic text-xl text-bone-soft leading-[1.5]">
-            Bis zum nächsten Pulse-Check ist Ruhe — nutze dann einfach wieder denselben Link.
+            {t('pulseRunner.doneText')}
           </p>
         </div>
       </main>
@@ -84,13 +86,13 @@ export function PulseRunner({
 
         <div className="mt-8 mb-8">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-2">
-            Pulse-Check #{cycleNumber} · {seasonName}
+            {t('pulseRunner.headerKicker').replace('{n}', String(cycleNumber)).replace('{season}', seasonName)}
           </div>
           <h1 className="font-display text-3xl md:text-4xl tracking-[-0.02em] leading-[1.1] mb-3">
-            Wie war diese Phase <em className="font-editorial">für dich?</em>
+            {t('pulseRunner.headerH1a')} <em className="font-editorial">{t('pulseRunner.headerH1emph')}</em>
           </h1>
           <p className="text-muted">
-            8 schnelle Fragen, ~2 Minuten. Antworten werden anonymisiert und ausschließlich aggregiert ausgewertet — sichtbar erst ab 5 vollständigen Antworten.
+            {t('pulseRunner.headerDesc')}
           </p>
         </div>
 
@@ -139,7 +141,7 @@ export function PulseRunner({
           disabled={!allAnswered || submitting}
           className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition"
         >
-          {submitting ? 'Wird gesendet …' : !allAnswered ? `Noch ${items.length - Object.keys(responses).length} offen` : 'Pulse-Check absenden'}
+          {submitting ? t('pulseRunner.submitting') : !allAnswered ? t('pulseRunner.remaining').replace('{n}', String(items.length - Object.keys(responses).length)) : t('pulseRunner.submit')}
           {!submitting && allAnswered && <span className="font-mono">→</span>}
         </button>
       </div>

@@ -1,20 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/components/i18n/locale-provider';
 
 /**
- * Vier aktive Zustimmungen, bevor der Checkout starten darf:
- *   - AGB
- *   - Datenschutzerklärung (zur Kenntnis genommen)
- *   - Verständnis der KI-gestützten / automatisierten Auswertung
- *   - Ausdrücklicher Wunsch nach vorzeitigem Leistungsbeginn + Kenntnis des
- *     Widerrufsrecht-Verlusts (FAGG, digitale Inhalte)
+ * Vier aktive Zustimmungen, bevor der Checkout starten darf (AGB, Datenschutz,
+ * KI-Auswertung, FAGG-Widerrufsverzicht). Das Formular POSTet auf
+ * /checkout/[slug]/start; dort wird serverseitig erneut geprüft und versioniert
+ * gespeichert, bevor die Stripe-Session erzeugt wird. Ohne alle vier Haken: kein Checkout.
  *
- * Das Formular POSTet auf /checkout/[slug]/start. Dort wird die Zustimmung
- * serverseitig erneut geprüft und versioniert gespeichert, bevor die
- * Stripe-Session erzeugt wird. Ohne alle vier Haken: kein Checkout.
+ * HINWEIS i18n/Recht: Die deutsche Fassung ist die rechtlich operative. Die englischen
+ * Einwilligungs-/Widerrufsformulierungen sind eine Verständnishilfe (Entwurf) und müssen
+ * vor dem EN-Markt anwaltlich freigegeben werden — wie die Rechtsseiten.
  */
 export function CheckoutConsent({ slug }: { slug: string }) {
+  const t = useT();
   const [agb, setAgb] = useState(false);
   const [datenschutz, setDatenschutz] = useState(false);
   const [ki, setKi] = useState(false);
@@ -30,8 +30,8 @@ export function CheckoutConsent({ slug }: { slug: string }) {
         onChange={setAgb}
         label={
           <>
-            Ich akzeptiere die{' '}
-            <a href="/legal/agb" target="_blank" rel="noreferrer" className="text-gold-deep underline">AGB</a>.
+            {t('consent.agbBefore')}{' '}
+            <a href="/legal/agb" target="_blank" rel="noreferrer" className="text-gold-deep underline">{t('consent.agbLink')}</a>{t('consent.agbAfter')}
           </>
         }
       />
@@ -41,9 +41,8 @@ export function CheckoutConsent({ slug }: { slug: string }) {
         onChange={setDatenschutz}
         label={
           <>
-            Ich habe die{' '}
-            <a href="/legal/datenschutz" target="_blank" rel="noreferrer" className="text-gold-deep underline">Datenschutzerklärung</a>{' '}
-            zur Kenntnis genommen.
+            {t('consent.privacyBefore')}{' '}
+            <a href="/legal/datenschutz" target="_blank" rel="noreferrer" className="text-gold-deep underline">{t('consent.privacyLink')}</a>{t('consent.privacyAfter')}
           </>
         }
       />
@@ -51,25 +50,13 @@ export function CheckoutConsent({ slug }: { slug: string }) {
         name="ki_verarbeitung"
         checked={ki}
         onChange={setKi}
-        label={
-          <>
-            Mir ist bewusst, dass die Auswertung KI-gestützt erfolgt und der Bericht
-            automatisiert auf Basis meiner Antworten erstellt wird. Das Ergebnis ist eine
-            Coaching-Einordnung, keine medizinische oder psychologische Diagnose.
-          </>
-        }
+        label={t('consent.ai')}
       />
       <Checkbox
         name="widerruf_verzicht"
         checked={widerruf}
         onChange={setWiderruf}
-        label={
-          <>
-            Ich verlange ausdrücklich, dass CoachCheck schon vor Ablauf der 14-tägigen
-            Widerrufsfrist mit der Bereitstellung des digitalen Inhalts beginnt. Mir ist
-            bekannt, dass ich dadurch mit Beginn der Ausführung mein Widerrufsrecht verliere.
-          </>
-        }
+        label={t('consent.withdrawal')}
       />
 
       <input type="hidden" name="confirm" value="1" />
@@ -79,12 +66,11 @@ export function CheckoutConsent({ slug }: { slug: string }) {
         disabled={!allChecked}
         className="mt-3 inline-flex items-center gap-2 px-7 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition disabled:opacity-40 disabled:cursor-not-allowed w-fit"
       >
-        Weiter zur sicheren Zahlung <span className="font-mono">→</span>
+        {t('consent.submit')} <span className="font-mono">→</span>
       </button>
 
       <p className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted mt-2 max-w-[58ch]">
-        Die Zahlung wird sicher über Stripe abgewickelt. Deine Zustimmung wird mit Zeitstempel
-        und Version dokumentiert (DSGVO Art. 7).
+        {t('consent.note')}
       </p>
     </form>
   );

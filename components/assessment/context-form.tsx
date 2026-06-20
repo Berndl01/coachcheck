@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   assessmentId: string;
@@ -13,33 +14,33 @@ type Props = {
   };
 };
 
-const SEASON_PHASES = [
-  { key: 'vorbereitung', label: 'Saisonvorbereitung' },
-  { key: 'fruehe_saison', label: 'Frühe Saison' },
-  { key: 'erfolgslauf', label: 'Erfolgslauf' },
-  { key: 'formkrise', label: 'Formkrise' },
-  { key: 'kaderumbruch', label: 'Kaderumbruch' },
-  { key: 'trainerwechsel', label: 'Trainerwechsel-Übergabe' },
-  { key: 'saisonendphase', label: 'Saisonendphase' },
-  { key: 'aufstiegsdruck', label: 'Aufstiegsdruck' },
-  { key: 'abstiegsdruck', label: 'Abstiegsdruck' },
-];
-
-const TEAM_MATURITIES = [
-  { key: 'jung_unerfahren', label: 'Jung & unerfahren' },
-  { key: 'gemischt', label: 'Gemischt' },
-  { key: 'reif_etabliert', label: 'Reif & etabliert' },
-  { key: 'umbruch', label: 'Im Umbruch' },
-];
-
-const CONFLICT_STATES = [
-  { key: 'stabil', label: 'Stabil' },
-  { key: 'leichte_spannungen', label: 'Leichte Spannungen' },
-  { key: 'spuerbare_spannungen', label: 'Spürbare Spannungen' },
-  { key: 'akuter_konflikt', label: 'Akuter Konflikt' },
-];
-
 export function ContextForm({ assessmentId, initialContext }: Props) {
+  const t = useT();
+  // Schlüssel (DB-Werte) bleiben stabil; nur Labels lokalisiert.
+  const SEASON_PHASES = [
+    { key: 'vorbereitung', label: t('contextForm.seasonVorbereitung') },
+    { key: 'fruehe_saison', label: t('contextForm.seasonFruehe') },
+    { key: 'erfolgslauf', label: t('contextForm.seasonErfolgslauf') },
+    { key: 'formkrise', label: t('contextForm.seasonFormkrise') },
+    { key: 'kaderumbruch', label: t('contextForm.seasonKaderumbruch') },
+    { key: 'trainerwechsel', label: t('contextForm.seasonTrainerwechsel') },
+    { key: 'saisonendphase', label: t('contextForm.seasonEndphase') },
+    { key: 'aufstiegsdruck', label: t('contextForm.seasonAufstieg') },
+    { key: 'abstiegsdruck', label: t('contextForm.seasonAbstieg') },
+  ];
+  const TEAM_MATURITIES = [
+    { key: 'jung_unerfahren', label: t('contextForm.maturityJung') },
+    { key: 'gemischt', label: t('contextForm.maturityGemischt') },
+    { key: 'reif_etabliert', label: t('contextForm.maturityReif') },
+    { key: 'umbruch', label: t('contextForm.maturityUmbruch') },
+  ];
+  const CONFLICT_STATES = [
+    { key: 'stabil', label: t('contextForm.conflictStabil') },
+    { key: 'leichte_spannungen', label: t('contextForm.conflictLeicht') },
+    { key: 'spuerbare_spannungen', label: t('contextForm.conflictSpuerbar') },
+    { key: 'akuter_konflikt', label: t('contextForm.conflictAkut') },
+  ];
+
   const [seasonPhase, setSeasonPhase] = useState(initialContext?.seasonPhase ?? '');
   const [teamMaturity, setTeamMaturity] = useState(initialContext?.teamMaturity ?? '');
   const [conflictState, setConflictState] = useState(initialContext?.conflictState ?? '');
@@ -65,12 +66,12 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Der Kontext konnte gerade nicht gespeichert werden.');
+      if (!res.ok) throw new Error(data.error ?? t('contextForm.errGeneric'));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Der Kontext konnte gerade nicht gespeichert werden.';
-      setError(message.includes('schema cache') || message.includes('context_') ? 'Der Kontext konnte gerade nicht gespeichert werden. Die Datenbankstruktur muss aktualisiert werden.' : message);
+      const message = e instanceof Error ? e.message : t('contextForm.errGeneric');
+      setError(message.includes('schema cache') || message.includes('context_') ? t('contextForm.errSchema') : message);
     } finally {
       setSaving(false);
     }
@@ -79,27 +80,23 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
   return (
     <div className="bg-bone-soft p-6 rounded-md border border-bone-line">
       <div className="font-mono text-xs uppercase tracking-[0.18em] text-gold-deep mb-2">
-        Premium · Kontext für Interpretation
+        {t('contextForm.kicker')}
       </div>
       <h3 className="font-display text-2xl tracking-[-0.02em] mb-2">
-        Wo stehst du <em className="font-editorial">gerade?</em>
+        {t('contextForm.h1a')} <em className="font-editorial">{t('contextForm.h1emph')}</em>
       </h3>
       <div className="grid gap-3 mb-6 max-w-[68ch]">
         <p className="text-muted text-sm leading-[1.5]">
-          Nimm dir bitte zwei ruhige Minuten, bevor du den Report generierst.
-          Je ehrlicher du die aktuelle Lage einordnest, desto konkreter kann die Interpretation
-          zwischen deinem Führungsstil, deinem Team und der Saisonphase unterscheiden.
+          {t('contextForm.intro1')}
         </p>
         <p className="text-muted text-sm leading-[1.5]">
-          Es geht hier nicht um eine Bewertung deiner Arbeit, sondern um den Kontext: dieselbe
-          Führungswirkung kann in einer stabilen Phase, im Umbruch oder unter Ergebnisdruck
-          völlig anders wahrgenommen werden.
+          {t('contextForm.intro2')}
         </p>
       </div>
 
       <div className="grid gap-4">
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">Saisonphase</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">{t('contextForm.seasonLabel')}</label>
           <div className="grid grid-cols-3 sm:grid-cols-3 gap-1.5">
             {SEASON_PHASES.map((p) => (
               <button
@@ -118,7 +115,7 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
         </div>
 
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">Team-Reife</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">{t('contextForm.maturityLabel')}</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {TEAM_MATURITIES.map((m) => (
               <button
@@ -137,7 +134,7 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
         </div>
 
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">Konfliktlage</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">{t('contextForm.conflictLabel')}</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             {CONFLICT_STATES.map((c) => (
               <button
@@ -157,20 +154,20 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">Altersstruktur (optional)</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">{t('contextForm.ageLabel')}</label>
             <input
               type="text" value={ageRange} onChange={(e) => setAgeRange(e.target.value)}
-              placeholder="z.B. 18-35 Jahre"
+              placeholder={t('contextForm.agePlaceholder')}
               className="w-full px-4 py-2 bg-bone border border-bone-line rounded-md text-ink focus:border-gold focus:outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">Kurze Notiz (optional)</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.1em] text-muted mb-2">{t('contextForm.notesLabel')}</label>
           <textarea
             value={notes} onChange={(e) => setNotes(e.target.value)}
-            placeholder="z.B. 'Kaderumbruch nach Abstieg, zwei Leistungsträger abgegeben'"
+            placeholder={t('contextForm.notesPlaceholder')}
             rows={2}
             className="w-full px-4 py-2 bg-bone border border-bone-line rounded-md text-ink focus:border-gold focus:outline-none text-sm"
           />
@@ -184,10 +181,10 @@ export function ContextForm({ assessmentId, initialContext }: Props) {
             disabled={saving}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-ink rounded-full font-semibold hover:bg-ink hover:text-gold disabled:opacity-50 transition text-sm"
           >
-            {saving ? 'Speichert …' : saved ? '✓ Gespeichert' : 'Kontext speichern'}
+            {saving ? t('contextForm.saving') : saved ? t('contextForm.saved') : t('contextForm.save')}
           </button>
           <span className="text-xs text-muted">
-            Wirkt beim nächsten Report-Generieren. Bitte vor dem PDF speichern.
+            {t('contextForm.hint')}
           </span>
         </div>
       </div>

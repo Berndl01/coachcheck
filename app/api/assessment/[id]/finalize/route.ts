@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAssessmentActivated } from '@/lib/assessment/activation-gate';
-import { computeAxisScores, determineArchetypes, buildSignature, computeMaturityScores, type RawAnswer, type Archetype } from '@/lib/scoring';
+import { computeAxisScores, determineArchetypes, classifyProfile, profileHeadline, buildSignature, computeMaturityScores, type RawAnswer, type Archetype } from '@/lib/scoring';
 import { computeResponseQuality, type QualityAnswer } from '@/lib/insight/response-quality';
 
 export const dynamic = 'force-dynamic';
@@ -158,8 +158,21 @@ export async function POST(
     return NextResponse.json({ error: 'archetypes not seeded' }, { status: 500 });
   }
 
-  const { primary, secondary } = determineArchetypes(axisScores, archetypes as Archetype[]);
+  const { primary, secondary, distances } = determineArchetypes(axisScores, archetypes as Archetype[]);
   const signature = buildSignature(axisScores);
+
+  // Mischprofil-Klassifikation (Bestcase §9): einmal deterministisch bestimmen
+  // und speichern. Alle Consumer (Result, Report, PDF, Coach Card) lesen diese
+  // gespeicherte Einordnung — es wird nie beim Lesen neu gerechnet (§24).
+  const classification = classifyProfile(distances);
+  const profile = {
+    type: classification.type,
+    dominance: Math.round(classification.dominance * 10000) / 10000,
+    gap: Math.round(classification.gap * 10000) / 10000,
+    primary_code: primary.code,
+    secondary_code: secondary.code,
+    headline: profileHeadline(classification),
+  };
 
   // Save results via admin client (bypasses RLS for the UPDATE).
   const { error: uErr } = await admin
@@ -177,7 +190,7 @@ export async function POST(
       axis_scores: axisScores,
       maturity_scores: maturityScores,
       response_quality: responseQuality,
-      signature: { axes: signature },
+      signature: { axes: signature, profile },
     })
     .eq('id', id);
 
@@ -189,6 +202,7 @@ export async function POST(
     ok: true,
     primary: primary.code,
     secondary: secondary.code,
+    profileType: classification.type,
     axisScores,
   });
 }

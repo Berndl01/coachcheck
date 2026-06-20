@@ -56,11 +56,17 @@ export type ReportInput = {
     short_trait: string;
   };
   /**
-   * Distanz-Differenz zwischen Primär- und Sekundär-Archetyp.
-   * < 0.05 → beide Archetypen gleichwertig nah, Profil ist Mischtyp.
-   * Wird genutzt um den Report-Ton von "Du BIST X" zu "Tendenz zu X mit Y" zu shiften.
+   * Distanz-Differenz zwischen Primär- und Sekundär-Archetyp (absolut).
+   * Nur noch Kontext/Fallback — die kanonische Mischprofil-Entscheidung kommt
+   * aus `profileType` (gleiche Schwelle wie Result-Seite & finalize).
    */
   archetypeDistanceDelta?: number | null;
+  /**
+   * KANONISCHER Profiltyp aus classifyProfile (Bestcase §9/§10): 'mixed' →
+   * Report formuliert ausdrücklich die Mischung, nie „Du bist eindeutig X".
+   * Optional/Fallback auf archetypeDistanceDelta für Alt- und Sample-Aufrufer.
+   */
+  profileType?: 'dominant' | 'mixed' | null;
   axisScores: AxisScores;
   moduleAverages: Record<string, number>;
   /**
@@ -197,7 +203,7 @@ const MATURITY_LABELS: Record<string, string> = {
 };
 
 function buildSystemPrompt() {
-  return `Du bist ein Senior Sportpsychologe und Führungs-Consultant im Premium-Segment der Humatrix Coach Assessment Plattform — entwickelt in Tirol/Österreich gemeinsam mit Wissenschaftlern, Profitrainern und Sportlern. Du schreibst Berichte für erfahrene Trainer:innen im Profisport auf Boutique-Consulting-Niveau.
+  return `Du bist ein Senior Sportpsychologe und Führungs-Consultant im Premium-Segment der CoachCheck Assessment Plattform — entwickelt in Tirol/Österreich gemeinsam mit Wissenschaftlern, Profitrainern und Sportlern. Du schreibst Berichte für erfahrene Trainer:innen im Profisport auf Boutique-Consulting-Niveau.
 
 ${buildKnowledgeContext()}
 
@@ -242,7 +248,7 @@ KERNPRINZIPIEN — was diesen Report von Standard-Tests unterscheidet:
    Lieber 3 brillante Befunde als 8 mittelmäßige.
 
 9. **Konkrete Mini-Beispiele statt Theorie**
-   Mindestens in Executive Summary, Druckprofil, "Wirkung je Kontext" und im Entwicklungspfad: jeweils eine kurze, konkrete Szene aus dem Fußballalltag, die den Befund greifbar macht ("Beim Stand von 0:1 zur Halbzeit ...", "Wenn ein Stammspieler auf der Bank sitzt ..."). Abstrakte Aussagen ohne Beispiel wirken theoretisch — vermeide das.
+   Mindestens in Überblick, Druckprofil, "Wirkung je Kontext" und im Entwicklungspfad: jeweils eine kurze, konkrete Szene aus dem Fußballalltag, die den Befund greifbar macht ("Beim Stand von 0:1 zur Halbzeit ...", "Wenn ein Stammspieler auf der Bank sitzt ..."). Abstrakte Aussagen ohne Beispiel wirken theoretisch — vermeide das.
 
 10. **Bildhaft, nicht akademisch-trocken**
    Nutze ein bis zwei tragfähige Bilder/Metaphern aus Sport und Alltag, um die Führungssignatur und das Kippmuster anschaulich zu machen. Bodenständig, kein Eso-Vokabular.
@@ -377,7 +383,7 @@ ${polarizedNote}
     "reflexion_direktheit": "~50 Wörter",
     "standardisierung_anpassung": "~50 Wörter"
   },
-  "blind_spots": "~150 Wörter. Die 1-2 wichtigsten Blind Spots — konkret, mit Hinweis was im Co-Trainer-Gespräch besprochen werden sollte."`;
+  "blind_spots": "~150 Wörter. Die 1-2 wichtigsten blinden Flecken — konkret, mit Hinweis was im Co-Trainer-Gespräch besprochen werden sollte."`;
   }
 
   let sectionTeamcheck = '';
@@ -390,7 +396,7 @@ ${polarizedNote}
 # TEAMCHECK (Spielerstimmen, anonym aggregiert)
 Anzahl Antworten: ${tc.responseCount}
 
-- Coach Impact: ${fmt(tc.coachImpact)}
+- Coach-Wirkung: ${fmt(tc.coachImpact)}
 - Psychologische Sicherheit: ${fmt(tc.psySafety)}
 - Teamklima: ${fmt(tc.teamKlima)}
 - Leistungsklima: ${fmt(tc.leistungsdruck)}
@@ -409,7 +415,7 @@ WICHTIG für deine Texte: Greife diese Hinweise in teamcheck_narrative und team_
     extraTeamcheckOutputs = `,
   "teamcheck_summary": "~120 Wörter. Was sagen die Spieler über die Team-Realität?",
   "teamcheck_narrative": "~200 Wörter. Lies die Team-Scores als zusammenhängendes System.",
-  "team_dynamics": "~150 Wörter. Wie hängen Coach-Impact, Psy-Safety und Leistungsklima zusammen?",
+  "team_dynamics": "~150 Wörter. Wie hängen Coach-Wirkung, psychologische Sicherheit und Leistungsklima zusammen?",
   "team_handlungsempfehlungen": [
     "4 konkrete, sofort umsetzbare Maßnahmen für die nächsten 14 Tage"
   ]`;
@@ -503,8 +509,8 @@ Hebel: ${input.primaryArchetype.entwicklungshebel.join(', ')}
 
 # Sekundärer Archetyp
 ${input.secondaryArchetype.name_de} — ${input.secondaryArchetype.short_trait}
-${input.archetypeDistanceDelta != null && input.archetypeDistanceDelta < 0.05 ? `
-⚠ MISCHTYP-HINWEIS: Distanz-Differenz zwischen Primär und Sekundär ist nur ${input.archetypeDistanceDelta.toFixed(3)}. Schreibe NICHT "Du bist [Primär]", sondern formuliere es als Tendenz mit starker Zweitausprägung. Beispiel: "Dein Profil pendelt zwischen [Primär] und [Sekundär] — beide Archetypen sind nahezu gleich präsent." Behandle die Person als hybriden Typ, nicht als reinen Vertreter eines Archetyps.
+${(input.profileType === 'mixed' || (input.profileType == null && input.archetypeDistanceDelta != null && input.archetypeDistanceDelta < 0.05)) ? `
+⚠ MISCHPROFIL-HINWEIS: Primär- und Sekundär-Archetyp liegen bei dieser Person nahezu gleich nah. Schreibe NICHT "Du bist [Primär]" und nicht "Du bist eindeutig [Primär]", sondern formuliere es ausdrücklich als Mischprofil. Beispiel: "Dein Profil ist ein Mischprofil aus [Primär] und [Sekundär] — beide Muster sind bei dir aktuell etwa gleich stark präsent." Behandle die Person als hybriden Typ, nicht als reinen Vertreter eines Archetyps.
 ` : ''}
 
 # Selbstbild-Achsen (6 Kernachsen, 0–100%)

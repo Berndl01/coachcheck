@@ -1,5 +1,5 @@
 /**
- * Humatrix Coach Assessment — Scoring Engine
+ * CoachCheck Assessment — Scoring Engine
  *
  * Takes raw answers and computes:
  * 1. Normalized axis scores (0.0–1.0 per 6 Kernachsen)
@@ -196,6 +196,55 @@ export function determineArchetypes(
     secondary: ranked[1].archetype,
     distances: ranked,
   };
+}
+
+/**
+ * Mischprofil-Klassifikation (Bestcase §9: KEINE starre Typzuweisung).
+ *
+ * Der Primärarchetyp gilt nur dann als eindeutig „dominant", wenn er spürbar
+ * näher am Profil des Nutzers liegt als der Zweitnächste. Liegen beide nah
+ * beieinander, ist das Ergebnis ein MISCHPROFIL — und genau so muss es überall
+ * (Result, Report, PDF, Coach Card) formuliert werden.
+ *
+ * Das Maß ist skaleninvariant: `dominance = (d2 - d1) / d2`, also „wie viel
+ * näher liegt der Erste als der Zweite, relativ zum Zweiten". Werte:
+ *   - dominance gegen 1  → Nutzer sitzt klar auf dem Primärarchetyp (dominant)
+ *   - dominance gegen 0  → beide Archetypen praktisch gleich nah (Mischprofil)
+ * Schwelle ist eine bewusst konservative, tunebare Konstante.
+ */
+export const MIX_DOMINANCE_THRESHOLD = 0.12;
+
+export type ProfileClassification = {
+  type: 'dominant' | 'mixed';
+  primary: Archetype;
+  secondary: Archetype;
+  gap: number; // d2 - d1 (absoluter Abstand der beiden nächsten)
+  dominance: number; // (d2 - d1) / d2, skaleninvariant in [0,1]
+};
+
+export function classifyProfile(
+  distances: Array<{ archetype: Archetype; distance: number }>
+): ProfileClassification {
+  // distances ist aufsteigend sortiert (nächster zuerst), siehe determineArchetypes.
+  const d1 = distances[0].distance;
+  const d2 = distances[1].distance;
+  const dominance = d2 > 0 ? (d2 - d1) / d2 : 0;
+  const gap = d2 - d1;
+  const type: 'dominant' | 'mixed' =
+    dominance >= MIX_DOMINANCE_THRESHOLD ? 'dominant' : 'mixed';
+  return { type, primary: distances[0].archetype, secondary: distances[1].archetype, gap, dominance };
+}
+
+/**
+ * EINE gemeinsame Überschrift für den Profiltyp, damit Result, PDF und Coach
+ * Card konsistent formulieren (Bestcase §10 Konsistenzregel). Nie „Du bist
+ * eindeutig X" — bei Mischprofil wird die Mischung ausdrücklich benannt.
+ */
+export function profileHeadline(c: ProfileClassification): string {
+  if (c.type === 'mixed') {
+    return `Mischprofil aus ${c.primary.name_de} und ${c.secondary.name_de}`;
+  }
+  return `${c.primary.name_de} — mit ${c.secondary.name_de} als deutlicher Zweittendenz`;
 }
 
 /**

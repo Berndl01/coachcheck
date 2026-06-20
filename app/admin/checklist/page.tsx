@@ -258,7 +258,7 @@ export default async function AdminChecklistPage() {
             <div className="font-mono text-xs uppercase tracking-[0.15em] text-gold-deep mb-2">1. Resend-Domain verifizieren</div>
             <p className="text-sm">
               In Resend → Domains → Add Domain → <code>humatrix.cc</code> → DNS-Records (SPF, DKIM, DMARC) setzen.
-              Danach in Vercel <code>RESEND_FROM_EMAIL</code> auf <code>&quot;Humatrix Coach &lt;noreply@humatrix.cc&gt;&quot;</code> setzen.
+              Danach in Vercel <code>RESEND_FROM_EMAIL</code> auf <code>&quot;CoachCheck &lt;noreply@humatrix.cc&gt;&quot;</code> setzen.
             </p>
           </div>
           <div className="p-5 bg-bone-soft rounded-md border border-bone-line">

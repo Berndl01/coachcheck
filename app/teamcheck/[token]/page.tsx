@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TeamcheckRunner } from './runner';
 import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -12,6 +13,7 @@ export default async function TeamcheckPage({
 }) {
   const { token } = await params;
   const admin = createAdminClient();
+  const t = await getT();
 
   const { data: invitation } = await admin
     .from('invitations')
@@ -24,13 +26,13 @@ export default async function TeamcheckPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-4">
-            Ungültiger Link
+            {t('teamcheckPage.invalidKicker')}
           </div>
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Diese Einladung ist ungültig.
+            {t('teamcheckPage.invalidTitle')}
           </h1>
           <p className="text-muted">
-            Wende dich an deinen Trainer.
+            {t('teamcheckPage.invalidText')}
           </p>
         </div>
       </main>
@@ -42,13 +44,13 @@ export default async function TeamcheckPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">
-            ✓ Bereits abgegeben
+            {t('teamcheckPage.doneKicker')}
           </div>
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Du hast schon geantwortet.
+            {t('teamcheckPage.doneTitle')}
           </h1>
           <p className="text-muted font-editorial italic text-lg">
-            Danke! Deine anonyme Einschätzung ist eingegangen.
+            {t('teamcheckPage.doneText')}
           </p>
         </div>
       </main>
@@ -60,10 +62,10 @@ export default async function TeamcheckPage({
       <main className="min-h-screen flex items-center justify-center px-4 bg-bone">
         <div className="max-w-md text-center">
           <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-            Link abgelaufen
+            {t('teamcheckPage.expiredTitle')}
           </h1>
           <p className="text-muted">
-            Der Einladungszeitraum ist vorbei.
+            {t('teamcheckPage.expiredText')}
           </p>
         </div>
       </main>

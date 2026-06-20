@@ -1,30 +1,21 @@
-export function HowItWorks() {
+import { getT } from '@/lib/i18n/server';
+
+export async function HowItWorks() {
+  const t = await getT();
   const steps = [
-    {
-      n: '01',
-      title: 'Fragebogen ausfüllen',
-      text: '103 hybride Premium-Items — Skalen, Forced Choice, Szenarien, Spannungsfelder, Dilemmata und Wichtig-vs-Gelebt-Paare. Rund 28 Minuten auf jedem Gerät.',
-    },
-    {
-      n: '02',
-      title: 'Sofort auswerten',
-      text: 'Haupt- und Sekundärtyp aus 12, Führungsreife, funktionale Signatur, Druckprofil, Blind Spots — plus ein evidenzbasiertes Entwicklungsprogramm mit konkreten 14/30/90-Tage-Bausteinen.',
-    },
-    {
-      n: '03',
-      title: 'Team erweitern',
-      text: 'Optional: Deine Spieler füllen anonym denselben Check aus. Du siehst, wo dein Selbstbild und ihr Fremdbild auseinandergehen.',
-    },
+    { n: '01', title: t('howItWorks.s1title'), text: t('howItWorks.s1text') },
+    { n: '02', title: t('howItWorks.s2title'), text: t('howItWorks.s2text') },
+    { n: '03', title: t('howItWorks.s3title'), text: t('howItWorks.s3text') },
   ];
 
   return (
     <section className="bg-bone-soft py-16 md:py-28 px-4 md:px-8">
       <div className="max-w-[1440px] mx-auto">
         <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-6 flex items-center gap-3">
-          <span className="w-10 h-px bg-ink" /> 06 — So funktioniert&apos;s
+          <span className="w-10 h-px bg-ink" /> {t('howItWorks.kicker')}
         </div>
         <h2 className="font-display font-light text-[clamp(2rem,5vw,3.6rem)] leading-[1.02] tracking-[-0.03em] max-w-[18ch] mb-10 md:mb-16">
-          Drei Schritte. <em className="font-editorial">Null Aufwand.</em>
+          {t('howItWorks.h2a')} <em className="font-editorial">{t('howItWorks.h2emph')}</em>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">

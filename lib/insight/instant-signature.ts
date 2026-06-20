@@ -43,6 +43,16 @@ function intensity(v: number): number {
 function adj(axis: AxisKey, v: number): string {
   return poleOf(v) === 'high' ? AXIS_POLES[axis].highAdj : AXIS_POLES[axis].lowAdj;
 }
+/**
+ * Attributive (deklinierte) Form für „deine … Ausprägung" — im Deutschen muss das
+ * Adjektiv vor dem Substantiv eine Endung tragen (Nominativ feminin nach Possessiv:
+ * „deine strukturierte Ausprägung", nicht „deine strukturiert Ausprägung").
+ * Alle AXIS_POLES-Adjektive enden auf einen Konsonanten → korrekte Endung ist „-e".
+ * (Wer hier neue Adjektive ergänzt, die auf -e/-el/-er enden, muss diese Regel anpassen.)
+ */
+function adjAttributiv(axis: AxisKey, v: number): string {
+  return `${adj(axis, v)}e`;
+}
 function pct(v: number): number {
   return Math.round(v * 100);
 }
@@ -155,7 +165,7 @@ export function buildInstantSignature(scores: AxisScores): InstantSignature {
   );
   if (b.axis !== a.axis) {
     readingParts.push(
-      `Verstärkt wird das durch deine ${adj(b.axis, b.v)} Ausprägung (${pct(b.v)} %) — diese Kombination ist die Grundfarbe deiner Führung.`,
+      `Verstärkt wird das durch deine ${adjAttributiv(b.axis, b.v)} Ausprägung (${pct(b.v)} %) — diese Kombination ist die Grundfarbe deiner Führung.`,
     );
   }
   // Eine ausgeglichene Achse als Nuance erwähnen (falls vorhanden)

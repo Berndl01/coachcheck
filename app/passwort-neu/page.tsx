@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 export const dynamic = 'force-dynamic';
 
 function PasswortNeuForm() {
+  const t = useT();
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -25,11 +27,10 @@ function PasswortNeuForm() {
       const code = url.searchParams.get('code');
 
       // Supabase kann Recovery-Links je nach Auth-Flow als ?code=... oder als URL-Hash liefern.
-      // Für den PKCE-Flow muss der Code aktiv gegen eine Session getauscht werden.
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError && mounted) {
-          setError('Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.');
+          setError(t('passwordReset.errLinkInvalid'));
           return;
         }
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -40,7 +41,7 @@ function PasswortNeuForm() {
       if (session) {
         setSessionReady(true);
       } else {
-        setError('Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.');
+        setError(t('passwordReset.errLinkInvalid'));
       }
     }
 
@@ -56,6 +57,7 @@ function PasswortNeuForm() {
       mounted = false;
       subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -63,11 +65,11 @@ function PasswortNeuForm() {
     setError(null);
 
     if (password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen haben.');
+      setError(t('passwordReset.errTooShort'));
       return;
     }
     if (password !== confirm) {
-      setError('Die beiden Passwörter stimmen nicht überein.');
+      setError(t('passwordReset.errMismatch'));
       return;
     }
 
@@ -88,17 +90,17 @@ function PasswortNeuForm() {
   return (
     <div className="max-w-md mx-auto px-4 py-12">
       <Link href="/" className="inline-block mb-10"><HumatrixLogo /></Link>
-      <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">Neues Passwort</h1>
-      <p className="text-muted mb-8">Wähle ein neues Passwort mit mindestens 8 Zeichen.</p>
+      <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">{t('passwordReset.title')}</h1>
+      <p className="text-muted mb-8">{t('passwordReset.lead')}</p>
 
       {!sessionReady && !error && (
-        <p className="text-muted italic">Prüfe Reset-Link …</p>
+        <p className="text-muted italic">{t('passwordReset.checking')}</p>
       )}
 
       {sessionReady && (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Neues Passwort</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('passwordReset.newLabel')}</label>
             <input
               type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password" minLength={8}
@@ -106,7 +108,7 @@ function PasswortNeuForm() {
             />
           </div>
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Nochmal eingeben</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('passwordReset.confirmLabel')}</label>
             <input
               type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password" minLength={8}
@@ -120,7 +122,7 @@ function PasswortNeuForm() {
             type="submit" disabled={loading}
             className="w-full py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition disabled:opacity-50"
           >
-            {loading ? 'Wird gesetzt …' : 'Passwort ändern'}
+            {loading ? t('passwordReset.submitting') : t('passwordReset.submit')}
           </button>
         </form>
       )}
@@ -128,7 +130,7 @@ function PasswortNeuForm() {
       {error && !sessionReady && (
         <div className="mt-6">
           <Link href="/passwort-vergessen" className="font-mono text-xs uppercase tracking-[0.1em] text-gold-deep hover:underline">
-            → Neuen Reset-Link anfordern
+            {t('passwordReset.requestNew')}
           </Link>
         </div>
       )}
@@ -138,7 +140,7 @@ function PasswortNeuForm() {
 
 export default function PasswortNeuPage() {
   return (
-    <Suspense fallback={<div className="p-12">Lädt…</div>}>
+    <Suspense fallback={<div className="p-12" />}>
       <PasswortNeuForm />
     </Suspense>
   );

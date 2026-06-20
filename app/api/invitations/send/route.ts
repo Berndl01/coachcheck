@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           ${escapeHtml(trainerName)} bittet dich um deine Sicht.
         </h1>
         <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 18px;">
-          ${escapeHtml(trainerName)} macht gerade ein Premium-Trainer-Assessment auf <strong>Humatrix Coach</strong>${sport ? ` (${escapeHtml(sport)})` : ''}
+          ${escapeHtml(trainerName)} macht gerade ein Premium-Trainer-Assessment auf <strong>CoachCheck</strong>${sport ? ` (${escapeHtml(sport)})` : ''}
           und möchte verstehen, wie du ${escapeHtml(trainerName.split(' ')[0])} als Trainer wirklich erlebst.
         </p>
         <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 28px;">

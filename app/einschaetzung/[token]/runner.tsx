@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ItemRenderer, type Item, type AnswerValue } from '@/components/assessment/item-renderer';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 type Props = {
   token: string;
@@ -33,6 +34,7 @@ function rephraseForFremdbild(text: string, trainerName: string): string {
 export function EinschaetzungRunner({
   token, items, existingAnswers, trainerName, sport,
 }: Props) {
+  const t = useT();
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(existingAnswers);
@@ -80,7 +82,7 @@ export function EinschaetzungRunner({
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body?.error ?? 'Fehler beim Speichern');
+      throw new Error(body?.error ?? t('einschaetzungRunner.errSave'));
     }
   }
 
@@ -99,14 +101,14 @@ export function EinschaetzungRunner({
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error ?? 'Fehler beim Abschließen');
+          throw new Error(body?.error ?? t('einschaetzungRunner.errComplete'));
         }
         setFinished(true);
       } else {
         setIndex(index + 1);
       }
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Speichern');
+      setError(e?.message ?? t('einschaetzungRunner.errSave'));
     } finally {
       setSaving(false);
     }
@@ -124,36 +126,35 @@ export function EinschaetzungRunner({
           <HumatrixLogo />
           <div className="mt-12">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-4">
-              360° Spiegel · Anonyme Einschätzung
+              {t('einschaetzungRunner.kicker')}
             </div>
             <h1 className="font-display text-[clamp(2.2rem,5vw,3.6rem)] tracking-[-0.03em] leading-[1.05] mb-6">
-              Wie erlebst du <em className="font-editorial">{firstName}</em> als Trainer{sport ? ` im ${sport}` : ''}?
+              {t('einschaetzungRunner.h1a')} <em className="font-editorial">{firstName}</em> {t('einschaetzungRunner.h1b')}{sport ? t('einschaetzungRunner.sportSuffix').replace('{sport}', sport) : ''}?
             </h1>
             <p className="font-editorial italic text-xl text-muted leading-[1.5] mb-6">
-              {firstName} möchte verstehen, wie das Team {firstName.split(' ')[0]} wirklich wahrnimmt — jenseits von Höflichkeit und Hierarchie.
-              Deine ehrliche Einschätzung hilft dabei.
+              {t('einschaetzungRunner.lead').replace(/\{name\}/g, firstName)}
             </p>
 
             <div className="grid gap-4 mb-8">
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">01</span>
                 <div>
-                  <div className="font-medium">Anonymisierte Auswertung</div>
-                  <div className="text-sm text-muted">{firstName} sieht nie einzelne Antworten. Nur aggregierte Werte ab 3 abgegebenen Einschätzungen.</div>
+                  <div className="font-medium">{t('einschaetzungRunner.step1Title')}</div>
+                  <div className="text-sm text-muted">{t('einschaetzungRunner.step1Desc').replace(/\{name\}/g, firstName)}</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">02</span>
                 <div>
-                  <div className="font-medium">~{estMinutes} Minuten · {total} Fragen</div>
-                  <div className="text-sm text-muted">Einschätzungs-Skalen, Szenarien, Spannungsfelder. Nimm dir Zeit — bitte in einem Durchgang ausfüllen, deine Antworten werden erst am Ende gespeichert.</div>
+                  <div className="font-medium">{t('einschaetzungRunner.step2Title').replace('{minutes}', String(estMinutes)).replace('{total}', String(total))}</div>
+                  <div className="text-sm text-muted">{t('einschaetzungRunner.step2Desc')}</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">03</span>
                 <div>
-                  <div className="font-medium">Aggregiert, nicht einzeln</div>
-                  <div className="text-sm text-muted">Auf dieser Antwortseite fragen wir keinen Namen ab. Wenn du per E-Mail eingeladen wurdest, wird die Versandadresse getrennt zur Einladung verarbeitet — nicht zusammen mit deinen Antworten. {firstName} sieht keine einzelne Antwort, sondern nur aggregierte Ergebnisse ab Mindestanzahl.</div>
+                  <div className="font-medium">{t('einschaetzungRunner.step3Title')}</div>
+                  <div className="text-sm text-muted">{t('einschaetzungRunner.step3Desc').replace(/\{name\}/g, firstName)}</div>
                 </div>
               </div>
             </div>
@@ -162,7 +163,7 @@ export function EinschaetzungRunner({
               onClick={() => setStarted(true)}
               className="inline-flex items-center gap-2 px-8 py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition"
             >
-              Einschätzung starten <span className="font-mono">→</span>
+              {t('einschaetzungRunner.start')} <span className="font-mono">→</span>
             </button>
           </div>
         </div>
@@ -176,16 +177,16 @@ export function EinschaetzungRunner({
       <main className="min-h-screen bg-petrol text-bone flex items-center justify-center px-4 py-12">
         <div className="max-w-xl text-center">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold mb-6">
-            ✓ Eingegangen
+            {t('einschaetzungRunner.finishedKicker')}
           </div>
           <h1 className="font-display text-[clamp(2.4rem,5vw,3.6rem)] tracking-[-0.03em] leading-[1.05] mb-5">
-            Danke. Wirklich.
+            {t('einschaetzungRunner.finishedTitle')}
           </h1>
           <p className="font-editorial italic text-xl text-bone-soft leading-[1.5]">
-            Deine Einschätzung ist eingegangen. Sie wird anonymisiert und nur aggregiert ausgewertet — {firstName} sieht keine einzelne Antwort, sondern erst ab mindestens 3 vollständigen Einschätzungen die zusammengefassten Werte.
+            {t('einschaetzungRunner.finishedText').replace(/\{name\}/g, firstName)}
           </p>
           <p className="font-mono text-xs uppercase tracking-[0.15em] text-gold-light mt-10">
-            Du kannst diese Seite jetzt schließen.
+            {t('einschaetzungRunner.closeHint')}
           </p>
         </div>
       </main>
@@ -195,7 +196,7 @@ export function EinschaetzungRunner({
   if (!current) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-bone">
-        <p className="text-muted">Keine Items verfügbar.</p>
+        <p className="text-muted">{t('assessmentRunner.noItems')}</p>
       </main>
     );
   }
@@ -241,14 +242,14 @@ export function EinschaetzungRunner({
             disabled={index === 0 || saving}
             className="font-mono text-xs uppercase tracking-[0.12em] px-4 py-3 rounded-full border border-ink-line text-bone-soft hover:bg-bone hover:text-ink hover:border-bone disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            ← Zurück
+            {t('assessmentRunner.back')}
           </button>
           <button
             onClick={handleNext}
             disabled={!pending || saving}
             className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-ink rounded-full font-semibold hover:bg-bone disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            {saving ? 'Speichert …' : isLast ? 'Abschließen' : 'Weiter'}
+            {saving ? t('assessmentRunner.saving') : isLast ? t('assessmentRunner.finish') : t('assessmentRunner.next')}
             {!saving && <span className="font-mono">→</span>}
           </button>
         </div>

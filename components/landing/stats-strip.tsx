@@ -1,10 +1,13 @@
-export function StatsStrip() {
+import { getT } from '@/lib/i18n/server';
+
+export async function StatsStrip() {
+  const t = await getT();
   const stats = [
-    { num: '5', sup: 'PAKETE', lbl: ['von Schnelltest', 'bis Signature'] },
-    { num: '100+', lbl: ['Premium-Items im', 'Hybrid-Assessment'] },
-    { num: '12', lbl: ['Sport-Archetypen', 'aus 6 Kernachsen'] },
-    { num: '360°', lbl: ['Wirkungsanalyse', 'Selbst vs. Fremdbild'] },
-    { num: '24', sup: 'SEITEN', lbl: ['Premium-Report auf', 'Consulting-Niveau'] },
+    { num: '5', sup: t('statsStrip.s1sup'), lbl: [t('statsStrip.s1a'), t('statsStrip.s1b')] },
+    { num: '100+', lbl: [t('statsStrip.s2a'), t('statsStrip.s2b')] },
+    { num: '12', lbl: [t('statsStrip.s3a'), t('statsStrip.s3b')] },
+    { num: '360°', lbl: [t('statsStrip.s4a'), t('statsStrip.s4b')] },
+    { num: '24', sup: t('statsStrip.s5sup'), lbl: [t('statsStrip.s5a'), t('statsStrip.s5b')] },
   ];
   return (
     <section className="stats-strip bg-ink text-bone py-10 md:py-14 px-4 md:px-8 relative overflow-hidden">

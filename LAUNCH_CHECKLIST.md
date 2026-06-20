@@ -4,12 +4,12 @@
 > ein Rollback auf anonyme RLS-Policies sowie veraltete Migrations-Angaben („Migration 12",
 > „21 Migrationen").
 
-## VERBINDLICHER DEPLOYMENT-STAND v3.42 — Migrationen 01 → 40
+## VERBINDLICHER DEPLOYMENT-STAND v3.42 — Migrationen 01 → 43
 
 1. **Migrationen in Reihenfolge ausführen: 01 → 40** (idempotent).
-   - **Frische Datenbank:** alle Migrationen `01 → 40` der Reihe nach.
+   - **Frische Datenbank:** alle Migrationen `01 → 43` der Reihe nach.
    - **Bestehende Produktion (Stand 32 bereits angewendet):** nur die fehlenden, aufsteigend:
-     **`33 → 34 → 35 → 36 → 37 → 38 → 39 → 40`**.
+     **`33 → 34 → 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43`**.
 
 2. **PFLICHT-PREFLIGHT vor Migration 39** (Unique-Index „ein offener Cycle pro Saison"):
    Prüfen, ob in der Live-Datenbank bereits mehrere offene Cycles pro Saison existieren:
@@ -30,6 +30,23 @@
    (`get_/refresh_pulse_cycle_response_count`, nur `service_role`) + Refund-Cascade-Backfill
    (bereits erstattete Käufe deaktivieren Einladungen + öffentlichen Share) + verschärfte RLS auf
    `pulse_cycles`/`pulse_invitations` (nur bei weiterhin bezahltem Kauf lesbar).
+
+3d. **Migration 43 (neu):** Tabelle `action_checkins` für die tägliche
+   Check-in-Schleife (genau ein Check-in pro Plan und Tag, Bestcase §12). RLS:
+   Eigentümer liest nur, geschrieben wird ausschließlich über `service_role` aus
+   `/api/action/[planId]`.
+
+3c. **Migration 42 (neu):** Tabelle `action_plans` für den Aktionsbereich
+   (7-Tage-Fokus aus dem nächsten Schritt, Bestcase §11/§12). RLS: Eigentümer liest
+   nur, geschrieben wird ausschließlich über `service_role` aus
+   `/api/assessment/[id]/action`. Partial-Unique-Index: höchstens ein aktiver Fokus
+   pro Nutzer+Assessment.
+
+3b. **Migration 41 (neu):** Tabelle `result_feedback` für das Treffer-Feedback
+   (Wiedererkennung 0–10 + hilfreichster Abschnitt, Bestcase §27). Eigene Tabelle,
+   getrennt vom Scoring — Feedback verändert das Ergebnis nicht. RLS: Eigentümer darf
+   nur LESEN, geschrieben wird ausschließlich über `service_role` aus
+   `/api/assessment/[id]/feedback`.
 
 4. **Antworten ausschließlich über die Server-API.** KEIN direkter Browser-/REST-Write auf
    `answers`, `assessments`, `seasons`, `pulse_cycles`, `pulse_invitations`, `pulse_responses`,
@@ -79,8 +96,8 @@ git push          # Vercel deployt automatisch
 # 2. WARTEN bis Vercel grün meldet
 #    (sonst läuft alter Code mit neuer RLS-Migration → harte Fehler bei aktiven Sessions)
 
-# 3. ERST DANN Migrationen anwenden (Reihenfolge siehe oben: frische DB 01→40,
-#    bestehende Produktion 33→34→35→36→37→38→39→40; Migration-39-Preflight beachten)
+# 3. ERST DANN Migrationen anwenden (Reihenfolge siehe oben: frische DB 01→43,
+#    bestehende Produktion 33→34→35→36→37→38→39→40→41→42→43; Migration-39-Preflight beachten)
 supabase db push
 ```
 
@@ -95,7 +112,7 @@ supabase db push
    - **NICHT** erlaubt: ein direkter `POST`/`PATCH` an `/rest/v1/answers`.
      Antworten dürfen den Browser-/REST-Pfad nie nehmen — ausschließlich die Server-API.
 4. ⚠️ **Wenn 4xx auf `/api/assessment/[id]/answer`:** Server-Logs (Vercel) prüfen —
-   meist fehlt `SUPABASE_SERVICE_ROLE_KEY` oder die Migrationen 01→40 sind nicht vollständig
+   meist fehlt `SUPABASE_SERVICE_ROLE_KEY` oder die Migrationen 01→43 sind nicht vollständig
    angewendet. KEIN Öffnen der Tabellen für den Browser als „Fix".
 
 ### Test 2: 360°-Einladung anlegen + Token testen

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 function SignupForm() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get('plan');
@@ -40,7 +42,6 @@ function SignupForm() {
       return;
     }
 
-    // Update profile with additional info (the trigger created a minimal profile)
     if (data.user) {
       await supabase.from('profiles').update({
         full_name: fullName, sport, role,
@@ -56,11 +57,10 @@ function SignupForm() {
       <div className="max-w-md mx-auto px-4 py-16 text-center">
         <div className="mb-8"><HumatrixLogo /></div>
         <h1 className="font-display text-3xl tracking-[-0.02em] mb-4">
-          Fast geschafft.
+          {t('signup.successTitle')}
         </h1>
         <p className="text-muted">
-          Wir haben dir einen Bestätigungslink an <strong className="text-ink">{email}</strong> geschickt.
-          Klick drauf, um deinen Account zu aktivieren.
+          {t('signup.successText1')} <strong className="text-ink">{email}</strong>{t('signup.successText2')}
         </p>
       </div>
     );
@@ -69,55 +69,55 @@ function SignupForm() {
   return (
     <div className="max-w-md mx-auto px-4 py-12">
       <Link href="/" className="inline-block mb-10"><HumatrixLogo /></Link>
-      <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">Account erstellen</h1>
+      <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">{t('signup.title')}</h1>
       <p className="text-muted mb-8">
-        {plan ? <>Erstelle deinen Humatrix-Account, um <strong className="text-ink">{plan}</strong> freizuschalten.</> : 'Erstelle deinen Humatrix Coach Account.'}
+        {plan ? <>{t('signup.subtitlePlanA')} <strong className="text-ink">{plan}</strong>{t('signup.subtitlePlanB')}</> : t('signup.subtitleNoPlan')}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Name</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('signup.nameLabel')}</label>
           <input
             type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
             className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none"
           />
         </div>
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">E-Mail</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('auth.emailLabel')}</label>
           <input
             type="email" required value={email} onChange={e => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none"
           />
         </div>
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Passwort</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('auth.passwordLabel')}</label>
           <input
             type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none"
           />
-          <div className="text-xs text-muted mt-1">Mindestens 8 Zeichen.</div>
+          <div className="text-xs text-muted mt-1">{t('signup.passwordHint')}</div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Sportart</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('signup.sportLabel')}</label>
             <select value={sport} onChange={e => setSport(e.target.value)}
               className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none">
-              <option value="fussball">Fußball</option>
-              <option value="handball">Handball</option>
-              <option value="basketball">Basketball</option>
-              <option value="volleyball">Volleyball</option>
-              <option value="eishockey">Eishockey</option>
-              <option value="andere">Andere</option>
+              <option value="fussball">{t('options.sportFussball')}</option>
+              <option value="handball">{t('options.sportHandball')}</option>
+              <option value="basketball">{t('options.sportBasketball')}</option>
+              <option value="volleyball">{t('options.sportVolleyball')}</option>
+              <option value="eishockey">{t('options.sportEishockey')}</option>
+              <option value="andere">{t('options.sportAndere')}</option>
             </select>
           </div>
           <div>
-            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Rolle</label>
+            <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('signup.roleLabel')}</label>
             <select value={role} onChange={e => setRole(e.target.value)}
               className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none">
-              <option value="trainer">Trainer</option>
-              <option value="co_trainer">Co-Trainer</option>
-              <option value="sportpsychologe">Sportpsychologe</option>
-              <option value="andere">Andere</option>
+              <option value="trainer">{t('options.roleTrainer')}</option>
+              <option value="co_trainer">{t('options.roleCoTrainer')}</option>
+              <option value="sportpsychologe">{t('options.roleSportpsychologe')}</option>
+              <option value="andere">{t('options.roleAndere')}</option>
             </select>
           </div>
         </div>
@@ -126,12 +126,12 @@ function SignupForm() {
 
         <button type="submit" disabled={loading}
           className="w-full py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition disabled:opacity-50">
-          {loading ? 'Wird erstellt…' : 'Account erstellen'}
+          {loading ? t('signup.submitting') : t('signup.submit')}
         </button>
       </form>
 
       <div className="mt-8 text-center text-sm text-muted">
-        Schon einen Account? <Link href="/login" className="text-ink underline hover:text-gold">Login</Link>
+        {t('signup.haveAccount')} <Link href="/login" className="text-ink underline hover:text-gold">{t('signup.loginLink')}</Link>
       </div>
     </div>
   );
@@ -139,7 +139,7 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="p-12">Lädt…</div>}>
+    <Suspense fallback={<div className="p-12" />}>
       <SignupForm />
     </Suspense>
   );

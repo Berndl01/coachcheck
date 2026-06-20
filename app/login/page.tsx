@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { HumatrixLogo } from '@/components/logo';
+import { useT } from '@/components/i18n/locale-provider';
 
 function LoginForm() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get('redirectTo') ?? '/dashboard';
@@ -37,22 +39,22 @@ function LoginForm() {
   return (
     <div className="max-w-md mx-auto px-4 py-12">
       <Link href="/" className="inline-block mb-10"><HumatrixLogo /></Link>
-      <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">Login</h1>
-      <p className="text-muted mb-8">Willkommen zurück.</p>
+      <h1 className="font-display text-4xl tracking-[-0.03em] mb-2">{t('login.title')}</h1>
+      <p className="text-muted mb-8">{t('login.subtitle')}</p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">E-Mail</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('auth.emailLabel')}</label>
           <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none" />
         </div>
         <div>
-          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">Passwort</label>
+          <label className="block font-mono text-xs uppercase tracking-[0.15em] text-muted mb-2">{t('auth.passwordLabel')}</label>
           <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-bone-line rounded-md bg-white focus:border-gold focus:outline-none" />
           <div className="text-right mt-2">
             <Link href="/passwort-vergessen" className="text-xs text-muted hover:text-gold-deep transition">
-              Passwort vergessen?
+              {t('login.forgot')}
             </Link>
           </div>
         </div>
@@ -61,12 +63,12 @@ function LoginForm() {
 
         <button type="submit" disabled={loading}
           className="w-full py-4 bg-ink text-bone rounded-full font-semibold hover:bg-gold hover:text-ink transition disabled:opacity-50">
-          {loading ? 'Wird eingeloggt…' : 'Login'}
+          {loading ? t('login.submitting') : t('login.submit')}
         </button>
       </form>
 
       <div className="mt-8 text-center text-sm text-muted">
-        Noch kein Account? <Link href="/signup" className="text-ink underline hover:text-gold">Account erstellen</Link>
+        {t('login.noAccount')} <Link href="/signup" className="text-ink underline hover:text-gold">{t('login.createAccount')}</Link>
       </div>
     </div>
   );
@@ -74,7 +76,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="p-12">Lädt…</div>}>
+    <Suspense fallback={<div className="p-12">{/* statischer Fallback, kurzlebig */}</div>}>
       <LoginForm />
     </Suspense>
   );
