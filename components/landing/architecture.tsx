@@ -6,13 +6,13 @@ export async function ArchitectureSection() {
   const aw = t('architecture.axisWord');
   // Modulnamen bleiben als kanonische Modellbegriffe deutsch (wie im Report).
   const modules = [
-    { num: `${mw} A`, title: 'Führungs\u00ADidentität', desc: t('architecture.descA'), subs: t('architecture.subsA').split(','), pl: t('architecture.poleAl'), pr: t('architecture.poleAr') },
-    { num: `${mw} B`, title: 'Kommunikations\u00AD<em>architektur</em>', desc: t('architecture.descB'), subs: t('architecture.subsB').split(','), pl: t('architecture.poleBl'), pr: t('architecture.poleBr') },
-    { num: `${mw} C`, title: 'Entscheidung & Priorität', desc: t('architecture.descC'), subs: t('architecture.subsC').split(','), pl: t('architecture.poleCl'), pr: t('architecture.poleCr') },
-    { num: `${mw} D`, title: 'Fehler- & <em>Lernkultur</em>', desc: t('architecture.descD'), subs: t('architecture.subsD').split(','), pl: t('architecture.poleDl'), pr: t('architecture.poleDr') },
-    { num: `${mw} E`, title: 'Führung unter Druck', desc: t('architecture.descE'), subs: t('architecture.subsE').split(','), pl: t('architecture.poleEl'), pr: t('architecture.poleEr') },
-    { num: `${mw} F`, title: 'Motivation & <em>Aktivierung</em>', desc: t('architecture.descF'), subs: t('architecture.subsF').split(','), pl: t('architecture.poleFl'), pr: t('architecture.poleFr') },
-    { num: `${mw} G`, title: 'Beziehung & Vertrauen', desc: t('architecture.descG'), subs: t('architecture.subsG').split(','), pl: t('architecture.poleGl'), pr: t('architecture.poleGr') },
+    { num: `${mw} A`, title: 'Führungs\u00ADidentität', desc: t('architecture.descA'), subs: t('architecture.subsA').split(',') },
+    { num: `${mw} B`, title: 'Kommunikations\u00AD<em>architektur</em>', desc: t('architecture.descB'), subs: t('architecture.subsB').split(',') },
+    { num: `${mw} C`, title: 'Entscheidung & Priorität', desc: t('architecture.descC'), subs: t('architecture.subsC').split(',') },
+    { num: `${mw} D`, title: 'Fehler- & <em>Lernkultur</em>', desc: t('architecture.descD'), subs: t('architecture.subsD').split(',') },
+    { num: `${mw} E`, title: 'Führung unter Druck', desc: t('architecture.descE'), subs: t('architecture.subsE').split(',') },
+    { num: `${mw} F`, title: 'Motivation & <em>Aktivierung</em>', desc: t('architecture.descF'), subs: t('architecture.subsF').split(',') },
+    { num: `${mw} G`, title: 'Beziehung & Vertrauen', desc: t('architecture.descG'), subs: t('architecture.subsG').split(',') },
   ];
 
   const axes = [
@@ -57,12 +57,7 @@ export async function ArchitectureSection() {
                 style={{ fontVariationSettings: "'opsz' 144" }}
                 dangerouslySetInnerHTML={{ __html: m.title.replace('<em>', '<em class="font-editorial italic font-normal">') }}
               />
-              <p className="text-sm leading-[1.5] text-bone-soft opacity-75 mb-3">{m.desc}</p>
-              <div className="flex items-center gap-2.5 mb-4 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-gold-light/85">
-                <span>{m.pl}</span>
-                <span className="flex-grow h-px bg-bone/15" />
-                <span>{m.pr}</span>
-              </div>
+              <p className="text-sm leading-[1.5] text-bone-soft opacity-75 mb-4">{m.desc}</p>
               <ul className="flex flex-wrap gap-1.5 mt-auto">
                 {m.subs.map((s, j) => (
                   <li key={j} className="font-mono text-[0.65rem] px-2 py-0.5 bg-bone/7 border border-bone/10 text-bone-soft rounded-full lowercase">

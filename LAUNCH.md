@@ -3,7 +3,7 @@
 **Das eine, verbindliche Dokument: von „jetzt" bis „verkaufen".**
 Es bündelt für den Start, was in `GO-LIVE.md` über viele Versions-Notizen verstreut ist.
 
-Stand: Migrationen **01 → 43**, **341 Tests grün**, alle 7 Gates sauber
+Stand: Migrationen **01 → 44**, **360 Tests grün**, alle 7 Gates sauber
 (tsc · claimcheck · vitest · eslint · build · npm audit 0 · PDF 4/4).
 
 ---
@@ -28,7 +28,7 @@ ist startklar. Was jetzt folgt, ist **Betrieb und Recht — nicht Code.**
 
 ### Schritt 1 — Supabase (Datenbank)
 1. Projekt in Region **Frankfurt** nutzen/anlegen.
-2. Migrationen **01 → 43 in Reihenfolge** anwenden (SQL-Editor oder `supabase db push`,
+2. Migrationen **01 → 44 in Reihenfolge** anwenden (SQL-Editor oder `supabase db push`,
    Datei für Datei aufsteigend).
    - **Wichtig:** Die Migrationen sind selbstheilend/idempotent. Migration 39 enthält einen
      Dedup-Block *vor* einem Unique-Index — bei einer Bestandsdatenbank zuerst diese
@@ -139,4 +139,4 @@ Bewusst nicht gebaut bzw. nach dem Start sinnvoll — keiner dieser Punkte hält
 - **Mails kommen nicht an:** Resend-Domain-Status prüfen (Schritt 4); mit
   mail-tester.com Score ≥ 9/10 anstreben.
 - **Migrationen unvollständig:** meist fehlt `SUPABASE_SERVICE_ROLE_KEY` oder eine Migration
-  wurde übersprungen — Reihenfolge 01 → 43 prüfen.
+  wurde übersprungen — Reihenfolge 01 → 44 prüfen.

@@ -10,9 +10,10 @@ export type Item = {
   format: string;
   text_de: string;
   // Nur Anzeige-Daten erreichen den Browser. Scoring-Metadaten (axis_weights,
-  // reverse_scored, Options-Gewichte) werden serverseitig vor der Übergabe
-  // entfernt (IP-Schutz) — der Runner braucht sie nicht.
-  options: Array<{ key: string; text: string }> | null;
+  // reverse_scored, Options-Gewichte, axis) werden serverseitig vor der Übergabe
+  // entfernt (IP-Schutz). left/right sind die Pol-Beschriftungen der
+  // Spannungsfeld-Items und damit reine Anzeige — sie müssen erhalten bleiben.
+  options: Array<{ key: string; text: string; left?: string; right?: string }> | null;
 };
 
 export type AnswerValue = {

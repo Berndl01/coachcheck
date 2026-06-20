@@ -37,11 +37,24 @@ describe('Migration 30 — RPCs liefern keine Scoring-Metadaten', () => {
     }
   });
 
-  it('strippt Optionsgewichte über strip_option_weights (nur key/text)', () => {
+  it('die RPCs strippen Options-Gewichte über strip_option_weights', () => {
     expect(mig30).toMatch(/function public\.strip_option_weights/i);
-    expect(mig30).toMatch(/'key',\s*o->>'key'/);
-    expect(mig30).toMatch(/'text',\s*o->>'text'/);
     expect(mig30).toMatch(/strip_option_weights\(i\.options\)/);
+  });
+
+  it('Migration 44: strip_option_weights erhält Anzeige-Felder key/text + Spannungsfeld-Pole left/right, strippt aber axis/Gewichte', () => {
+    const mig44 = read('supabase', 'migrations', '44_restore_spannungsfeld_poles.sql');
+    expect(mig44).toMatch(/create or replace function public\.strip_option_weights/i);
+    // Anzeige-Felder erhalten (key/text für Auswahl, left/right für Spannungsfeld-Pole)
+    expect(mig44).toMatch(/'key',\s*o->>'key'/);
+    expect(mig44).toMatch(/'text',\s*o->>'text'/);
+    expect(mig44).toMatch(/'left',\s*o->>'left'/);
+    expect(mig44).toMatch(/'right',\s*o->>'right'/);
+    // Scoring-Metadaten bleiben weg: die Achse darf NICHT als Build-Feld auftauchen
+    expect(mig44).not.toMatch(/'axis',\s*o->>'axis'/);
+    expect(mig44).not.toMatch(/o->>'weights'/);
+    // Self-prüfender DO-Block im Migrationsskript
+    expect(mig44).toMatch(/raise exception 'strip_option_weights/i);
   });
 
   it('Assertion bricht ab, falls Scoring-Spalten auftauchen', () => {

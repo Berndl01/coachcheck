@@ -1,3 +1,34 @@
+FIX v3_67 — 2026-06-20
+================================================================
+Spannungsfeld-Pole im Fragebogen fehlten bei ALLEN Items (Tester-Screenshot).
+
+Ursache (DB-Ebene): RPC-Hardening v3.32 (Migration 30, strip_option_weights) reduzierte die
+Options-Objekte auf {key,text}, um Scoring-Gewichte nicht zu leaken — dabei gingen left/right
+(Spannungsfeld-Pole, reine Anzeige) mit verloren. Der Client-Sanitizer tat dasselbe. Renderer las
+options[0].left/right, bekam sie nie -> leere Pole.
+
+Fix: Migration 44 (NEU) - strip_option_weights liefert jetzt key/text UND left/right
+(jsonb_strip_nulls); axis + Optionsgewichte bleiben entfernt (IP). Wirkt in beiden RPCs
+(get_items_for_assessment/_invitation) -> alle Frage-Flows. sanitize-items.ts + Item-Typ reichen
+left/right durch. Renderer unveraendert (war korrekt).
+
+AKTION (Bernie): Migration 44 in Produktion anwenden - sonst bleiben die Pole live leer.
+
+Empirisch (echtes PostgreSQL 16): A_id_07 roh {axis,left,right} -> gestrippt {left:"Struktur",
+right:"Flexibilität"}. Alle 10 Spannungsfeld-Items: 10/10 beide Pole, 0 axis/weights-Leak. End-to-end
+ueber echten RPC (Tier-2): 9 Items geliefert, 9/9 beide Pole, 0 Leak; A_id_07 links="Struktur"
+rechts="Flexibilität" axis_leak=false.
+
+Zurueckgenommen: v3_66 Modul-Pole auf der Landing (Fehlinterpretation) - Pol-Zeile + pl/pr +
+14 Dict-Keys revertiert (zurueck auf v3_65, 63 Sektionen).
+
+Tests: sanitize-poles-v3-67 (NEU), rpc-no-scoring-leak (Migration 44 festgenagelt),
+launch-doc-v3-51 + LAUNCH.md auf 01->44 gesynct.
+
+Gates: tsc OK · claimcheck 66 · vitest 360/360 (35) · eslint OK · next build Exit 0
+  · npm audit 0 · PDF 4/4.
+
+
 FIX v3_66 — 2026-06-20
 ================================================================
 Modul-Pole in der Architektur-Sektion (Landing) ergaenzt.

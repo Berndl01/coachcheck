@@ -11,8 +11,8 @@ const read = (...p: string[]) => readFileSync(join(ROOT, ...p), 'utf8');
 describe('LAUNCH.md · verbindliches Startdokument', () => {
   const L = read('LAUNCH.md');
 
-  it('nennt den aktuellen Migrationsstand 01 → 43', () => {
-    expect(L).toMatch(/01 → 43/);
+  it('nennt den aktuellen Migrationsstand 01 → 44', () => {
+    expect(L).toMatch(/01 → 44/);
   });
 
   it('nennt die drei neuen Tabellen, die live vorhanden sein müssen', () => {
@@ -45,7 +45,7 @@ describe('LAUNCH.md · verbindliches Startdokument', () => {
       .map((f) => parseInt(f.slice(0, 2), 10))
       .filter((n) => !Number.isNaN(n));
     const highest = Math.max(...nums);
-    expect(highest).toBe(43);
+    expect(highest).toBe(44);
     expect(L).toMatch(new RegExp(`01 → ${highest}`));
   });
 });
