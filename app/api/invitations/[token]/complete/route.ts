@@ -1,7 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notifyTrainerOnFremdbildResponse } from '@/lib/email/progress-emails';
-import { bad, isValidTokenShape, ok, rateLimit } from '@/lib/utils/anon-api';
+import { bad, isValidTokenShape, ok } from '@/lib/utils/anon-api';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { requireActiveInvitationByToken } from '@/lib/auth/assessment-entitlement';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -9,16 +10,10 @@ export const runtime = 'nodejs';
 /**
  * POST /api/invitations/[token]/complete
  *
- * Markiert eine Invitation als abgeschlossen.
- * Prüft:
+ * Markiert eine Invitation als abgeschlossen. Prüft:
+ *   - Token + Eltern-Assessment AKTIVIERT + BEZAHLT + NICHT erstattet (P0 v3.42)
  *   - Token gültig, nicht expired, nicht schon completed
  *   - ALLE für die Einladung erwarteten Items wurden beantwortet
- *
- * Wichtig: ein einzelner manipulierter "complete"-Call darf nicht
- * dazu führen, dass eine Einladung als "completed" gilt, obwohl
- * fast nichts beantwortet wurde. Die Aggregate-Funktionen zählen
- * completed Invitations - schwache Abschlussprüfung würde die
- * Aggregate-Aussagekraft sofort zerstören.
  */
 export async function POST(
   _req: Request,
@@ -32,15 +27,11 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // 1) Invitation laden
-  const { data: inv, error: selErr } = await admin
-    .from('invitations')
-    .select('id, status, expires_at, invitation_type, parent_assessment_id')
-    .eq('token', token)
-    .maybeSingle();
+  // 1) Invitation + Entitlement
+  const ent = await requireActiveInvitationByToken(admin, token);
+  if (!ent.ok) return bad(ent.status, ent.error);
+  const inv = ent.invitation;
 
-  if (selErr) return bad(500, 'DB error');
-  if (!inv) return bad(404, 'Invitation not found');
   if (new Date(inv.expires_at) < new Date()) return bad(410, 'Invitation expired');
   if (inv.status === 'completed') return ok({ status: 'completed' });
   if (inv.status === 'expired') return bad(410, 'Invitation expired');
@@ -82,9 +73,7 @@ export async function POST(
 
   if (updErr) return bad(500, 'Could not complete invitation');
 
-  // Trainer beim Eingang einer Fremdeinschätzung benachrichtigen (Meilensteine:
-  // erste Antwort, FREMDBILD_MIN erreicht). Best effort — blockiert den
-  // Abschluss nie.
+  // Trainer beim Eingang einer Fremdeinschätzung benachrichtigen (best effort).
   if (inv.invitation_type === 'fremdbild' && inv.parent_assessment_id) {
     try {
       await notifyTrainerOnFremdbildResponse(admin, inv.parent_assessment_id);

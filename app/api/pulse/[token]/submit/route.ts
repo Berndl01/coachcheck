@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireSeasonEntitlement } from '@/lib/season/entitlement';
 import { bad, isValidTokenShape, ok, rateLimit } from '@/lib/utils/anon-api';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { z } from 'zod';
@@ -62,14 +63,11 @@ export async function POST(
   if (invErr) return bad(500, 'DB error');
   if (!inv || inv.status !== 'active') return bad(404, 'Invitation not found or revoked');
 
-  // Season separat laden
-  const { data: season, error: sErr } = await admin
-    .from('seasons')
-    .select('id, status')
-    .eq('id', inv.season_id)
-    .maybeSingle();
-  if (sErr || !season) return bad(500, 'Could not resolve season');
-  if (season.status !== 'active') return bad(409, 'Season not active');
+  // Saison-Berechtigung prüfen: nur eine aktive, an einen bezahlten (nicht
+  // erstatteten) Tier-5-Kauf gebundene Saison nimmt Pulse-Antworten an.
+  const ent = await requireSeasonEntitlement(admin, inv.season_id);
+  if (!ent.ok) return bad(ent.status === 404 ? 404 : 409, ent.error);
+  const season = ent.season;
 
   // 2) Offenen Cycle der Season finden
   const { data: openCycle, error: cycErr } = await admin
@@ -129,5 +127,20 @@ export async function POST(
     .upsert(records, { onConflict: 'pulse_cycle_id,pulse_item_id,respondent_token' });
 
   if (upErr) return bad(500, 'Could not save responses');
-  return ok({ cycle_id: openCycle.id, saved: records.length });
+
+  // Live-Antwortzähler aktualisieren (P0 Blocker 3): der Trainer sieht den Stand
+  // sofort (1 → 5 → …) und erkennt, ob die Anonymitätsschwelle erreicht ist.
+  // Best effort — ein Fehler hier darf die bereits gespeicherte Antwort nicht
+  // verwerfen (beim Schließen wird ohnehin neu gezählt).
+  let responseCount: number | null = null;
+  try {
+    const { data } = await admin.rpc('refresh_pulse_cycle_response_count', {
+      cycle_uuid: openCycle.id,
+    });
+    if (typeof data === 'number') responseCount = data;
+  } catch (err) {
+    console.warn('[pulse-submit] response count refresh failed:', err);
+  }
+
+  return ok({ saved: records.length, responseCount });
 }

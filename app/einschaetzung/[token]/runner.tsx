@@ -146,7 +146,7 @@ export function EinschaetzungRunner({
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">02</span>
                 <div>
                   <div className="font-medium">~{estMinutes} Minuten · {total} Fragen</div>
-                  <div className="text-sm text-muted">Einschätzungs-Skalen, Szenarien, Spannungsfelder. Nimm dir Zeit — du kannst jederzeit pausieren und später weitermachen.</div>
+                  <div className="text-sm text-muted">Einschätzungs-Skalen, Szenarien, Spannungsfelder. Nimm dir Zeit — bitte in einem Durchgang ausfüllen, deine Antworten werden erst am Ende gespeichert.</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">

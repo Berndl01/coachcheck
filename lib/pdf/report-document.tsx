@@ -1431,10 +1431,10 @@ export function ReportDocument(props: ReportProps) {
           <Text style={styles.bodyMuted}>
             Dein Stil kommt nicht bei allen gleich an. So wirkt er auf vier typische Spielertypen — und was du je Typ konkret anpassen kannst.
           </Text>
-          <View style={{ marginTop: 18 }}>
+          <View style={{ marginTop: 18, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
             {texts.wirkung_je_spielertyp.map((p, i) => (
-              <View key={i} style={styles.moduleCard} wrap={false}>
-                <Text style={{ fontSize: 11, fontFamily: PDF_DISPLAY, color: COLORS.ink, marginBottom: 5 }}>
+              <View key={i} style={{ ...styles.moduleCard, width: '48%' }} wrap={false}>
+                <Text style={{ fontSize: 10.5, fontFamily: PDF_DISPLAY, color: COLORS.ink, marginBottom: 5 }}>
                   {p.spielertyp}
                 </Text>
                 <Text style={{ ...styles.body, marginBottom: 6 }}>{p.wirkung}</Text>

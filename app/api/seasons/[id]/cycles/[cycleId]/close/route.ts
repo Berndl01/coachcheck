@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireSeasonEntitlement } from '@/lib/season/entitlement';
 import { evaluateCareSignals, type CareResponse } from '@/lib/safety/care-triggers';
 
 export const dynamic = 'force-dynamic';
@@ -15,35 +16,56 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  // Validate ownership
-  const { data: season } = await supabase
-    .from('seasons')
-    .select('id')
-    .eq('id', seasonId)
-    .eq('user_id', user.id)
-    .single();
-  if (!season) return NextResponse.json({ error: 'Saison nicht gefunden' }, { status: 404 });
-
   const admin = createAdminClient();
+  // Berechtigung bei JEDER Aktion prüfen (Eigentümer + bezahlter, nicht erstatteter
+  // Tier-5-Kauf + aktive Saison). Blockiert das Schließen nach einem Refund.
+  const ent = await requireSeasonEntitlement(admin, seasonId, { ownerUserId: user.id });
+  if (!ent.ok) return NextResponse.json({ error: ent.error }, { status: ent.status });
 
   // Cycle muss zur Saison gehören (kein Cross-Season-Close über fremde cycleId)
+  // UND noch offen sein (kein erneutes Schließen / Schließen archivierter Cycles).
   const { data: cycle } = await admin
     .from('pulse_cycles')
-    .select('id, season_id')
+    .select('id, season_id, status')
     .eq('id', cycleId)
     .maybeSingle();
   if (!cycle || cycle.season_id !== seasonId) {
     return NextResponse.json({ error: 'Zyklus nicht gefunden' }, { status: 404 });
   }
+  if (cycle.status !== 'open') {
+    return NextResponse.json(
+      { error: 'Dieser Pulse-Cycle ist nicht (mehr) offen.' },
+      { status: 409 },
+    );
+  }
 
-  // Compute snapshot
+  // Anonymitätsschwelle (P0 Blocker 3): vor dem Auswerten den Live-Stand exakt
+  // neu zählen. Unter 5 vollständigen Antworten wird KEIN Snapshot erzeugt —
+  // sonst würde ein versehentliches Schließen bei 4 Antworten die Runde
+  // dauerhaft mit leerer Auswertung beenden. Wer trotzdem beenden will, nutzt
+  // die getrennte Aktion „ohne Auswertung archivieren" (archive-Route).
+  const { data: liveCount } = await admin.rpc('refresh_pulse_cycle_response_count', {
+    cycle_uuid: cycleId,
+  });
+  const liveResponseCount = typeof liveCount === 'number' ? liveCount : 0;
+  if (liveResponseCount < 5) {
+    return NextResponse.json(
+      {
+        error: 'Noch nicht genügend vollständige Antworten für eine anonyme Auswertung (mindestens 5 erforderlich).',
+        responseCount: liveResponseCount,
+      },
+      { status: 409 },
+    );
+  }
+
+  // Compute snapshot (>= 5 ist hier garantiert)
   const { data: snapshotResult, error: snapErr } = await admin.rpc('compute_pulse_snapshot', {
     cycle_uuid: cycleId,
   });
   if (snapErr) return NextResponse.json({ error: snapErr.message }, { status: 500 });
 
   const snapshot = (snapshotResult as any) ?? {};
-  const responseCount = snapshot?.response_count ?? 0;
+  const responseCount = snapshot?.response_count ?? liveResponseCount;
 
   // Achtsamkeits-Hinweise (Know-how-Transfer Humatrix 2026-06):
   // anonym aggregiert, wertabhängig, strenge Schwellen — siehe lib/safety/care-triggers.ts.
@@ -70,7 +92,8 @@ export async function POST(
     // bewusst verschluckt — Achtsamkeits-Layer ist additiv, nie blockierend
   }
 
-  // Update cycle: set snapshot, mark closed
+  // Update cycle: set snapshot, mark closed. status='open'-Bedingung schützt
+  // gegen ein paralleles Schließen (Race).
   const { error: updErr } = await admin
     .from('pulse_cycles')
     .update({
@@ -79,7 +102,8 @@ export async function POST(
       status: 'closed',
       closed_at: new Date().toISOString(),
     })
-    .eq('id', cycleId);
+    .eq('id', cycleId)
+    .eq('status', 'open');
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { checkPaidEntitlement } from '@/lib/auth/entitlement';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,8 +41,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'assessment not shareable yet' }, { status: 409 });
   }
 
-  const token = assessment.share_token ?? randomUUID();
   const admin = createAdminClient();
+
+  // P0 (v3.42, Blocker 1 — Refund-Lockdown, Variante A): Einen öffentlichen
+  // Karten-Link darf nur aktivieren, wessen Purchase weiterhin BEZAHLT ist.
+  // Nach Refund wird ein bestehender Link bereits per Stripe-Webhook deaktiviert;
+  // hier verhindern wir zusätzlich eine erneute Aktivierung.
+  const ent = await checkPaidEntitlement(admin, id, user.id);
+  if (!ent.ok) {
+    return NextResponse.json(
+      { error: 'Für dieses Ergebnis besteht keine aktive Berechtigung mehr.' },
+      { status: 402 },
+    );
+  }
+
+  const token = assessment.share_token ?? randomUUID();
   const { error } = await admin
     .from('assessments')
     .update({ share_token: token, share_enabled: true, shared_at: new Date().toISOString() })

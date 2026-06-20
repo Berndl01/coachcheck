@@ -1,15 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireActiveAssessmentEntitlement } from '@/lib/auth/assessment-entitlement';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Höchstzahl aktiver (nicht abgelaufener/abgeschlossener) Spieler-Tokens pro
+// Assessment. Verhindert das unbegrenzte Anlegen beliebig vieler Datensätze
+// über wiederholte Bulk-Aufrufe.
+const MAX_ACTIVE_PLAYER_TOKENS = 200;
+const MAX_PER_REQUEST = 50;
+
 /**
- * Bulk-create invitations for TeamCheck.
- * Supports two modes:
- * - mode 'emails':  user provides list of player emails
- * - mode 'tokens':  user provides number of tokens to generate (no emails)
+ * Bulk-create invitations for TeamCheck (anonyme Spieler-Tokens).
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -28,61 +32,64 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'assessment_id erforderlich' }, { status: 400 });
   }
 
-  // Validate ownership and tier
-  const { data: assessment } = await supabase
-    .from('assessments')
-    .select('id, user_id, product:products(tier, slug)')
-    .eq('id', assessment_id)
-    .eq('user_id', user.id)
-    .single();
+  // ZENTRALE Berechtigung (P0): Ownership + aktiviert + bezahlt + bestätigt +
+  // NICHT erstattet. Schließt zwei Lücken: (1) Status
+  // 'awaiting_contract_confirmation' kann keine Tokens mehr erzeugen,
+  // (2) nach Refund ist der Weg gesperrt.
+  const admin = createAdminClient();
+  const ent = await requireActiveAssessmentEntitlement(admin, assessment_id, {
+    ownerUserId: user.id,
+  });
+  if (!ent.ok) return NextResponse.json({ error: ent.error }, { status: ent.status });
 
-  if (!assessment) {
-    return NextResponse.json({ error: 'Assessment nicht gefunden' }, { status: 404 });
-  }
-
-  const tier = (assessment.product as any)?.tier ?? 0;
-  if (tier < 4) {
+  if (ent.tier < 4) {
     return NextResponse.json({
       error: 'Bulk-Einladungen sind erst ab dem TeamCheck verfügbar (Tier 4+).'
     }, { status: 403 });
   }
 
-  // Build list of records.
-  // WICHTIG: TeamCheck-Bulk-Einladungen sind anonym. Spieler-E-Mails werden
-  // bewusst NICHT gespeichert — die Anonymitäts-Zusage gegenüber Spielern
-  // hält nur dann, wenn keine PII pro Token in der DB landet.
-  // Wer Spielern einen Link schicken will, kopiert den Token-Link selbst
-  // (WhatsApp, QR, Slack, Aushang).
-  let records: { parent_assessment_id: string; invited_email: string | null; invitation_type: string; status: string }[] = [];
-
-  if (mode === 'tokens') {
-    const n = Math.min(Math.max(parseInt(count ?? 0, 10), 1), 50);
-    if (!n) {
-      return NextResponse.json({ error: 'count > 0 erforderlich' }, { status: 400 });
-    }
-    records = Array.from({ length: n }, () => ({
-      parent_assessment_id: assessment_id,
-      invited_email: null,
-      invitation_type: 'spieler',
-      status: 'pending',
-    }));
-  } else if (mode === 'emails') {
-    // Explizit nicht mehr unterstützt — Datenschutz-Garantie für Spieler.
-    // emails-Parameter wird verworfen, falls jemand ihn direkt schickt.
+  // Modus prüfen. E-Mail-Modus für Spieler ist aus Datenschutzgründen deaktiviert.
+  if (mode === 'emails') {
     return NextResponse.json({
       error: 'E-Mail-Modus für Spieler-Einladungen deaktiviert. TeamCheck-Einladungen sind anonym; bitte mode="tokens" verwenden.',
     }, { status: 400 });
-  } else {
+  }
+  if (mode !== 'tokens') {
     return NextResponse.json({ error: 'mode muss "tokens" sein' }, { status: 400 });
   }
+  void emails; // vorsorglich ignorieren, falls mitgeschickt
 
-  // Vorsorglich: emails-Parameter ignorieren, falls vorhanden.
-  void emails;
+  // Bestehende aktive Spieler-Tokens zählen (für Mengenbegrenzung + fortlaufende
+  // Nummerierung).
+  const { count: existingActive } = await admin
+    .from('invitations')
+    .select('id', { count: 'exact', head: true })
+    .eq('parent_assessment_id', assessment_id)
+    .eq('invitation_type', 'spieler')
+    .not('status', 'in', '(completed,expired)');
 
-  // Schreiben ab Migration 29 serverseitig via service_role (Browser-INSERT auf
-  // invitations entfernt). Ownership ist oben geprüft; Spieler-Einladungen sind
-  // garantiert anonym (invited_email: null).
-  const admin = createAdminClient();
+  const active = existingActive ?? 0;
+  if (active >= MAX_ACTIVE_PLAYER_TOKENS) {
+    return NextResponse.json({
+      error: `Maximal ${MAX_ACTIVE_PLAYER_TOKENS} aktive Spieler-Tokens pro Assessment.`,
+    }, { status: 409 });
+  }
+
+  const requested = Math.min(Math.max(parseInt(count ?? 0, 10), 1), MAX_PER_REQUEST);
+  if (!requested) {
+    return NextResponse.json({ error: 'count > 0 erforderlich' }, { status: 400 });
+  }
+  const n = Math.min(requested, MAX_ACTIVE_PLAYER_TOKENS - active);
+
+  // WICHTIG: TeamCheck-Bulk-Einladungen sind anonym. Spieler-E-Mails werden
+  // bewusst NICHT gespeichert (invited_email: null).
+  const records = Array.from({ length: n }, () => ({
+    parent_assessment_id: assessment_id,
+    invited_email: null as string | null,
+    invitation_type: 'spieler',
+    status: 'pending',
+  }));
+
   const { data: invitations, error } = await admin
     .from('invitations')
     .insert(records)
@@ -92,5 +99,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, invitations, count: invitations?.length ?? 0 });
+  return NextResponse.json({
+    ok: true,
+    invitations,
+    count: invitations?.length ?? 0,
+    capped: n < requested,
+  });
 }

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmailSafe } from '@/lib/email/resend';
+import { requireActiveAssessmentEntitlement } from '@/lib/auth/assessment-entitlement';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,24 +23,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invitation_id erforderlich' }, { status: 400 });
   }
 
-  // Load invitation with parent assessment
-  const { data: invitation } = await supabase
+  const admin = createAdminClient();
+
+  // Load invitation with parent assessment id (service_role).
+  const { data: invitation } = await admin
     .from('invitations')
-    .select('id, token, invited_email, invitation_type, expires_at, unsubscribed_at, parent_assessment_id, assessment:parent_assessment_id(user_id)')
+    .select('id, token, invited_email, invitation_type, expires_at, unsubscribed_at, parent_assessment_id, status')
     .eq('id', invitation_id)
-    .single();
+    .maybeSingle();
 
   if (!invitation) {
     return NextResponse.json({ error: 'Einladung nicht gefunden' }, { status: 404 });
   }
 
-  // Validate ownership
-  if ((invitation.assessment as any)?.user_id !== user.id) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  // ZENTRALE Berechtigung (P0): Ownership + aktiviert + bezahlt + bestätigt +
+  // NICHT erstattet. Versendet nach einem Refund keine weiteren Einladungen.
+  const ent = await requireActiveAssessmentEntitlement(admin, invitation.parent_assessment_id, {
+    ownerUserId: user.id,
+  });
+  if (!ent.ok) return NextResponse.json({ error: ent.error }, { status: ent.status });
+
+  // Bereits widerrufene/abgelaufene Einladungen nicht versenden.
+  if (invitation.status === 'expired') {
+    return NextResponse.json({ error: 'Einladung ist nicht mehr gültig.' }, { status: 409 });
   }
 
-  // Abgemeldete Empfänger erhalten keine weiteren E-Mails (DSGVO/CAN-SPAM,
-  // funktionierender One-Click-Unsubscribe).
+  // Abgemeldete Empfänger erhalten keine weiteren E-Mails (DSGVO/CAN-SPAM).
   if (invitation.unsubscribed_at) {
     return NextResponse.json({ error: 'Empfänger hat sich abgemeldet.' }, { status: 409 });
   }
@@ -59,9 +68,7 @@ export async function POST(request: NextRequest) {
   const sport = profile?.sport ?? '';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://coachcheck.humatrix.cc';
   const link = `${appUrl}/einschaetzung/${invitation.token}`;
-  // List-Unsubscribe-Header → echter One-Click-POST-Endpoint (RFC 8058). Gmail/
-  // Yahoo senden einen POST hierauf; der bricht den Versand für genau diesen
-  // Empfänger ab. Die sichtbare Einschätzungsseite bleibt unter ?unsubscribe=1.
+  // List-Unsubscribe-Header → echter One-Click-POST-Endpoint (RFC 8058).
   const unsubscribeUrl = `${appUrl}/api/unsubscribe?token=${invitation.token}`;
 
   if (!process.env.RESEND_API_KEY) {
@@ -88,13 +95,13 @@ export async function POST(request: NextRequest) {
         </p>
         <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 28px;">
           Deine Einschätzung wird <strong style="color: #1B1C1E;">anonymisiert ausgewertet</strong>. ${escapeHtml(trainerName.split(' ')[0])} sieht nie einzelne Antworten —
-          nur den aggregierten Vergleich zwischen Selbstbild und Fremdbild aus dem Team (ab mindestens 3 Einschätzungen). Plane dir dafür etwa 25–30 Minuten in Ruhe ein — deine ehrliche Sicht ist es wert. Du kannst jederzeit pausieren und später weitermachen.
+          nur den aggregierten Vergleich zwischen Selbstbild und Fremdbild aus dem Team (ab mindestens 3 Einschätzungen). Plane dir dafür etwa 25–30 Minuten am Stück ein — am besten in einer ruhigen Phase, in der du nicht unterbrochen wirst.
         </p>
         <a href="${link}" style="display: inline-block; padding: 14px 28px; background: #1B1C1E; color: #FAFAF8; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px;">
           Jetzt Einschätzung abgeben →
         </a>
         <p style="font-size: 12px; color: #9A9793; margin-top: 32px;">
-          Der Link ist 14 Tage gültig. Du kannst jederzeit pausieren und später weitermachen.<br>
+          Der Link ist 14 Tage gültig.<br>
           Falls der Button nicht funktioniert: <a href="${link}" style="color: #B38E45;">${link}</a>
         </p>
       </div>
@@ -121,7 +128,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Update status
-  const admin = createAdminClient();
   await admin
     .from('invitations')
     .update({ status: 'sent', sent_at: new Date().toISOString() })

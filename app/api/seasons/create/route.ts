@@ -1,9 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// Serverseitige Eingabevalidierung (P1): verhindert überlange/ungültige Werte
+// und unnötige 500er. Der Client kann jede dieser Grenzen ohnehin umgehen.
+const BodySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  sport: z.string().trim().max(100).optional().nullable(),
+  team_size_estimate: z.coerce.number().int().min(1).max(500).optional().nullable(),
+  pulse_interval_days: z.coerce.number().int().min(7).max(365).optional().nullable(),
+});
 
 /**
  * Saison-Monitor (Tier 5) anlegen.
@@ -19,11 +29,14 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  let body: any;
+  let body: z.infer<typeof BodySchema>;
   try {
-    body = await request.json();
+    body = BodySchema.parse(await request.json());
   } catch {
-    return NextResponse.json({ error: 'invalid request body' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Ungültige Eingaben (Name 1–120 Zeichen, Sportart ≤100, Teamgröße 1–500, Pulse-Intervall 7–365 Tage).' },
+      { status: 400 },
+    );
   }
   const { name, sport, team_size_estimate, pulse_interval_days } = body;
 
@@ -68,7 +81,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       purchase_id: purchaseId,
-      name: name ?? 'Saison',
+      name,
       sport: sport ?? null,
       team_size_estimate: team_size_estimate ?? null,
       pulse_interval_days: pulse_interval_days ?? 30,

@@ -1,52 +1,65 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireSeasonEntitlement } from '@/lib/season/entitlement';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// Validierung (P1): closes_in_days muss eine Ganzzahl 3–60 sein. Früher führte
+// z. B. "abc" über NaN zu einem ungültigen Datum und einem unnötigen 500er.
+const BodySchema = z.object({
+  season_id: z.string().min(1),
+  closes_in_days: z.coerce.number().int().min(3).max(60).optional(),
+});
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  let body: any;
+  let body: z.infer<typeof BodySchema>;
   try {
-    body = await request.json();
+    body = BodySchema.parse(await request.json());
   } catch {
-    return NextResponse.json({ error: "invalid request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Ungültige Eingaben (closes_in_days muss eine Ganzzahl zwischen 3 und 60 sein).' },
+      { status: 400 },
+    );
   }
   const { season_id, closes_in_days } = body;
-  if (!season_id) return NextResponse.json({ error: 'season_id erforderlich' }, { status: 400 });
 
-  // Validate ownership
-  const { data: season } = await supabase
-    .from('seasons')
-    .select('id, status')
-    .eq('id', season_id)
-    .eq('user_id', user.id)
-    .single();
+  const admin = createAdminClient();
+  // Berechtigung bei JEDER Aktion prüfen (Eigentümer + bezahlter Tier-5-Kauf + aktiv).
+  const ent = await requireSeasonEntitlement(admin, season_id, { ownerUserId: user.id });
+  if (!ent.ok) return NextResponse.json({ error: ent.error }, { status: ent.status });
 
-  if (!season) return NextResponse.json({ error: 'Saison nicht gefunden' }, { status: 404 });
-  if (season.status !== 'active') {
-    return NextResponse.json({ error: 'Saison ist nicht aktiv' }, { status: 400 });
+  // Kein zweiter offener Cycle (zusätzlich per Unique-Index abgesichert).
+  const { data: openCycle } = await admin
+    .from('pulse_cycles')
+    .select('id')
+    .eq('season_id', season_id)
+    .eq('status', 'open')
+    .maybeSingle();
+  if (openCycle) {
+    return NextResponse.json({ error: 'Es läuft bereits ein offener Pulse-Zyklus.' }, { status: 409 });
   }
 
-  // Get next cycle number
-  const { data: existingCycles } = await supabase
+  const { data: existingCycles } = await admin
     .from('pulse_cycles')
     .select('cycle_number')
     .eq('season_id', season_id)
     .order('cycle_number', { ascending: false })
     .limit(1);
-
   const nextNumber = ((existingCycles?.[0]?.cycle_number ?? 0) as number) + 1;
 
-  // Calculate closes_at
-  const days = Math.min(Math.max(parseInt(closes_in_days ?? 14, 10), 3), 60);
+  const days = closes_in_days ?? 14;
   const closesAt = new Date();
   closesAt.setDate(closesAt.getDate() + days);
 
-  const { data: cycle, error } = await supabase
+  // Schreiben via service_role (direkte Browser-Schreibrechte sind ab Migration 38 entfernt).
+  const { data: cycle, error } = await admin
     .from('pulse_cycles')
     .insert({
       season_id,
@@ -57,6 +70,11 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if ((error as any).code === '23505') {
+      return NextResponse.json({ error: 'Es läuft bereits ein offener Pulse-Zyklus.' }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, cycle });
 }

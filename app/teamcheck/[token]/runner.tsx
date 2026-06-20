@@ -129,7 +129,7 @@ export function TeamcheckRunner({
                 <span className="font-mono text-xs text-gold mt-1 shrink-0">03</span>
                 <div>
                   <div className="font-medium">~5 Minuten</div>
-                  <div className="text-sm text-muted">Kurz und knackig. Du kannst auch pausieren und später weitermachen.</div>
+                  <div className="text-sm text-muted">Kurz und knackig. Bitte in einem Durchgang ausfüllen — deine Antworten werden erst am Ende gespeichert.</div>
                 </div>
               </div>
             </div>

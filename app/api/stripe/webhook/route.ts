@@ -230,11 +230,73 @@ export async function POST(request: NextRequest) {
 
     if (paymentIntent && isFullRefund) {
       const admin = createAdminClient();
-      const { error: refErr } = await admin
+      // 1) Kauf auf 'refunded'. Bei DB-Fehler: 500 zurückgeben, damit das Event
+      //    NICHT als processed markiert wird → Stripe stellt erneut zu. Sonst bliebe
+      //    der Kauf fälschlich 'paid' und die Berechtigung bestehen.
+      const { data: refundedPurchases, error: refErr } = await admin
         .from('purchases')
         .update({ status: 'refunded' })
-        .eq('stripe_payment_intent', paymentIntent);
-      if (refErr) console.error('[webhook] refund status update failed:', refErr.message);
+        .eq('stripe_payment_intent', paymentIntent)
+        .select('id, assessment_id');
+      if (refErr) {
+        console.error('[webhook] refund status update failed:', refErr.message);
+        return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
+      }
+
+      // 2a) Einladungs-Berechtigung mitziehen (P0 Blocker 1): bestehende
+      //     Fremdbild-/TeamCheck-Einladungen des betroffenen Assessments
+      //     deaktivieren (status='expired') und einen ggf. aktiven öffentlichen
+      //     Share-Link sperren (share_enabled=false, share_token=null). Sonst
+      //     blieben bereits verschickte Token-Links und die Profilkarte nach
+      //     einem Refund weiter nutzbar. Fehler → 500 (Retry, idempotent).
+      for (const p of refundedPurchases ?? []) {
+        const assessmentId = (p as { assessment_id?: string | null }).assessment_id ?? null;
+        if (!assessmentId) continue;
+
+        const { error: invErr } = await admin
+          .from('invitations')
+          .update({ status: 'expired' })
+          .eq('parent_assessment_id', assessmentId)
+          .not('status', 'in', '(completed,expired)');
+        if (invErr) {
+          console.error('[webhook] expire invitations on refund failed:', invErr.message);
+          return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
+        }
+
+        const { error: shareErr } = await admin
+          .from('assessments')
+          .update({ share_enabled: false, share_token: null })
+          .eq('id', assessmentId);
+        if (shareErr) {
+          console.error('[webhook] disable share on refund failed:', shareErr.message);
+          return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
+        }
+      }
+
+      // 2b) Saison-Berechtigung mitziehen: zugehörige Saisons archivieren und deren
+      //    Pulse-Einladungen widerrufen. Auch hier Fehler → 500 (Retry, idempotent).
+      for (const p of refundedPurchases ?? []) {
+        const { data: seasons, error: sErr } = await admin
+          .from('seasons')
+          .update({ status: 'archived', updated_at: new Date().toISOString() })
+          .eq('purchase_id', p.id)
+          .select('id');
+        if (sErr) {
+          console.error('[webhook] season archive on refund failed:', sErr.message);
+          return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
+        }
+        for (const s of seasons ?? []) {
+          const { error: invErr } = await admin
+            .from('pulse_invitations')
+            .update({ status: 'revoked' })
+            .eq('season_id', s.id)
+            .neq('status', 'revoked');
+          if (invErr) {
+            console.error('[webhook] revoke pulse invitations on refund failed:', invErr.message);
+            return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
+          }
+        }
+      }
     }
   }
 

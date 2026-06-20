@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkPaidEntitlement } from '@/lib/auth/entitlement';
 import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ReportGenerateButton } from '@/components/assessment/report-generate-button';
@@ -63,6 +64,37 @@ export default async function ResultPage({
 
   if (!assessment || (assessment.status !== 'report_ready' && assessment.status !== 'completed' && assessment.status !== 'archived')) {
     redirect(`/assessment/${id}`);
+  }
+
+  // P0 (v3.42, Blocker 1 — Refund-Lockdown, Variante A): Nach vollständiger
+  // Rückerstattung ist das Ergebnis nicht mehr einsehbar. Ownership ist oben
+  // bereits geklärt; hier wird zusätzlich der aktive, BEZAHLTE Kauf geprüft.
+  const resultEnt = await checkPaidEntitlement(createAdminClient(), id, user.id);
+  if (!resultEnt.ok) {
+    return (
+      <>
+        <TopNav />
+        <main className="max-w-[860px] mx-auto px-4 md:px-8 py-16">
+          <div className="bg-bone-soft border border-bone-line p-8 rounded-md">
+            <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
+              Zugriff gesperrt
+            </div>
+            <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
+              Dieses Ergebnis ist nicht mehr verfügbar
+            </h1>
+            <p className="text-muted leading-relaxed">
+              Für dieses Assessment besteht keine aktive Berechtigung mehr. Das passiert,
+              wenn der zugehörige Kauf erstattet wurde. Report, Ergebnisansicht und ein
+              eventueller öffentlicher Link sind damit gesperrt.
+            </p>
+            <p className="text-muted leading-relaxed mt-3 text-sm">
+              Bei Fragen zur Erstattung oder für einen erneuten Zugang wende dich bitte an den Support.
+            </p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
   }
 
   // Recovery-Guard (P2 #12): abgeschlossen markiert, aber Pflichtfelder fehlen

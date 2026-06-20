@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { bad, isValidTokenShape, ok, rateLimit } from '@/lib/utils/anon-api';
+import { bad, isValidTokenShape, ok } from '@/lib/utils/anon-api';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { requireActiveInvitationByToken } from '@/lib/auth/assessment-entitlement';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -9,16 +10,14 @@ export const runtime = 'nodejs';
 /**
  * POST /api/invitations/[token]/answer
  *
- * Body: { item_id, value_numeric?, value_choice?, value_position? }
- *
- * Speichert eine Antwort eines anonymen Einschätzers (360° oder
- * TeamCheck-Spieler). Hartes serverseitiges Gate:
- *   - Token existiert, nicht expired, nicht completed
+ * Speichert eine Antwort eines anonymen Einschätzers (360° oder TeamCheck).
+ * Hartes serverseitiges Gate (u. a.):
+ *   - Token existiert, Eltern-Assessment AKTIVIERT + BEZAHLT + NICHT erstattet
+ *     (P0 v3.42: zentrales Entitlement, sperrt Token nach Refund)
+ *   - Token nicht expired, nicht completed
  *   - Item ist aktiv und im Tier des Eltern-Assessments
- *   - invitation_type (fremdbild/spieler) passt zu player_item-Flag
- *   - Antwortwert passt zum Item-Format und liegt im erlaubten Bereich
- *   - Choice-Antworten gehören zu einer der item.options[].key-Werte
- *   - Rate Limit pro Token (In-Memory pro Lambda; Upstash s. P1)
+ *   - invitation_type (fremdbild/spieler) passt zum player_item-Flag
+ *   - Antwortwert passt zum Item-Format und Bereich
  */
 const BodySchema = z.object({
   item_id: z.number().int().positive(),
@@ -27,24 +26,9 @@ const BodySchema = z.object({
   value_position: z.number().min(0).max(1).nullable().optional(),
 });
 
-// Numerische Likert-/State-/Gap-Formate (1..5)
-const NUMERIC_FORMATS = new Set([
-  'likert_5',
-  'state',
-  'gap_wichtig',
-  'gap_gelebt',
-]);
-
-// Spannungsfeld: kontinuierliche Position 0..1 (Slider)
+const NUMERIC_FORMATS = new Set(['likert_5', 'state', 'gap_wichtig', 'gap_gelebt']);
 const POSITION_FORMATS = new Set(['spannungsfeld']);
-
-// Choice-Formate: value_choice muss in item.options[].key liegen
-const CHOICE_FORMATS = new Set([
-  'forced_choice',
-  'szenario',
-  'dilemma',
-  'ranking',
-]);
+const CHOICE_FORMATS = new Set(['forced_choice', 'szenario', 'dilemma', 'ranking']);
 
 type ItemOption = { key?: string | null };
 
@@ -67,37 +51,17 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // 1) Token -> Invitation (inkl. Typ)
-  const { data: inv, error: selErr } = await admin
-    .from('invitations')
-    .select('id, status, expires_at, parent_assessment_id, invitation_type')
-    .eq('token', token)
-    .maybeSingle();
+  // 1) Token -> Invitation + Entitlement (inkl. Tier des Eltern-Assessments)
+  const ent = await requireActiveInvitationByToken(admin, token);
+  if (!ent.ok) return bad(ent.status, ent.error);
+  const inv = ent.invitation;
+  const tier = ent.tier;
 
-  if (selErr) return bad(500, 'DB error');
-  if (!inv) return bad(404, 'Invitation not found');
   if (new Date(inv.expires_at) < new Date()) return bad(410, 'Invitation expired');
   if (inv.status === 'completed') return bad(409, 'Invitation already completed');
   if (inv.status === 'expired') return bad(410, 'Invitation expired');
 
-  // 2) Tier des Eltern-Assessments
-  const { data: assessment, error: aErr } = await admin
-    .from('assessments')
-    .select('product_id')
-    .eq('id', inv.parent_assessment_id)
-    .maybeSingle();
-  if (aErr || !assessment) return bad(500, 'Could not resolve assessment');
-
-  const { data: product, error: pErr } = await admin
-    .from('products')
-    .select('tier')
-    .eq('id', assessment.product_id)
-    .maybeSingle();
-  if (pErr || !product?.tier) return bad(500, 'Could not resolve product tier');
-
-  const tier = product.tier;
-
-  // 3) Item laden mit allen Validierungs-Feldern
+  // 2) Item laden mit allen Validierungs-Feldern
   const { data: item, error: itemErr } = await admin
     .from('items')
     .select('id, active, package_tiers, format, options, player_item')
@@ -110,9 +74,7 @@ export async function POST(
     return bad(400, 'Item not allowed for this invitation');
   }
 
-  // 4) Invitation-Typ vs. Item-Player-Flag
-  // Spieler-Einladung darf nur Items mit player_item=true bekommen.
-  // 360°-Einladung darf nur Items mit player_item=false (oder null) bekommen.
+  // 3) Invitation-Typ vs. Item-Player-Flag
   if (inv.invitation_type === 'spieler' && item.player_item !== true) {
     return bad(400, 'Item not allowed for player invitation');
   }
@@ -120,9 +82,7 @@ export async function POST(
     return bad(400, 'Item not allowed for 360 invitation');
   }
 
-  // 5) Format-spezifische Wertvalidierung
-  // Wir normalisieren: jedes Item-Format erwartet GENAU ein Feld,
-  // alles andere wird auf null gesetzt - egal was der Client geschickt hat.
+  // 4) Format-spezifische Wertvalidierung
   let valueNumeric: number | null = null;
   let valueChoice: string | null = null;
   let valuePosition: number | null = null;
@@ -163,7 +123,7 @@ export async function POST(
     return bad(400, `Unsupported item format: ${item.format}`);
   }
 
-  // 6) Antwort speichern (upsert für Zurück-Navigation)
+  // 5) Antwort speichern (upsert für Zurück-Navigation)
   const { error: upErr } = await admin.from('invitation_answers').upsert(
     {
       invitation_id: inv.id,

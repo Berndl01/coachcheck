@@ -70,7 +70,7 @@ export function PulseRunner({
             Danke. Wirklich.
           </h1>
           <p className="font-editorial italic text-xl text-bone-soft leading-[1.5]">
-            Bis zum nächsten Pulse-Check ist Ruhe — du bekommst dann automatisch wieder einen Link.
+            Bis zum nächsten Pulse-Check ist Ruhe — nutze dann einfach wieder denselben Link.
           </p>
         </div>
       </main>

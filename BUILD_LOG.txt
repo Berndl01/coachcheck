@@ -1,3 +1,62 @@
+FIX v3_43 — 2026-06-20
+================================================================
+6. Audit: 4 P0-Blocker + Migration-39-Preflight + P1 geschlossen.
+
+P0/1 Premium-Einladungen umgingen Vertrags-/Refund-Sperren:
+  - NEU lib/auth/assessment-entitlement.ts: requireActiveAssessmentEntitlement()
+    (aktiviert + purchase_id + paid(402) + confirmation_sent_at + optional minTier)
+    und requireActiveInvitationByToken() für anonyme Token-Routen.
+  - Alle 6 Einladungsrouten umgestellt (create Tier>=3, bulk Tier>=4 + Cap 200/50,
+    send, [token]/open|answer|complete).
+  - Stripe-Webhook Refund-Cascade: + Einladungen 'expired' + Share gesperrt
+    (share_enabled=false, share_token=null) je Assessment.
+P0/1 Refund-Lockdown (Variante A) beim Lesen: report-status(402), result-Seite
+  (Zugriff-gesperrt-Panel), share-Aktivierung(402) — alle via checkPaidEntitlement.
+P0/2 Saison nach Refund lesbar: saison/[id]/page.tsx lädt erst nach
+  requireSeasonEntitlement (sonst gesperrt, keine Daten); Daten via service_role.
+  Migration 40 verschärft RLS pulse_cycles/pulse_invitations.
+P0/3 Live-Pulse-Zähler: Migration 40 get_/refresh_pulse_cycle_response_count
+  (service_role, count distinct respondent_token). Submit aktualisiert live +
+  liefert responseCount. Close: open-Check + >=5-Gate(409) + Race-Guard. NEU
+  archive-Route (ohne Snapshot). UI: Live-Zahl, Schließsperre, Archiv, Revoke/Rotate.
+P0/4 Doku: GO-LIVE/LAUNCH_CHECKLIST/README auf v3.42 / 01->40; Migration-39-
+  Preflight-Query; rest/v1/answers-Selbsttest -> POST /api/assessment/[id]/answer.
+Mig39-Preflight: dedupliziert offene Cycles vor Unique-Index (self-repair).
+P1: Revoke/Rotate-Routen; falsche Pause-/Auto-Link-Aussagen entfernt; Zod
+  (seasons/create, cycles/start, season bulk) + Token-Caps + fortlaufende Labels.
+
+Gates: tsc OK · claimcheck 62 · vitest 262/262 · eslint OK · next build Exit 0
+  (volle Routen-Tabelle) · npm audit 0 · PDF 3/3 + Beispiel.
+Offen (live, nicht im Code prüfbar): E2E Tier-5 -> 5 Tokens -> Zähler 1..5 ->
+  Refund -> alle Sperren; Migrations-Reihenfolge+Preflight in Supabase; ENV;
+  Webhook; Auth-Templates; Anthropic-Key. FAGG-Freigabe = Anwalt.
+
+
+FIX v3_42 — 2026-06-19
+==========================================
+5. Audit: Regressionen aus v3_41 (mein Fehler) + restliche echte Punkte gelöst.
+DIESMAL JEDE Schreibroute geprüft, nicht nur die genannten.
+
+1) Saison-Schreibrouten (cycles/start, invitations/bulk, close) nutzen wieder
+   service_role + neuen Entitlement-Guard. (v3_41 hatte nur seasons/create umgestellt.)
+2) Pulse-RPCs (compute_pulse_snapshot, detect_pulse_trends) zurück auf service_role
+   (Migration 39); Submit-Route gibt cycle_id nicht mehr zurück.
+3) requireSeasonEntitlement() bei JEDER Saison-Aktion (Cycle/Tokens/Close/Pulse-
+   Antwort) — Kauf paid + nicht erstattet + Tier 5 + aktiv. Alt-Saisons ohne Kauf
+   archiviert, neue brauchen purchase_id (Insert-Trigger).
+4) Stripe-Refund: HTTP 500 bei DB-Fehler (Retry) + Saison archivieren + Pulse-
+   Einladungen widerrufen, fail-loud.
+5) Höchstens ein offener Cycle pro Saison (Unique-Index).
+6) PDF: Spielertyp-Karten 2-spaltig (2x2) → keine Leerseite (Beispiel 22 -> 21 S.).
+7) Gefährlicher Doku-Rollback (anonyme using(true)-Policies) ENTFERNT.
+
+DATENBANK: 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 (idempotent).
+GATES: tsc · claimcheck(61) · vitest 219/219 · eslint · build 9/9 · audit 0 · PDF 3/3.
+
+OFFEN: echter Stripe-E2E (test.fixme) nur live; Fallback bleibt wie gewünscht.
+
+================================================================================
+
 SECURITY v3_41 — 2026-06-19
 ==========================================
 4. Audit: echte Berechtigungs-/Datenschutzlücken geschlossen.

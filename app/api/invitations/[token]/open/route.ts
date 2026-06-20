@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { bad, isValidTokenShape, ok, rateLimit } from '@/lib/utils/anon-api';
+import { bad, isValidTokenShape, ok } from '@/lib/utils/anon-api';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { requireActiveInvitationByToken } from '@/lib/auth/assessment-entitlement';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -8,8 +9,11 @@ export const runtime = 'nodejs';
 /**
  * POST /api/invitations/[token]/open
  *
- * Markiert eine Invitation als geöffnet. Idempotent: wenn schon
- * 'opened' oder weiter, passiert nichts.
+ * Markiert eine Invitation als geöffnet. Idempotent.
+ *
+ * P0 (v3.42): Prüft zusätzlich das Entitlement des Eltern-Assessments. Nach
+ * einer Rückerstattung (purchase.status='refunded') oder bei nicht aktiviertem
+ * Assessment wird der bestehende Token-Link abgelehnt.
  */
 export async function POST(
   _req: Request,
@@ -22,14 +26,11 @@ export async function POST(
   if (!rl.ok) return bad(429, 'Too many requests', { retryAfterMs: rl.retryAfterMs });
 
   const admin = createAdminClient();
-  const { data: inv, error: selErr } = await admin
-    .from('invitations')
-    .select('id, status, expires_at')
-    .eq('token', token)
-    .maybeSingle();
 
-  if (selErr) return bad(500, 'DB error');
-  if (!inv) return bad(404, 'Invitation not found');
+  const ent = await requireActiveInvitationByToken(admin, token);
+  if (!ent.ok) return bad(ent.status, ent.error);
+  const inv = ent.invitation;
+
   if (new Date(inv.expires_at) < new Date()) return bad(410, 'Invitation expired');
   if (inv.status === 'completed') return ok({ status: 'completed' });
   if (inv.status === 'expired') return bad(410, 'Invitation expired');
