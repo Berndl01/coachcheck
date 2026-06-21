@@ -271,6 +271,19 @@ export async function POST(request: NextRequest) {
           console.error('[webhook] disable share on refund failed:', shareErr.message);
           return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
         }
+
+        // 2a') Refund-Kaskade (§14): aktive 7-Tage-Fokus-Pläne dieses Assessments
+        //      archivieren. Neue Pläne/Check-ins/Abschlüsse sind ohnehin schon
+        //      durch das Entitlement-Gate in den Action-Routen gesperrt.
+        const { error: planErr } = await admin
+          .from('action_plans')
+          .update({ status: 'archived', updated_at: new Date().toISOString() })
+          .eq('assessment_id', assessmentId)
+          .eq('status', 'active');
+        if (planErr) {
+          console.error('[webhook] archive action plans on refund failed:', planErr.message);
+          return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
+        }
       }
 
       // 2b) Saison-Berechtigung mitziehen: zugehörige Saisons archivieren und deren

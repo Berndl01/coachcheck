@@ -6,7 +6,7 @@
  *
  * Achsen sind Stil-Positionen (keine "besser/schlechter"-Wertung) →
  * neutral als Verschiebung dargestellt.
- * Führungsreife ist gerichtet (höher = souveräner) → als Fortschritt
+ * Entwicklungsindikatoren sind gerichtet (höher = stärker ausgeprägt) → als Fortschritt
  * bzw. Fokusfeld dargestellt.
  *
  * Claim-sicher: Bewegungen sind Coaching-Hypothesen, kein Beweis.
@@ -100,7 +100,7 @@ export function buildProgressComparison(current: Snapshot, previous: Snapshot): 
     headline = Math.abs(moved.delta) >= MEANINGFUL
       ? `Dein Stil hat sich bewegt: ${moved.label} um ${moved.delta >= 0 ? '+' : ''}${pct(moved.delta)} Punkte.`
       : 'Dein Stilprofil ist über die Zeit stabil geblieben.';
-    summary = `Seit der letzten Standortbestimmung (vor ${daysBetween} Tagen) zeigt sich vor allem auf der Achse ${moved.label} eine Verschiebung. Stilverschiebungen sind weder gut noch schlecht — sie zeigen, woran du gerade arbeitest. Für einen Reife-Vergleich wiederhole den vollen Selbsttest.`;
+    summary = `Seit der letzten Standortbestimmung (vor ${daysBetween} Tagen) zeigt sich vor allem auf der Achse ${moved.label} eine Verschiebung. Stilverschiebungen sind weder gut noch schlecht — sie zeigen, woran du gerade arbeitest. Für einen Vergleich der Entwicklungsindikatoren wiederhole den vollen Selbsttest.`;
     return { daysBetween, axisDeltas, maturityDeltas, hasMaturity, headline, summary, topGain: null, watch: null };
   }
 
@@ -109,7 +109,7 @@ export function buildProgressComparison(current: Snapshot, previous: Snapshot): 
   } else if (drops.length > 0) {
     headline = `Ein Bereich verlangt gerade mehr Aufmerksamkeit: ${drops[0].label}.`;
   } else {
-    headline = 'Deine Führungsreife ist stabil geblieben — eine solide Basis.';
+    headline = 'Deine Entwicklungsindikatoren sind stabil geblieben — eine solide Basis.';
   }
 
   const parts: string[] = [];

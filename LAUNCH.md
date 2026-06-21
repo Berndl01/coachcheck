@@ -3,7 +3,7 @@
 **Das eine, verbindliche Dokument: von „jetzt" bis „verkaufen".**
 Es bündelt für den Start, was in `GO-LIVE.md` über viele Versions-Notizen verstreut ist.
 
-Stand: Migrationen **01 → 44**, **360 Tests grün**, alle 7 Gates sauber
+Stand: Migrationen **01 → 46**, alle 7 Gates sauber
 (tsc · claimcheck · vitest · eslint · build · npm audit 0 · PDF 4/4).
 
 ---
@@ -28,14 +28,21 @@ ist startklar. Was jetzt folgt, ist **Betrieb und Recht — nicht Code.**
 
 ### Schritt 1 — Supabase (Datenbank)
 1. Projekt in Region **Frankfurt** nutzen/anlegen.
-2. Migrationen **01 → 44 in Reihenfolge** anwenden (SQL-Editor oder `supabase db push`,
+2. Migrationen **01 → 46 in Reihenfolge** anwenden (SQL-Editor oder `supabase db push`,
    Datei für Datei aufsteigend).
    - **Wichtig:** Die Migrationen sind selbstheilend/idempotent. Migration 39 enthält einen
      Dedup-Block *vor* einem Unique-Index — bei einer Bestandsdatenbank zuerst diese
      Migration sauber durchlaufen lassen.
 3. **Verifikation:** Jede Migration endet mit `raise notice '... OK'`. Läuft eine durch
    ohne Exception, ist sie korrekt angewendet. Die neuen Tabellen müssen existieren:
-   `result_feedback`, `action_plans`, `action_checkins`.
+   `result_feedback`, `action_plans`, `action_checkins`, `release_contract` (Migration 45).
+   Migration 46 ergänzt `profiles.timezone`, den Ergebnis-Snapshot auf `assessments`
+   und die Funktion `finalize_report_atomic`.
+4. **Readiness-Preflight (Release-Vertrag):** Nach den Migrationen einmal
+   `PREFLIGHT_BASE_URL=<deine-URL> CRON_SECRET=<secret> node scripts/preflight-release.mjs`
+   ausführen. Exit 0 / HTTP 200 = das deployte Modell entspricht dem Vertrag
+   (Module, Spannungsfeld-Pole, Itemzahlen, Archetypen). Bei Exit 1 die gemeldeten
+   Punkte beheben, BEVOR der Fragebogen freigeschaltet wird.
 
 ### Schritt 2 — ENV-Variablen
 Vollständige, kommentierte Liste in **`.env.local.example`** (inkl. SPF/DKIM/DMARC- und
@@ -51,8 +58,14 @@ Supabase-SMTP-Anleitung). Pflicht in Vercel **und** lokal:
 | Upstash (Rate-Limit) | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
 | App | `NEXT_PUBLIC_APP_URL`, `ADMIN_EMAILS`, `KONTAKT_EMAIL`, `INVOICE_VAT_NOTE` |
 
-> `CRON_SECRET` ist vorgesehen, aktuell aber **nicht** zwingend (keine Cron-Jobs aktiv —
-> Nudges sind bewusst noch nicht gebaut).
+> **`CRON_SECRET` ist zwingend erforderlich.** `vercel.json` definiert drei produktive Cron-Jobs,
+> die ohne `CRON_SECRET` mit HTTP 503 antworten. Betroffene Prozesse:
+> - `/api/internal/reminders` — Fortschritts- und Erinnerungsmails
+> - `/api/internal/confirmation-retry` — Retry fehlgeschlagener Vertragsbestätigungen
+> - `/api/internal/withdrawal-retry` — Retry fehlgeschlagener Widerrufsbestätigungen
+>
+> Smoke-Test nach Deploy (keine Route darf 401/503 liefern):
+> `curl -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/internal/confirmation-retry`
 
 ### Schritt 3 — Stripe
 1. Live-Keys in die ENV (Schritt 2). Test- und Live-Keys nie mischen.
@@ -139,4 +152,4 @@ Bewusst nicht gebaut bzw. nach dem Start sinnvoll — keiner dieser Punkte hält
 - **Mails kommen nicht an:** Resend-Domain-Status prüfen (Schritt 4); mit
   mail-tester.com Score ≥ 9/10 anstreben.
 - **Migrationen unvollständig:** meist fehlt `SUPABASE_SERVICE_ROLE_KEY` oder eine Migration
-  wurde übersprungen — Reihenfolge 01 → 44 prüfen.
+  wurde übersprungen — Reihenfolge 01 → 46 prüfen.

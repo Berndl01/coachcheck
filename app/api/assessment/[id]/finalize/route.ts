@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isAssessmentActivated } from '@/lib/assessment/activation-gate';
 import { computeAxisScores, determineArchetypes, classifyProfile, profileHeadline, buildSignature, computeMaturityScores, type RawAnswer, type Archetype } from '@/lib/scoring';
 import { computeResponseQuality, type QualityAnswer } from '@/lib/insight/response-quality';
+import { SCORING_VERSION, ITEMPOOL_VERSION } from '@/lib/release/contract';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -154,8 +155,8 @@ export async function POST(
     .from('archetypes')
     .select('id, code, name_de, axis_profile');
 
-  if (!archetypes || archetypes.length === 0) {
-    return NextResponse.json({ error: 'archetypes not seeded' }, { status: 500 });
+  if (!archetypes || archetypes.length < 2) {
+    return NextResponse.json({ error: 'at least two archetypes required' }, { status: 500 });
   }
 
   const { primary, secondary, distances } = determineArchetypes(axisScores, archetypes as Archetype[]);
@@ -172,6 +173,28 @@ export async function POST(
     primary_code: primary.code,
     secondary_code: secondary.code,
     headline: profileHeadline(classification),
+  };
+
+  // ----------------------------------------------------------------------
+  // UNVERÄNDERBARER ERGEBNIS-SNAPSHOT (Migration 46): friert exakt das ein,
+  // was bei diesem Abschluss galt — inkl. Scoring-/Itempool-Version und der
+  // erwarteten Item-IDs. Ergebnisansicht/Report/PDF lesen danach diesen
+  // Snapshot; alte Assessments werden NIE mit neuen Itemgewichten neu
+  // gerechnet. Die Reife-Werte sind hier bewusst „Entwicklungsindikatoren"
+  // (kein normiertes Reifemaß) — siehe Darstellung in Result/PDF.
+  // ----------------------------------------------------------------------
+  const resultSnapshot = {
+    scoring_version: SCORING_VERSION,
+    itempool_version: ITEMPOOL_VERSION,
+    expected_item_ids: expectedIds,
+    axis_scores: axisScores,
+    module_signals: mAvg,
+    development_indicators: maturityScores,
+    primary_archetype_code: primary.code,
+    secondary_archetype_code: secondary.code,
+    profile,
+    response_quality: responseQuality,
+    completed_at: new Date().toISOString(),
   };
 
   // Save results via admin client (bypasses RLS for the UPDATE).
@@ -191,6 +214,10 @@ export async function POST(
       maturity_scores: maturityScores,
       response_quality: responseQuality,
       signature: { axes: signature, profile },
+      scoring_version: SCORING_VERSION,
+      itempool_version: ITEMPOOL_VERSION,
+      result_snapshot: resultSnapshot,
+      snapshot_finalized_at: new Date().toISOString(),
     })
     .eq('id', id);
 

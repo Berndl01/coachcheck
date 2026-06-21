@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateReportTextsWithMeta, type ReportInput } from '@/lib/ai/report-prompt';
 import { softenDeep } from '@/lib/knowledge/claim-guard';
 import { evaluateCareSignals, type CareResponse } from '@/lib/safety/care-triggers';
-import { uploadReportPDF, getReportSignedUrl } from '@/lib/pdf/storage';
+import { uploadReportPDF, getReportSignedUrl, deleteReportFiles } from '@/lib/pdf/storage';
 import { sendEmailSafe } from '@/lib/email/resend';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { checkPaidEntitlement } from '@/lib/auth/entitlement';
@@ -74,6 +74,21 @@ export async function POST(
     return NextResponse.json(
       { error: 'Für dieses Assessment liegt keine gültige Bezahlung vor.', reason: entitlement.reason },
       { status: 402 },
+    );
+  }
+
+  // --- Antwortqualität-Gate (verbindliche Release-Bedingung) -------------
+  // Bei nicht interpretierbarem Antwortmuster wird KEIN (scheinbar präziser)
+  // Premium-Report erzeugt. Der Käufer wird auf den kostenlosen Neuversuch
+  // verwiesen (die Ergebnisseite blockt dafür ohnehin schon). Schützt vor dem
+  // Verkauf eines Premium-Profils auf nicht belastbaren Daten.
+  if ((assessment.response_quality as { dataQuality?: string } | null)?.dataQuality === 'nicht_interpretierbar') {
+    return NextResponse.json(
+      {
+        error: 'Für dieses Antwortmuster wird kein Premium-Report erstellt. Bitte wiederhole den Fragebogen in Ruhe — das ist kostenlos.',
+        reason: 'answer_quality',
+      },
+      { status: 409 },
     );
   }
 
@@ -354,22 +369,22 @@ export async function POST(
 
   // ============== PREMIUM INTELLIGENCE LAYER ==============
 
-  // Maturity scores (always computed for tier 2+)
+  // Entwicklungsindikatoren (Tier 2+): bevorzugt den eingefrorenen Finalize-Wert
+  // lesen (Migration 46 / assessments.maturity_scores) — NICHT neu rechnen und
+  // erst recht nicht über den eingefrorenen Stand drüberschreiben. Nur
+  // Alt-Assessments ohne gespeicherten Wert fallen deterministisch zurück.
   let maturityScores: MaturityScores | null = null;
   if (productTier >= 2) {
-    maturityScores = computeMaturityScores(
-      assessment.axis_scores as AxisScores,
-      moduleAverages
-    );
-    // Persist to assessments table for future use
-    try {
-      const admin = createAdminClient();
-      await admin
-        .from('assessments')
-        .update({ maturity_scores: maturityScores })
-        .eq('id', assessmentId);
-    } catch (e) {
-      console.warn('Failed to persist maturity_scores:', e);
+    const frozen =
+      (assessment.maturity_scores as MaturityScores | null) ??
+      ((assessment.result_snapshot as { development_indicators?: MaturityScores } | null)?.development_indicators ?? null);
+    if (frozen && Object.keys(frozen).length > 0) {
+      maturityScores = frozen;
+    } else {
+      maturityScores = computeMaturityScores(
+        assessment.axis_scores as AxisScores,
+        moduleAverages,
+      );
     }
   }
 
@@ -590,20 +605,29 @@ export async function POST(
     return failJob(`Upload failed: ${msg}`);
   }
 
-  // 4. Store report row
-  const { data: reportRow, error: reportErr } = await admin.from('reports').insert({
-    assessment_id: assessmentId,
-    storage_path: storagePath,
-    file_size_bytes: pdfBuffer.length,
-    pages: productTier >= 4 && teamcheckSection
+  // 4+5. ATOMARE FINALISIERUNG (Migration 46): Report-Zeile + Assessment
+  //       'report_ready' + Report-Job 'ready' (mit report_id) in EINER
+  //       Transaktion. Schlägt sie fehl, bleibt KEINE halbe Wahrheit zurück
+  //       (kein Report ohne Statuswechsel, kein Status ohne Report-Zeile) — und
+  //       das bereits hochgeladene PDF wird wieder aus dem Storage gelöscht,
+  //       damit kein verwaistes File zurückbleibt. Job wird freigegeben.
+  const pages =
+    productTier >= 4 && teamcheckSection
       ? (fremdbildSection ? 19 : 17)
-      : productTier >= 3 && fremdbildSection ? 15 : productTier >= 2 ? 12 : 7,
-    generation_model: gen.model,
-    prompt_version: gen.promptVersion,
-    prompt_tokens: gen.promptTokens,
-    completion_tokens: gen.completionTokens,
-    ai_fallback: gen.fallback,
-    metadata: {
+      : productTier >= 3 && fremdbildSection ? 15 : productTier >= 2 ? 12 : 7;
+
+  const { data: newReportId, error: finalizeErr } = await admin.rpc('finalize_report_atomic', {
+    p_assessment_id: assessmentId,
+    p_job_id: jobId,
+    p_storage_path: storagePath,
+    p_file_size_bytes: pdfBuffer.length,
+    p_pages: pages,
+    p_generation_model: gen.model,
+    p_prompt_version: gen.promptVersion,
+    p_prompt_tokens: gen.promptTokens,
+    p_completion_tokens: gen.completionTokens,
+    p_ai_fallback: gen.fallback,
+    p_metadata: {
       has_360: !!fremdbildSection,
       fremdbild_count: pdfResponseCount,
       has_teamcheck: !!teamcheckSection,
@@ -612,24 +636,12 @@ export async function POST(
       ai_attempts: gen.attempts,
       ai_fallback: gen.fallback,
     },
-  }).select('id').single();
+  });
 
-  // PDF liegt zwar im Storage, aber ohne Report-Zeile darf der Status NICHT
-  // auf report_ready springen — sonst zeigt das UI einen "fertigen" Report
-  // ohne DB-Referenz. Job sauber auf failed setzen.
-  if (reportErr || !reportRow) {
-    return failJob(`Report DB insert failed: ${reportErr?.message ?? 'missing report row'}`);
+  if (finalizeErr || !newReportId) {
+    await deleteReportFiles([storagePath]);
+    return failJob(`Report-Finalisierung fehlgeschlagen: ${finalizeErr?.message ?? 'keine Report-ID'}`);
   }
-
-  // 5. Mark assessment as report_ready + Job als ready abschließen (mit report_id).
-  await admin
-    .from('assessments')
-    .update({ status: 'report_ready' })
-    .eq('id', assessmentId);
-  await admin
-    .from('report_jobs')
-    .update({ status: 'ready', report_id: reportRow.id })
-    .eq('id', jobId);
 
   // 6. Signed URL
   const signedUrl = await getReportSignedUrl(storagePath);
@@ -643,9 +655,28 @@ export async function POST(
            </p>`
         : '';
 
+      // Ehrliche Kennzeichnung (verbindliche Release-Bedingung): Ein Fallback ist
+      // eine vollständige, deterministisch erstellte BASIS-Auswertung — kein
+      // KI-personalisierter Premium-Report. Wir behaupten in der E-Mail also nicht
+      // „Premium", wenn es die Basis-Variante ist. Bewusst OHNE Alarm-Sprache
+      // („Dienst ausgelastet") — der Käufer bekommt sofort sein vollständiges
+      // Ergebnis.
+      const isBasis = gen.fallback;
+      const mailSubject = isBasis
+        ? `Deine CoachCheck Auswertung ist bereit — ${assessment.product.name_de}`
+        : `Dein CoachCheck Report ist bereit — ${assessment.product.name_de}`;
+      const mailKicker = isBasis ? 'Deine Auswertung ist bereit' : 'Dein Report ist bereit';
+      const mailHeadline = isBasis
+        ? `${traineeName}, <br>deine Auswertung ist bereit.`
+        : `${traineeName}, <br>dein Premium-Profil wartet.`;
+      const mailIntro = isBasis
+        ? `Dein ${assessment.product.name_de} wurde ausgewertet. Du erhältst eine vollständige Basis-Auswertung — mit deinem Archetyp, deiner funktionalen Signatur, den Modul-Interpretationen und einem konkreten Entwicklungspfad, deterministisch aus deinen Daten erstellt.`
+        : `Dein ${assessment.product.name_de} wurde ausgewertet. Der vollständige Premium-Report mit deinem Archetyp, deiner funktionalen Signatur, allen Modul-Interpretationen und einem konkreten 30-Tage-Entwicklungspfad steht zum Download bereit.`;
+      const mailCta = isBasis ? 'Auswertung herunterladen →' : 'Report herunterladen →';
+
       await sendEmailSafe({
         to: user.email,
-        subject: `Dein CoachCheck Report ist bereit — ${assessment.product.name_de}`,
+        subject: mailSubject,
         category: 'report-ready',
         html: `
           <div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; color: #1B1C1E;">
@@ -654,20 +685,20 @@ export async function POST(
             </div>
             <div style="padding: 32px 0;">
               <div style="font-family: monospace; font-size: 11px; letter-spacing: 2px; color: #B38E45; text-transform: uppercase; margin-bottom: 12px;">
-                Dein Report ist bereit
+                ${mailKicker}
               </div>
               <h1 style="font-size: 28px; font-weight: 300; letter-spacing: -0.5px; line-height: 1.2; margin: 0 0 16px 0;">
-                ${traineeName}, <br>dein Premium-Profil wartet.
+                ${mailHeadline}
               </h1>
               <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 18px;">
-                Dein ${assessment.product.name_de} wurde ausgewertet. Der vollständige Premium-Report mit deinem Archetyp, deiner funktionalen Signatur, allen Modul-Interpretationen und einem konkreten 30-Tage-Entwicklungspfad steht zum Download bereit.
+                ${mailIntro}
               </p>
               ${has360Note}
               <a href="${signedUrl}" style="display: inline-block; padding: 14px 28px; background: #1B1C1E; color: #FAFAF8; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px;">
-                Report herunterladen →
+                ${mailCta}
               </a>
               <p style="font-size: 12px; color: #9A9793; margin-top: 32px;">
-                Der Download-Link ist 7 Tage gültig. Du findest den Report auch jederzeit in deinem Dashboard auf coachcheck.humatrix.cc.
+                Der Download-Link ist 7 Tage gültig. Du findest ${isBasis ? 'die Auswertung' : 'den Report'} auch jederzeit in deinem Dashboard auf coachcheck.humatrix.cc.
               </p>
             </div>
             <div style="padding: 20px 0; border-top: 1px solid #DBD8D1; font-size: 11px; color: #9A9793; letter-spacing: 1px; text-transform: uppercase;">
@@ -685,6 +716,7 @@ export async function POST(
     ok: true,
     storagePath,
     signedUrl,
+    reportKind: gen.fallback ? 'basis' : 'premium',
     has360: !!fremdbildSection,
     fremdbildCount: pdfResponseCount,
   });

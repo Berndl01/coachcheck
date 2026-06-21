@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkPaidEntitlement } from '@/lib/auth/entitlement';
 import { z } from 'zod';
+import { localDateISO } from '@/lib/utils/local-date';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,7 +20,8 @@ export const runtime = 'nodejs';
  */
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Lokales Datum (Europe/Vienna) statt UTC — verhindert Datumssprung um Mitternacht.
+  return localDateISO('Europe/Vienna');
 }
 
 const CheckinSchema = z.object({
@@ -29,7 +32,7 @@ async function loadOwnedPlan(planId: string, userId: string) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('action_plans')
-    .select('id, user_id, status, target_days')
+    .select('id, user_id, status, target_days, assessment_id')
     .eq('id', planId)
     .maybeSingle();
   if (!data || data.user_id !== userId) return null;
@@ -60,6 +63,15 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+
+  // Refund-Kaskade (§14): nach voller Rückerstattung keine neuen Check-ins mehr.
+  if (plan.assessment_id) {
+    const ent = await checkPaidEntitlement(admin, plan.assessment_id, user.id);
+    if (!ent.ok) {
+      return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
+    }
+  }
+
   const { error } = await admin
     .from('action_checkins')
     .upsert(
@@ -120,6 +132,15 @@ export async function PATCH(
   if (!plan) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
   const admin = createAdminClient();
+
+  // Refund-Kaskade (§14): nach voller Rückerstattung kein Abschluss mehr.
+  if (plan.assessment_id) {
+    const ent = await checkPaidEntitlement(admin, plan.assessment_id, user.id);
+    if (!ent.ok) {
+      return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
+    }
+  }
+
   const { error } = await admin
     .from('action_plans')
     .update({ status: 'completed', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })

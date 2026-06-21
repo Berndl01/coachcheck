@@ -775,6 +775,15 @@ export function ReportDocument(props: ReportProps) {
     integrationsfaehigkeit: 'Integrationsfähigkeit',
   };
 
+  // Entwicklungsindikatoren sind KEIN normiertes Reifemaß → neutrale Tendenz
+  // statt wertendem Prozent-Verdikt.
+  const pdfTendency = (v: number): string => {
+    const n = Number.isFinite(v) ? v : 0.5;
+    if (n >= 0.66) return 'deutlich ausgeprägt';
+    if (n >= 0.33) return 'mittlerer Bereich';
+    return 'wenig ausgeprägt';
+  };
+
   return (
     <Document
       title={`CoachCheck Assessment — ${traineeName}`}
@@ -1017,13 +1026,13 @@ export function ReportDocument(props: ReportProps) {
         </Page>
       )}
 
-      {/* FÜHRUNGSREIFE */}
+      {/* ENTWICKLUNGSINDIKATOREN (kein normiertes Reifemaß) */}
       {hasMaturity && maturityScores && (
         <Page size="A4" style={styles.page}>
-          <Text style={styles.kicker}>Premium · Führungsreife</Text>
+          <Text style={styles.kicker}>Premium · Entwicklungsindikatoren</Text>
           <Text style={styles.h1}>
             Stil ist das eine.{'\n'}
-            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>Reife</Text> ist etwas anderes.
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>Entwicklung</Text> ist das andere.
           </Text>
           <View style={styles.dividerGold} />
           <Text style={styles.body}>{texts.fuehrungsreife_interpretation}</Text>
@@ -1035,8 +1044,8 @@ export function ReportDocument(props: ReportProps) {
                   <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.ink }}>
                     {MATURITY_LABELS_PDF[key] ?? key}
                   </Text>
-                  <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>
-                    {Math.round((Number.isFinite(val) ? val : 0.5) * 100)} %
+                  <Text style={{ fontFamily: PDF_SANS, fontSize: 9, color: COLORS.goldDeep, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {pdfTendency(Number(val))}
                   </Text>
                 </View>
                 <Svg height={8} width="100%">
@@ -1046,6 +1055,11 @@ export function ReportDocument(props: ReportProps) {
               </View>
             ))}
           </View>
+
+          <Text style={{ fontFamily: PDF_SANS, fontSize: 8, color: COLORS.muted, marginTop: 16, lineHeight: 1.5 }}>
+            Hinweis: Diese Indikatoren sind ein Reflexionsraster aus den eigenen Antworten —
+            kein normiertes, validiertes Reifemaß und keine endgültige Einstufung der Führung.
+          </Text>
         </Page>
       )}
 

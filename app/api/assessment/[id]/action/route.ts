@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkPaidEntitlement } from '@/lib/auth/entitlement';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,14 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+
+  // Refund-Kaskade (§14): nach voller Rückerstattung kein neuer/erneuerter
+  // Fokus mehr. Status 'paid' erforderlich (checkPaidEntitlement → not_paid bei
+  // refunded).
+  const ent = await checkPaidEntitlement(admin, id, user.id);
+  if (!ent.ok) {
+    return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
+  }
 
   // Genau ein aktiver Fokus pro (Nutzer, Assessment): bestehenden aktiven Plan
   // in-place aktualisieren, sonst neu anlegen (vermeidet Partial-Unique-Konflikt).

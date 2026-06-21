@@ -71,7 +71,7 @@ export async function Hero() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />
-                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">6</b>&nbsp;{t('hero.statModules')}
+                <b className="font-display font-medium text-ink text-[1.1em] tracking-[-0.02em]">7</b>&nbsp;{t('hero.statModules')}
               </span>
               <span className="inline-flex items-center gap-2">
                 <span className="w-1 h-1 bg-gold rounded-full" />

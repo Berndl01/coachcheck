@@ -15,6 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "preflight": "node scripts/preflight-release.mjs",
+    "pdftest": "node scripts/pdf-fulltest.mjs",
     "sample": "node scripts/build-sample-report.mjs",
     "ci": "tsc --noEmit && node scripts/claimcheck.mjs && vitest run && eslint .",
     "verify": "next build && tsc --noEmit && node scripts/claimcheck.mjs && vitest run && eslint . --max-warnings 0"

@@ -7,6 +7,7 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ReportGenerateButton } from '@/components/assessment/report-generate-button';
 import { ResultRecovery } from './recovery';
+import { AnswerQualityRetry } from '@/components/assessment/answer-quality-retry';
 import { InvitationsManager } from '@/components/assessment/invitations-manager';
 import { TeamcheckManager } from '@/components/assessment/teamcheck-manager';
 import { ContextForm } from '@/components/assessment/context-form';
@@ -41,11 +42,14 @@ const AXIS_ORDER = [
   'standardisierung_anpassung',
 ];
 
-function maturityBand(v: number): { label: string; tone: string } {
-  if (v >= 0.8) return { label: 'souverän', tone: 'text-gold-deep' };
-  if (v >= 0.6) return { label: 'gefestigt', tone: 'text-gold-deep' };
-  if (v >= 0.4) return { label: 'im Aufbau', tone: 'text-muted' };
-  return { label: 'Entwicklungsfeld', tone: 'text-muted' };
+// Entwicklungsindikatoren sind KEIN normiertes, validiertes Reifemaß — sie sind
+// Reflexionshinweise aus den eigenen Antworten. Deshalb bewusst KEINE wertenden
+// Verdikte mehr („souverän"/„gefestigt"/„unreif"), sondern neutrale Tendenz-
+// Beschreibungen, wie stark ein Indikator in den Antworten ausgeprägt ist.
+function indicatorTendency(v: number): { label: string; tone: string } {
+  if (v >= 0.66) return { label: 'deutlich ausgeprägt', tone: 'text-gold-deep' };
+  if (v >= 0.33) return { label: 'im mittleren Bereich', tone: 'text-muted' };
+  return { label: 'wenig ausgeprägt', tone: 'text-muted' };
 }
 
 export default async function ResultPage({
@@ -120,6 +124,42 @@ export default async function ResultPage({
       </>
     );
   }
+
+  // ----------------------------------------------------------------------
+  // ANTWORTQUALITÄT (verbindliche Release-Bedingung): Bei einem nicht
+  // interpretierbaren Antwortmuster (sehr schnell UND gleichförmig) wird KEIN
+  // scheinbar präzises Premium-Ergebnis und KEIN Premium-Report ausgeliefert.
+  // Stattdessen ein ehrlicher Hinweis + kostenloser Neuversuch (gleicher Kauf).
+  // 'eingeschränkt' wird weiter unten nur abgemildert als Banner gezeigt.
+  // ----------------------------------------------------------------------
+  const responseQuality = (assessment.response_quality as { dataQuality?: string; note?: string } | null) ?? null;
+  const qualityBlocked = responseQuality?.dataQuality === 'nicht_interpretierbar';
+  if (qualityBlocked) {
+    return (
+      <>
+        <TopNav />
+        <main className="max-w-[760px] mx-auto px-4 md:px-8 py-16">
+          <div className="bg-bone-soft border border-bone-line p-8 rounded-md">
+            <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
+              {t('resultPage.qualityBlockedKicker')}
+            </div>
+            <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
+              {t('resultPage.qualityBlockedTitle')}
+            </h1>
+            <p className="text-muted leading-relaxed mb-3">
+              {t('resultPage.qualityBlockedBody1')}
+            </p>
+            <p className="text-muted leading-relaxed text-sm mb-6">
+              {t('resultPage.qualityBlockedBody2')}
+            </p>
+            <AnswerQualityRetry assessmentId={id} />
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+  const qualityLimited = responseQuality?.dataQuality === 'eingeschraenkt';
 
   // Existing report check
   const { data: existingReport } = await supabase
@@ -196,33 +236,40 @@ export default async function ResultPage({
   const shareToken = (assessment as any).share_token as string | null;
   const shareEnabled = Boolean((assessment as any).share_enabled);
 
-  // Führungsreife (zweite Schicht) — sofort sichtbar machen, nicht nur im PDF.
+  // Entwicklungsindikatoren (zweite Schicht) — bevorzugt aus dem eingefrorenen
+  // Finalize-Snapshot lesen (Migration 46), NICHT beim Lesen neu rechnen. Nur
+  // Alt-Assessments ohne gespeicherte Werte fallen deterministisch zurück.
   let maturityScores: Record<string, number> | null = null;
   if (productTier >= 2) {
-    // Item-Join über admin (items seit Migration 29 nicht über RLS lesbar);
-    // Ownership ist oben (id + user_id) bereits verifiziert.
-    const { data: matAnswers } = await createAdminClient()
-      .from('answers')
-      .select('value_numeric, value_position, item:items(module_code, reverse_scored)')
-      .eq('assessment_id', id);
-    const mAvg: Record<string, number> = {};
-    const mCnt: Record<string, number> = {};
-    (matAnswers ?? []).forEach((a: any) => {
-      const code = a.item?.module_code;
-      if (!code) return;
-      let v: number | null = null;
-      if (a.value_numeric != null) {
-        v = (a.value_numeric - 3) / 2;
-        if (a.item.reverse_scored) v = -v;
-      } else if (a.value_position != null) {
-        v = a.value_position * 2 - 1;
-      }
-      if (v == null) return;
-      mAvg[code] = (mAvg[code] ?? 0) + v;
-      mCnt[code] = (mCnt[code] ?? 0) + 1;
-    });
-    Object.keys(mAvg).forEach((c) => { mAvg[c] = mAvg[c] / mCnt[c]; });
-    maturityScores = computeMaturityScores(axisScores as AxisScores, mAvg) as unknown as Record<string, number>;
+    const stored = (assessment.maturity_scores as Record<string, number> | null) ?? null;
+    if (stored && Object.keys(stored).length > 0) {
+      maturityScores = stored;
+    } else {
+      // Legacy-Fallback: Item-Join über admin (items seit Migration 29 nicht über
+      // RLS lesbar); Ownership ist oben (id + user_id) bereits verifiziert.
+      const { data: matAnswers } = await createAdminClient()
+        .from('answers')
+        .select('value_numeric, value_position, item:items(module_code, reverse_scored)')
+        .eq('assessment_id', id);
+      const mAvg: Record<string, number> = {};
+      const mCnt: Record<string, number> = {};
+      (matAnswers ?? []).forEach((a: any) => {
+        const code = a.item?.module_code;
+        if (!code) return;
+        let v: number | null = null;
+        if (a.value_numeric != null) {
+          v = (a.value_numeric - 3) / 2;
+          if (a.item.reverse_scored) v = -v;
+        } else if (a.value_position != null) {
+          v = a.value_position * 2 - 1;
+        }
+        if (v == null) return;
+        mAvg[code] = (mAvg[code] ?? 0) + v;
+        mCnt[code] = (mCnt[code] ?? 0) + 1;
+      });
+      Object.keys(mAvg).forEach((c) => { mAvg[c] = mAvg[c] / mCnt[c]; });
+      maturityScores = computeMaturityScores(axisScores as AxisScores, mAvg) as unknown as Record<string, number>;
+    }
   }
 
   // Re-Check: jüngstes früheres Assessment desselben Trainers für den Verlauf.
@@ -261,6 +308,13 @@ export default async function ResultPage({
     <>
       <TopNav />
       <main>
+        {qualityLimited && (
+          <div className="max-w-4xl mx-auto px-4 md:px-8 pt-6">
+            <div className="bg-bone-soft border border-bone-line rounded-md px-4 py-3 text-sm text-muted leading-[1.5]">
+              {t('resultPage.qualityLimitedNote')}
+            </div>
+          </div>
+        )}
         {/* Gestaffelte Wow-Enthüllung (§8 Ablauf D) — ersetzt den statischen Hero.
             Alle 5 Bildschirme deterministisch aus Signatur + Bedienungsanleitung. */}
         {primary && manual && (
@@ -511,30 +565,36 @@ export default async function ResultPage({
           </div>
         </section>
 
-        {/* FÜHRUNGSREIFE — zweite Schicht, jenseits des Stils (Tier 2+) */}
+        {/* ENTWICKLUNGSINDIKATOREN — zweite Schicht, jenseits des Stils (Tier 2+).
+            Bewusst KEIN normiertes Reifemaß: Reflexionshinweise aus den Antworten. */}
         {maturityScores && (
           <section className="max-w-4xl mx-auto px-4 md:px-8 pb-4 pt-4 md:pt-0">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-3 flex items-center gap-3">
-              <span className="w-10 h-px bg-ink" /> Führungsreife
+              <span className="w-10 h-px bg-ink" /> Entwicklungsindikatoren
             </div>
             <h2 className="font-display font-light text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.05] tracking-[-0.03em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
-              Wie souverän du führst.
+              Sechs Hinweise zum Weiterdenken.
             </h2>
-            <p className="text-muted text-sm leading-[1.5] max-w-[60ch] mb-10">
-              Reife ist nicht dein Stil — sondern wie souverän du mit den Anforderungen deines
-              Stils umgehst. Sechs Dimensionen, die zeigen, wo du gefestigt bist und wo dein
-              größter Entwicklungsraum liegt.
+            <p className="text-muted text-sm leading-[1.5] max-w-[60ch] mb-4">
+              Diese sechs Dimensionen zeigen, wie stark bestimmte Muster in deinen
+              Antworten ausgeprägt sind — als Anstoß zur Reflexion, nicht als
+              Bewertung. Sie deuten an, wo es sich lohnen kann, genauer hinzusehen.
+            </p>
+            <p className="text-xs text-muted/80 leading-[1.5] max-w-[60ch] mb-10 border-l-2 border-bone-line pl-3">
+              Hinweis: Diese Indikatoren sind ein Reflexionsraster aus deinen eigenen
+              Antworten — kein normiertes, validiertes Reifemaß und keine endgültige
+              Einstufung deiner Führung.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
               {MATURITY_KEYS.map((key) => {
                 const value = maturityScores![key] ?? 0.5;
-                const band = maturityBand(value);
+                const tendency = indicatorTendency(value);
                 return (
                   <div key={key} className="grid gap-2">
                     <div className="flex justify-between items-baseline">
                       <span className="font-display text-[1.05rem] tracking-[-0.01em]">{MATURITY_LABELS[key]}</span>
-                      <span className={`font-mono text-xs uppercase tracking-[0.1em] ${band.tone}`}>
-                        {band.label} · {Math.round(value * 100)} %
+                      <span className={`font-mono text-xs uppercase tracking-[0.1em] ${tendency.tone}`}>
+                        {tendency.label}
                       </span>
                     </div>
                     <div className="relative h-1 bg-bone-line rounded">
