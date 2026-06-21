@@ -30,8 +30,11 @@ create table if not exists public.release_contract (
   updated_at      timestamptz not null default now()
 );
 
+-- WICHTIG (P0.1): Diese Migration setzt schema_version = 45 (ihre eigene Nummer).
+-- Erst Migration 46 hebt den Marker auf 46 — sonst meldet eine DB, auf der NUR 45
+-- lief, fälschlich „46 bereit", obwohl Snapshot-Spalten/Report-RPC aus 46 fehlen.
 insert into public.release_contract (id, schema_version, scoring_version, itempool_version)
-values (true, 46, 1, 25)
+values (true, 45, 1, 25)
 on conflict (id) do update
   set schema_version   = excluded.schema_version,
       scoring_version  = excluded.scoring_version,

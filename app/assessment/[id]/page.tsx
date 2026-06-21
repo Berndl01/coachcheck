@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { AssessmentRunner } from '@/components/assessment/runner';
 import type { AnswerValue } from '@/components/assessment/item-renderer';
 import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
-import { checkItemsAgainstContract } from '@/lib/release/contract';
+import { checkItemsAgainstContract, expectedItemCountForSlug } from '@/lib/release/contract';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -125,9 +125,19 @@ export default async function AssessmentPage({
   // ----------------------------------------------------------------------
   const sanitized = sanitizeItemsForClient(items);
   const expectedCount = (assessment.product?.item_count as number | null | undefined) ?? null;
+
+  // (P0.2) Zusätzlich zur DB-`item_count` (Laufzeit-„Advertised") die Itemzahl
+  // gegen den CODE-Vertrag (release-contract, je Produkt-Slug) prüfen. So fällt
+  // ein Auseinanderdriften von Datenbank und Code auf, BEVOR ein Fragebogen
+  // ausgeliefert wird — tatsächliche, DB- und Code-Itemzahl müssen identisch sein.
+  const specCount = expectedItemCountForSlug(assessment.product?.slug);
+  const specMismatch = specCount !== null && expectedCount !== specCount;
+
   const contract = checkItemsAgainstContract(sanitized, expectedCount);
-  if (!contract.ok) {
-    const ref = contract.violations.map((v) => v.kind).join(',');
+  if (!contract.ok || specMismatch) {
+    const violationKinds: string[] = contract.ok ? [] : contract.violations.map((v) => v.kind);
+    if (specMismatch) violationKinds.push('spec_count_mismatch');
+    const ref = violationKinds.join(',');
     return (
       <main className="max-w-2xl mx-auto px-4 py-20 text-center">
         <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-4">

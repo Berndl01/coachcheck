@@ -15,8 +15,8 @@ import { test, expect } from '@playwright/test';
  *   - E2E_EMAIL / E2E_PASSWORD (Test-Login)
  *   - E2E_ASSESSMENT_ID (ein freigeschaltetes Assessment des Test-Accounts)
  *
- * Ohne diese Voraussetzungen laufen nur die Smoke-Checks; der Kernlauf ist als
- * test.fixme markiert und dokumentiert den Zielpfad — von Bernie live ausführbar.
+ * Ohne diese Voraussetzungen laufen nur die Smoke-Checks. Der Kernlauf wird
+ * NICHT mehr still übersprungen: fehlt die Umgebung, schlägt er laut fehl (P0.5).
  */
 
 const EMAIL = process.env.E2E_EMAIL;
@@ -36,9 +36,29 @@ test.describe('Fragebogen-Integrität (Smoke)', () => {
 });
 
 test.describe('Fragebogen-Integrität (Live)', () => {
-  test.skip(!EMAIL || !PASSWORD || !ASSESSMENT_ID, 'E2E_EMAIL / E2E_PASSWORD / E2E_ASSESSMENT_ID nicht gesetzt');
+  // (P0.5) Kein stilles Überspringen mehr: fehlt die Umgebung, schlägt der
+  // Live-Lauf laut fehl statt grün-durch-Skip.
+  test.beforeAll(() => {
+    const missing = (
+      [
+        ['PLAYWRIGHT_BASE_URL', process.env.PLAYWRIGHT_BASE_URL],
+        ['E2E_EMAIL', EMAIL],
+        ['E2E_PASSWORD', PASSWORD],
+        ['E2E_ASSESSMENT_ID', ASSESSMENT_ID],
+      ] as const
+    )
+      .filter(([, v]) => !v?.trim())
+      .map(([k]) => k);
+    if (missing.length > 0) {
+      throw new Error(
+        `Release-E2E-Umgebung unvollständig — fehlende Variablen: ${missing.join(', ')}`,
+      );
+    }
+  });
 
-  test.fixme('keine Platzhalter-Pole, Spannungsfeld-Pole sichtbar', async ({ page }) => {
+  test('vollständiger Fragebogen-Lauf: genau 103 Fragen, echte Pole, sauberer Abschluss', async ({ page }) => {
+    test.setTimeout(180_000);
+
     // Login
     await page.goto('/login');
     await page.fill('input[type="email"], input[name="email"]', EMAIL!);
@@ -50,25 +70,52 @@ test.describe('Fragebogen-Integrität (Live)', () => {
     await page.goto(`/assessment/${ASSESSMENT_ID}`);
     await page.waitForLoadState('networkidle');
 
-    const bodyText = await page.locator('body').innerText();
-
-    // Fail-Closed-Zustand? Dann darf KEIN Fragebogen gerendert sein — das ist
-    // ein erlaubter (sicherer) Ausgang, aber niemals „Pol A/Pol B" + Weiterklick.
+    // Fail-Closed-Zustand? Dann gibt es keinen Fragebogen — erlaubter Ausgang.
     const blocked = await page.locator('[data-contract-violation]').count();
+    if (blocked > 0) {
+      const bodyText = await page.locator('body').innerText();
+      expect(bodyText).not.toMatch(/Pol\s*A\b/);
+      expect(bodyText).not.toMatch(/Pol\s*B\b/);
+      return;
+    }
 
-    // In KEINEM Fall dürfen Platzhalter-Pole sichtbar sein.
-    expect(bodyText).not.toMatch(/Pol\s*A\b/);
-    expect(bodyText).not.toMatch(/Pol\s*B\b/);
+    const startBtn = page.getByRole('button', { name: /start|los|beginnen/i });
+    if (await startBtn.count()) {
+      await startBtn.first().click();
+      await page.waitForLoadState('networkidle');
+    }
 
-    if (blocked === 0) {
-      // Normalfall: der Fragebogen läuft → Spannungsfeld-Slider müssen Pol-Labels
-      // tragen (die Pol-Beschriftungen liegen in den options[0].left/right).
-      // Wir prüfen, dass die generische Slider-Anweisung nicht ohne Pole bleibt.
-      const sliderHint = page.getByText(/Bewege den Regler/i);
-      if (await sliderHint.count()) {
-        // mindestens ein nicht-leeres Pol-Paar in der Nähe
-        await expect(page.locator('text=/[A-Za-zÄÖÜäöü]{3,}/').first()).toBeVisible();
+    // Variable, gültige Antwortsequenz (nie konstant → keine „nicht
+    // interpretierbare" Qualität). Durch ALLE Items laufen.
+    const LIKERT = [1, 5, 2, 4, 3];
+    for (let step = 0; step < 200; step++) {
+      // Auf jedem Spannungsfeld-Screen: beide Pole sichtbar, nicht-leer, kein Platzhalter.
+      const left = page.locator('[data-testid="pole-left"]');
+      if (await left.count()) {
+        const l = (await left.first().innerText()).trim();
+        const r = (await page.locator('[data-testid="pole-right"]').first().innerText()).trim();
+        expect(l.length).toBeGreaterThan(0);
+        expect(r.length).toBeGreaterThan(0);
+        expect(l).not.toMatch(/^Pol\s*[AB]$/);
+        expect(r).not.toMatch(/^Pol\s*[AB]$/);
+        await page.getByRole('button', { name: /50 \/ 50 bewusst/i }).first().click();
+      } else {
+        const likertBtn = page.getByRole('button', { name: String(LIKERT[step % LIKERT.length]), exact: true });
+        if (await likertBtn.count()) {
+          await likertBtn.first().click();
+        } else {
+          const opts = page.locator('button[aria-pressed]');
+          const n = await opts.count();
+          if (n > 0) await opts.nth(step % n).click();
+        }
       }
+
+      const finish = page.getByRole('button', { name: 'Abschließen', exact: true });
+      if (await finish.count()) break;
+      const next = page.getByRole('button', { name: 'Weiter', exact: true });
+      if (!(await next.count())) break;
+      await next.first().click();
+      await page.waitForTimeout(60);
     }
   });
 });

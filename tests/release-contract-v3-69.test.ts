@@ -7,6 +7,7 @@ import {
   MIN_ARCHETYPES,
   SCORING_VERSION,
   ITEMPOOL_VERSION,
+  RELEASE_SCHEMA_VERSION,
   expectedItemCountForSlug,
   checkItemsAgainstContract,
   contractSelfConsistent,
@@ -120,6 +121,64 @@ describe('checkItemsAgainstContract', () => {
     const res = checkItemsAgainstContract(items, null);
     expect(res.ok).toBe(true);
   });
+
+  // --- P0.3: erweiterte Itemprüfung ---------------------------------------
+  it('doppelte ID → duplicate_id', () => {
+    const res = checkItemsAgainstContract([likert(1), likert(1)], 2);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'duplicate_id')).toBe(true);
+  });
+
+  it('doppelter Code → duplicate_code', () => {
+    const items: ContractItem[] = [
+      { id: 1, code: 'A01', module_code: 'A', format: 'likert_5', text_de: 'Frage 1', options: null },
+      { id: 2, code: 'A01', module_code: 'A', format: 'likert_5', text_de: 'Frage 2', options: null },
+    ];
+    const res = checkItemsAgainstContract(items, 2);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'duplicate_code')).toBe(true);
+  });
+
+  it('leerer Fragetext → missing_text', () => {
+    const items: ContractItem[] = [{ id: 1, code: 'A01', module_code: 'A', format: 'likert_5', text_de: '   ', options: null }];
+    const res = checkItemsAgainstContract(items, 1);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'missing_text')).toBe(true);
+  });
+
+  it('unbekanntes Modul → bad_module', () => {
+    const items: ContractItem[] = [{ id: 1, code: 'Z01', module_code: 'Z', format: 'likert_5', text_de: 'Frage', options: null }];
+    const res = checkItemsAgainstContract(items, 1);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'bad_module')).toBe(true);
+  });
+
+  it('nicht unterstütztes Format → unsupported_format', () => {
+    const items: ContractItem[] = [{ id: 1, code: 'A01', module_code: 'A', format: 'freitext', text_de: 'Frage', options: null }];
+    const res = checkItemsAgainstContract(items, 1);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'unsupported_format')).toBe(true);
+  });
+
+  it('Auswahlitem ohne vollständige Optionen → incomplete_options', () => {
+    const items: ContractItem[] = [{ id: 1, code: 'A01', module_code: 'A', format: 'forced_choice', text_de: 'Frage', options: [{ key: 'a', text: '' }, { key: 'b', text: 'B' }] }];
+    const res = checkItemsAgainstContract(items, 1);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'incomplete_options')).toBe(true);
+  });
+
+  it('Auswahlitem mit doppeltem Optionsschlüssel → duplicate_option_key', () => {
+    const items: ContractItem[] = [{ id: 1, code: 'A01', module_code: 'A', format: 'forced_choice', text_de: 'Frage', options: [{ key: 'a', text: 'A' }, { key: 'a', text: 'B' }] }];
+    const res = checkItemsAgainstContract(items, 1);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.violations.some((v) => v.kind === 'duplicate_option_key')).toBe(true);
+  });
+
+  it('vollständiges Auswahlitem ist gültig', () => {
+    const items: ContractItem[] = [{ id: 1, code: 'A01', module_code: 'A', format: 'forced_choice', text_de: 'Frage', options: [{ key: 'a', text: 'A' }, { key: 'b', text: 'B' }] }];
+    const res = checkItemsAgainstContract(items, 1);
+    expect(res.ok).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -139,17 +198,30 @@ function fakeAdmin(opts: {
   items?: unknown;
   archetypes?: unknown;
   products?: unknown;
+  releaseContract?: unknown;
   integrity?: { ok: boolean; problems: string[] };
+  integrityError?: boolean;
 }) {
+  const defaultContract = [
+    {
+      schema_version: RELEASE_SCHEMA_VERSION,
+      scoring_version: SCORING_VERSION,
+      itempool_version: ITEMPOOL_VERSION,
+    },
+  ];
   return {
     from(tbl: string) {
       if (tbl === 'items') return tableResult(opts.items ?? []);
       if (tbl === 'archetypes') return tableResult(opts.archetypes ?? []);
       if (tbl === 'products') return tableResult(opts.products ?? []);
+      if (tbl === 'release_contract') return tableResult(opts.releaseContract ?? defaultContract);
       return tableResult([]);
     },
     rpc(name: string) {
       if (name === 'coachcheck_release_integrity') {
+        if (opts.integrityError) {
+          return Promise.resolve({ data: null, error: { message: 'function does not exist' } });
+        }
         return Promise.resolve({ data: opts.integrity ?? { ok: true, problems: [] }, error: null });
       }
       return Promise.resolve({ data: null, error: { message: 'no fn' } });
@@ -202,6 +274,23 @@ describe('evaluateReadiness', () => {
     expect(r.checks.find((c) => c.id === 'spannungsfeld_poles')?.ok).toBe(false);
   });
 
+  it('nicht unterstütztes Format → ready false (full_item_contract)', async () => {
+    const items = allModuleItems();
+    (items as any[]).push({ id: 500, code: 'X1', module_code: 'A', format: 'freitext', text_de: 'Frage?', options: null });
+    const admin = fakeAdmin({ items, archetypes: fullArchetypes(), products: goodProducts });
+    const r = await evaluateReadiness(admin);
+    expect(r.ready).toBe(false);
+    expect(r.checks.find((c) => c.id === 'full_item_contract')?.ok).toBe(false);
+  });
+
+  it('doppelte Item-Codes → ready false (full_item_contract)', async () => {
+    const items = allModuleItems().map((it, i) => ({ ...it, code: 'DUP', text_de: `F${i}?` }));
+    const admin = fakeAdmin({ items, archetypes: fullArchetypes(), products: goodProducts });
+    const r = await evaluateReadiness(admin);
+    expect(r.ready).toBe(false);
+    expect(r.checks.find((c) => c.id === 'full_item_contract')?.ok).toBe(false);
+  });
+
   it('Itemzahl-Drift → ready false (product_item_count)', async () => {
     const products = goodProducts.map((p) => (p.slug === 'selbsttest' ? { ...p, item_count: 99 } : p));
     const admin = fakeAdmin({ items: allModuleItems(), archetypes: fullArchetypes(), products });
@@ -236,5 +325,42 @@ describe('evaluateReadiness', () => {
     const r = await evaluateReadiness(admin);
     expect(r.ready).toBe(false);
     expect(r.checks.find((c) => c.id === 'db_integrity_fn')?.ok).toBe(false);
+  });
+
+  // --- P0.1: Fail-CLOSED gegen unvollständig migrierte DB ------------------
+  it('fehlende DB-Integritätsfunktion (Migration 45 fehlt) → ready false (fail-closed)', async () => {
+    const admin = fakeAdmin({
+      items: allModuleItems(),
+      archetypes: fullArchetypes(),
+      products: goodProducts,
+      integrityError: true,
+    });
+    const r = await evaluateReadiness(admin);
+    expect(r.ready).toBe(false);
+    expect(r.checks.find((c) => c.id === 'db_integrity_fn')?.ok).toBe(false);
+  });
+
+  it('release_contract fehlt in der DB → ready false (release_contract_version)', async () => {
+    const admin = fakeAdmin({
+      items: allModuleItems(),
+      archetypes: fullArchetypes(),
+      products: goodProducts,
+      releaseContract: [],
+    });
+    const r = await evaluateReadiness(admin);
+    expect(r.ready).toBe(false);
+    expect(r.checks.find((c) => c.id === 'release_contract_version')?.ok).toBe(false);
+  });
+
+  it('nur bis Migration 45 migriert (schema_version 45 ≠ Code 46) → ready false', async () => {
+    const admin = fakeAdmin({
+      items: allModuleItems(),
+      archetypes: fullArchetypes(),
+      products: goodProducts,
+      releaseContract: [{ schema_version: 45, scoring_version: SCORING_VERSION, itempool_version: ITEMPOOL_VERSION }],
+    });
+    const r = await evaluateReadiness(admin);
+    expect(r.ready).toBe(false);
+    expect(r.checks.find((c) => c.id === 'release_contract_version')?.ok).toBe(false);
   });
 });

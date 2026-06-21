@@ -98,6 +98,21 @@ export async function POST(
   const regenerate =
     new URL(request.url).searchParams.get('regenerate') === '1' && (await isAdminUser(user));
 
+  // (P0.7) Bei Regenerate den bisherigen Pfad merken, aber NICHT vorab löschen.
+  // Erst nach erfolgreicher Finalisierung wird die alte (dann superseded) Datei
+  // aufgeräumt. So bleibt das bestehende PDF gültig, falls der neue Lauf scheitert.
+  let previousStoragePath: string | null = null;
+  if (regenerate) {
+    const { data: prev } = await admin
+      .from('reports')
+      .select('storage_path')
+      .eq('assessment_id', assessmentId)
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    previousStoragePath = prev?.storage_path ?? null;
+  }
+
   // (a) Existiert bereits ein fertiger Report? Dann ohne neuen KI-/PDF-Lauf
   //     ausliefern — verhindert teure Doppelläufe bei Reload/Mehrfachklick.
   if (!regenerate) {
@@ -195,8 +210,39 @@ export async function POST(
     if (gap > 0) moduleGaps[code] = gap;
   });
 
-  const primary = assessment.primary as any;
-  const secondary = assessment.secondary as any;
+  // (P0.5) Für neue Assessments die EINGEFRORENEN Modul-Signale/-Gaps aus dem
+  // Finalize-Snapshot bevorzugen — NICHT aus möglicherweise geänderten Items neu
+  // rechnen. Sonst könnte ein Altkunde im (neu erzeugten) PDF andere Modulwerte
+  // erhalten als in seinem ursprünglichen Ergebnis. Legacy ohne Snapshot fällt
+  // weiterhin auf die obige Item-Berechnung zurück.
+  const moduleSnapshot = (assessment.result_snapshot as {
+    module_signals?: Record<string, number>;
+    module_gaps?: Record<string, number>;
+  } | null) ?? null;
+  if (moduleSnapshot?.module_signals && Object.keys(moduleSnapshot.module_signals).length > 0) {
+    Object.keys(moduleAverages).forEach((k) => delete moduleAverages[k]);
+    Object.assign(moduleAverages, moduleSnapshot.module_signals);
+  }
+  if (moduleSnapshot?.module_gaps) {
+    Object.keys(moduleGaps).forEach((k) => delete moduleGaps[k]);
+    Object.assign(moduleGaps, moduleSnapshot.module_gaps);
+  }
+
+  // (P0.4) Eingefrorene Darstellung aus dem Snapshot bevorzugen: Achsen +
+  // Archetyp-Texte. So verändert ein späterer Edit an Archetyptexten/Itemgewichten
+  // einen neu erzeugten Report eines ALTEN Assessments nicht.
+  const frozenSnap = (assessment.result_snapshot as {
+    axis_scores?: AxisScores;
+    development_indicators?: MaturityScores;
+    archetypes?: { primary?: Record<string, any>; secondary?: Record<string, any> };
+  } | null) ?? null;
+  const axisScoresFrozen = (frozenSnap?.axis_scores ?? assessment.axis_scores) as AxisScores;
+  const primary = (frozenSnap?.archetypes?.primary
+    ? { ...(assessment.primary as any), ...frozenSnap.archetypes.primary }
+    : (assessment.primary as any)) as any;
+  const secondary = (frozenSnap?.archetypes?.secondary
+    ? { ...(assessment.secondary as any), ...frozenSnap.archetypes.secondary }
+    : (assessment.secondary as any)) as any;
   const productTier = (assessment.product as any)?.tier ?? 0;
 
   const traineeName = profile?.full_name ?? user.email?.split('@')[0] ?? 'Trainer:in';
@@ -236,7 +282,7 @@ export async function POST(
 
       const fremd = computeFremdbildAxisScores(aggregates as FremdbildAggregateRow[], itemsLookup);
       if (fremd) {
-        const selfScores = assessment.axis_scores as AxisScores;
+        const selfScores = axisScoresFrozen;
         const discrepancies = computeAxisDiscrepancies(selfScores, fremd.axisScores);
 
         fremdbildSection = {
@@ -376,13 +422,14 @@ export async function POST(
   let maturityScores: MaturityScores | null = null;
   if (productTier >= 2) {
     const frozen =
+      (frozenSnap?.development_indicators ?? null) ??
       (assessment.maturity_scores as MaturityScores | null) ??
-      ((assessment.result_snapshot as { development_indicators?: MaturityScores } | null)?.development_indicators ?? null);
+      null;
     if (frozen && Object.keys(frozen).length > 0) {
       maturityScores = frozen;
     } else {
       maturityScores = computeMaturityScores(
-        assessment.axis_scores as AxisScores,
+        axisScoresFrozen,
         moduleAverages,
       );
     }
@@ -475,8 +522,8 @@ export async function POST(
   let archetypeDistanceDelta: number | null = null;
   let profileType: 'dominant' | 'mixed' | null = null;
   if (primary?.axis_profile && secondary?.axis_profile) {
-    const dPrimary = axisDistance(assessment.axis_scores as AxisScores, primary.axis_profile);
-    const dSecondary = axisDistance(assessment.axis_scores as AxisScores, secondary.axis_profile);
+    const dPrimary = axisDistance(axisScoresFrozen, primary.axis_profile);
+    const dSecondary = axisDistance(axisScoresFrozen, secondary.axis_profile);
     archetypeDistanceDelta = Math.abs(dSecondary - dPrimary);
     profileType = classifyProfile([
       { archetype: primary as never, distance: dPrimary },
@@ -503,7 +550,7 @@ export async function POST(
     },
     archetypeDistanceDelta,
     profileType,
-    axisScores: assessment.axis_scores as AxisScores,
+    axisScores: axisScoresFrozen,
     moduleAverages,
     moduleGaps,
     maturityScores,
@@ -641,6 +688,13 @@ export async function POST(
   if (finalizeErr || !newReportId) {
     await deleteReportFiles([storagePath]);
     return failJob(`Report-Finalisierung fehlgeschlagen: ${finalizeErr?.message ?? 'keine Report-ID'}`);
+  }
+
+  // (P0.7) Transaktion stand: jetzt — und erst jetzt — die vorherige (superseded)
+  // PDF-Datei eines Admin-Regenerate aufräumen. Best-effort; die App liefert
+  // ohnehin stets den jüngsten Report-Datensatz aus.
+  if (regenerate && previousStoragePath && previousStoragePath !== storagePath) {
+    await deleteReportFiles([previousStoragePath]);
   }
 
   // 6. Signed URL

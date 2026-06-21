@@ -20,6 +20,7 @@ import { ResultReveal } from '@/components/assessment/result-reveal';
 import { ActionFocusCard } from '@/components/assessment/action-focus-card';
 import { buildProgressComparison } from '@/lib/insight/progress';
 import { computeMaturityScores, MATURITY_KEYS, MATURITY_LABELS, type AxisScores } from '@/lib/scoring';
+import { MODULES } from '@/lib/release/contract';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -206,8 +207,22 @@ export default async function ResultPage({
     teamInvitations = invs ?? [];
   }
 
-  const primary = assessment.primary as any;
-  const secondary = assessment.secondary as any;
+  // (P0.4) Eingefrorener Ergebnis-Snapshot ist für neue Assessments die
+  // Lesequelle. Die Archetyp-DARSTELLUNG wird über das FK-Objekt gelegt (alle
+  // Felder bleiben erhalten, die eingefrorenen Texte überschreiben aktuelle).
+  const snap = (assessment.result_snapshot as {
+    axis_scores?: Record<string, number>;
+    development_indicators?: Record<string, number>;
+    module_signals?: Record<string, number>;
+    archetypes?: { primary?: Record<string, any>; secondary?: Record<string, any> };
+  } | null) ?? null;
+
+  const primary = (snap?.archetypes?.primary
+    ? { ...(assessment.primary as any), ...snap.archetypes.primary }
+    : (assessment.primary as any)) as any;
+  const secondary = (snap?.archetypes?.secondary
+    ? { ...(assessment.secondary as any), ...snap.archetypes.secondary }
+    : (assessment.secondary as any)) as any;
   const profileMeta = (assessment.signature as any)?.profile as
     | { type?: string; headline?: string }
     | undefined;
@@ -229,7 +244,11 @@ export default async function ResultPage({
     .eq('assessment_id', id)
     .eq('status', 'active')
     .maybeSingle();
-  const axisScores = assessment.axis_scores as Record<string, number>;
+  // (P0.5) Für neue Assessments alle Kennwerte bevorzugt aus dem eingefrorenen
+  // result_snapshot lesen (Migration 46), niemals beim Lesen neu rechnen. Legacy
+  // ohne Snapshot fällt deterministisch auf die persistierten Spalten zurück.
+  // axisScores: Snapshot zuerst (P0.4), sonst persistierte Spalte.
+  const axisScores = (snap?.axis_scores ?? assessment.axis_scores) as Record<string, number>;
   const signature = buildInstantSignature(axisScores as any);
   const manual = primary ? buildOperatingManual(primary, axisScores as any) : null;
   const playerMatrix = primary ? buildPlayerTypeMatrix(primary, axisScores as any) : null;
@@ -239,11 +258,15 @@ export default async function ResultPage({
   // Entwicklungsindikatoren (zweite Schicht) — bevorzugt aus dem eingefrorenen
   // Finalize-Snapshot lesen (Migration 46), NICHT beim Lesen neu rechnen. Nur
   // Alt-Assessments ohne gespeicherte Werte fallen deterministisch zurück.
+  // (P0.4) Entwicklungsindikatoren: SNAPSHOT zuerst, dann persistierte Spalte,
+  // erst zuletzt (nur Legacy ohne beides) deterministisch aus den Items.
   let maturityScores: Record<string, number> | null = null;
   if (productTier >= 2) {
-    const stored = (assessment.maturity_scores as Record<string, number> | null) ?? null;
-    if (stored && Object.keys(stored).length > 0) {
-      maturityScores = stored;
+    const frozen =
+      (snap?.development_indicators ?? null) ??
+      ((assessment.maturity_scores as Record<string, number> | null) ?? null);
+    if (frozen && Object.keys(frozen).length > 0) {
+      maturityScores = frozen;
     } else {
       // Legacy-Fallback: Item-Join über admin (items seit Migration 29 nicht über
       // RLS lesbar); Ownership ist oben (id + user_id) bereits verifiziert.
@@ -273,19 +296,29 @@ export default async function ResultPage({
   }
 
   // Re-Check: jüngstes früheres Assessment desselben Trainers für den Verlauf.
+  // (P0.4) Nur vergleichbar, wenn PRODUKT, Scoring- UND Itempool-Version identisch
+  // sind und ein eingefrorener Snapshot existiert. Verglichen wird ausschließlich
+  // Snapshot gegen Snapshot — nie gegen evtl. nachgerechnete Spaltenwerte.
   let progress: ReturnType<typeof buildProgressComparison> | null = null;
   {
     const { data: prior } = await supabase
       .from('assessments')
-      .select('id, axis_scores, maturity_scores, completed_at, created_at')
+      .select('id, result_snapshot, completed_at, created_at')
       .eq('user_id', user.id)
       .neq('id', id)
+      .eq('product_id', (assessment as any).product_id)
+      .eq('scoring_version', (assessment as any).scoring_version)
+      .eq('itempool_version', (assessment as any).itempool_version)
       .in('status', ['completed', 'report_ready', 'archived'])
-      .not('axis_scores', 'is', null)
+      .not('result_snapshot', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (prior?.axis_scores) {
+    const priorSnap = (prior?.result_snapshot as {
+      axis_scores?: Record<string, number>;
+      development_indicators?: Record<string, number>;
+    } | null) ?? null;
+    if (priorSnap?.axis_scores) {
       progress = buildProgressComparison(
         {
           axisScores: axisScores as any,
@@ -293,8 +326,8 @@ export default async function ResultPage({
           date: (assessment as any).completed_at ?? new Date().toISOString(),
         },
         {
-          axisScores: prior.axis_scores as any,
-          maturityScores: (prior as any).maturity_scores ?? null,
+          axisScores: priorSnap.axis_scores as any,
+          maturityScores: (priorSnap.development_indicators as any) ?? null,
           date: (prior as any).completed_at ?? (prior as any).created_at ?? new Date().toISOString(),
         },
       );
@@ -606,6 +639,45 @@ export default async function ResultPage({
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* SIEBEN FÜHRUNGSDIMENSIONEN — dieselben sieben Module wie im Report.
+            (P0.6) BEWUSST nur Namen + qualitative Reflexionsbereiche: KEINE
+            bipolaren Pol-Positionen und KEINE pseudo-präzisen Prozentwerte, solange
+            keine fachlich freigegebene Item-Konstrukt-Matrix vorliegt. Die
+            ausführliche Einordnung je Modul steht im Report. */}
+        {productTier >= 2 && primary && (
+          <section className="max-w-4xl mx-auto px-4 md:px-8 pb-4 pt-10">
+            <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-3 flex items-center gap-3">
+              <span className="w-10 h-px bg-ink" /> Sieben Führungsdimensionen
+            </div>
+            <h2 className="font-display font-light text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.05] tracking-[-0.03em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
+              Die Architektur deiner Führung.
+            </h2>
+            <p className="text-muted text-sm leading-[1.5] max-w-[60ch] mb-4">
+              Dieselben sieben Dimensionen, die dein Report ausführlich beschreibt.
+              Sie strukturieren deine Führung in greifbare Bereiche — die
+              vertiefte Einordnung je Modul findest du in deinem Report.
+            </p>
+            <p className="text-xs text-muted/80 leading-[1.5] max-w-[60ch] mb-8 border-l-2 border-bone-line pl-3">
+              Hinweis: Diese sieben Module sind qualitative Reflexionsbereiche —
+              kein normiertes, validiertes Maß, keine bipolare Positionierung und
+              keine endgültige Einstufung deiner Führung.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-3">
+              {MODULES.map((m) => (
+                <div key={m.code} className="flex items-baseline justify-between gap-4 border-b border-bone-line/60 pb-3">
+                  <span className="font-display text-[1.05rem] tracking-[-0.01em]">
+                    <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-gold-deep mr-2">{m.code}</span>
+                    {m.name_de}
+                  </span>
+                  <span className="font-mono text-[0.56rem] uppercase tracking-[0.12em] text-muted shrink-0 text-right">
+                    Qualitativer Reflexionsbereich
+                  </span>
+                </div>
+              ))}
             </div>
           </section>
         )}

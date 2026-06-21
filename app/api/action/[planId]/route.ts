@@ -95,8 +95,22 @@ export async function DELETE(
 
   const plan = await loadOwnedPlan(planId, user.id);
   if (!plan) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  // (P0.8) Nach Abschluss/Archivierung darf die Aktionshistorie nicht mehr
+  // verändert werden — auch der heutige Check-in nicht zurücknehmbar.
+  if (plan.status !== 'active') {
+    return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
+  }
 
   const admin = createAdminClient();
+
+  // (P0.8) Refund-Kaskade: nach voller Rückerstattung keine Änderung mehr.
+  if (plan.assessment_id) {
+    const ent = await checkPaidEntitlement(admin, plan.assessment_id, user.id);
+    if (!ent.ok) {
+      return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
+    }
+  }
+
   const { error } = await admin
     .from('action_checkins')
     .delete()
@@ -130,6 +144,11 @@ export async function PATCH(
 
   const plan = await loadOwnedPlan(planId, user.id);
   if (!plan) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  // (P0.8) Ein bereits abgeschlossener/archivierter Fokus kann nicht erneut
+  // abgeschlossen werden — sonst ließe sich completed_at nachträglich verschieben.
+  if (plan.status !== 'active') {
+    return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
+  }
 
   const admin = createAdminClient();
 
@@ -141,12 +160,18 @@ export async function PATCH(
     }
   }
 
-  const { error } = await admin
+  // (P0.8) Statusgebundenes Update: nur wenn der Plan im Moment des Schreibens
+  // noch 'active' ist. Trifft es keine Zeile (Race/bereits abgeschlossen), 409.
+  const { data: updated, error } = await admin
     .from('action_plans')
     .update({ status: 'completed', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', planId)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .select('id')
+    .maybeSingle();
   if (error) return NextResponse.json({ error: 'Konnte Fokus nicht abschließen' }, { status: 500 });
+  if (!updated) return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
 
   return NextResponse.json({ ok: true });
 }

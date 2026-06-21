@@ -1,4 +1,4 @@
-# ABNAHME-CHECKLISTE v3.69 — Architektur-Release-Welle
+# ABNAHME-CHECKLISTE v3.72 — Go-live-Blocker-Runden (v3.69 → v3.70 → v3.71 → v3.72)
 
 Diese Welle setzt die in v3.68 ausdrücklich vertagten **architektonischen P0s** als
 zusammenhängende Release-Welle um (Readiness + Item-Vertrag + Modell-Konstanten,
@@ -48,7 +48,7 @@ Die Liste trennt **statisch code-verifiziert** (von mir hier nachweisbar) von **
 
 ## B) Live-Abnahme (deine migrierte Umgebung — nicht statisch erbringbar)
 
-- [ ] **Migrationen 45 + 46** in Produktion anwenden (Reihenfolge 01 → 46). Jede endet mit
+- [ ] **Migrationen 45 + 46 + 47 + 48** in Produktion anwenden (Reihenfolge 01 → 48). Jede endet mit
       `raise notice '... OK'`.
 - [ ] **Readiness live**: `node scripts/preflight-release.mjs` gegen die echte URL → **Exit 0 /
       HTTP 200**. Erst dann den Fragebogen freischalten.
@@ -73,3 +73,24 @@ Du hattest früher entschieden, Fallback-Reports **ohne** sichtbaren Hinweis aus
 E-Mail einen deterministischen Fallback fälschlich „Premium" nennt (Claim-Ehrlichkeit). Willst
 du das alte, vollständig stille Verhalten zurück, ist es eine **Ein-Flag-Umkehr** in
 `app/api/assessment/[id]/report/route.ts` (E-Mail-Block) — sag Bescheid.
+
+---
+
+## C) Live-Abnahme — Nachweis (von Bernie auszufüllen)
+
+Erst nach vollständigem Ausfüllen ist „go-live" belastbar (P0.1). Pro Zeile:
+Datum · Umgebung (Staging/Prod) · Tester · Nachweis (Link/Screenshot/Log-ID).
+
+| Schritt | Datum | Umgebung | Tester | Nachweis |
+|---|---|---|---|---|
+| Migrationen 01 → 48 angewandt | | | | |
+| Readiness / Preflight → HTTP 200 | | | | |
+| Browserdurchlauf Fragebogen (Pole sichtbar, kein Platzhalter) | | | | |
+| Stripe-Testkauf → Vertragsmail + Vertrags-PDF | | | | |
+| Report + PDF erzeugt | | | | |
+| Vollständiger Refund → alle kostenpflichtigen Rechte gesperrt | | | | |
+| Antwortqualität „durchgeklickt" → Premium blockiert + Gratis-Neuversuch | | | | |
+| Vercel-Produktionsdeploy erfolgreich | | | | |
+| Rechtliche/steuerliche Freigabe (Anwalt/Steuerberater) | | | | |
+
+> **ABNAHME-UNTERSCHRIFT:** ________________________  Datum: ____________

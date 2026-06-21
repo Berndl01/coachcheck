@@ -194,20 +194,39 @@ function SpannungsfeldInput({
   value: number | undefined;
   onChange: (p: number) => void;
 }) {
-  // first option carries the left/right labels
-  const poles = options[0] ?? { left: 'Pol A', right: 'Pol B' };
+  // Die Pol-Beschriftungen liegen auf der ersten Option. KEINE erfundenen
+  // Platzhalter-Pole mehr (P0.4): fehlende Pole werden vom Release-Vertrag bereits
+  // VOR Anzeige des Fragebogens geblockt — hier wird nichts erfunden.
+  const first = options[0] ?? {};
+  const leftLabel = first.left ?? '';
+  const rightLabel = first.right ?? '';
+
+  // Unbeantwortet ist NICHT dasselbe wie eine bewusst gesetzte 50/50-Antwort.
+  // Solange value undefined ist, gilt das Item als unbeantwortet; der Regler
+  // steht optisch (gedämpft) in der Mitte, zählt aber nicht als Antwort. Der
+  // Weiter-Button bleibt gesperrt (Runner: disabled bei fehlendem pending).
+  const answered = value !== undefined;
   const current = value ?? 0.5;
+  const pct = Math.round(current * 100);
+
+  const valueText = !answered
+    ? 'Noch nicht beantwortet'
+    : pct === 50
+      ? 'Ausgeglichen, 50 zu 50'
+      : pct < 50
+        ? `${100 - pct} Prozent ${leftLabel}`
+        : `${pct} Prozent ${rightLabel}`;
 
   return (
     <div className="mt-6">
       <div className="flex justify-between font-mono text-xs uppercase tracking-[0.12em] text-bone-soft mb-4">
-        <span>{poles.left}</span>
-        <span>{poles.right}</span>
+        <span data-testid="pole-left">{leftLabel}</span>
+        <span data-testid="pole-right">{rightLabel}</span>
       </div>
       <div className="relative h-14 flex items-center">
         <div className="absolute inset-x-0 h-0.5 bg-ink-line rounded" />
         <div
-          className="absolute h-0.5 bg-gradient-to-r from-gold to-gold-light rounded"
+          className={`absolute h-0.5 rounded ${answered ? 'bg-gradient-to-r from-gold to-gold-light' : 'bg-ink-line'}`}
           style={{ left: 0, width: `${current * 100}%` }}
         />
         <input
@@ -215,26 +234,39 @@ function SpannungsfeldInput({
           min={0}
           max={100}
           step={1}
-          value={Math.round(current * 100)}
+          value={pct}
+          aria-valuetext={valueText}
+          data-answered={answered ? 'true' : 'false'}
           onChange={(e) => onChange(parseInt(e.target.value) / 100)}
-          className="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer
+          className={`absolute inset-0 w-full appearance-none bg-transparent cursor-pointer
                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
                      [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:rounded-full
                      [&::-webkit-slider-thumb]:shadow-[0_0_0_4px_var(--ink),0_10px_30px_-8px_rgba(179,142,69,0.8)]
                      [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:active:cursor-grabbing
                      [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-gold
-                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-grab"
+                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-grab
+                     ${answered ? '' : '[&::-webkit-slider-thumb]:opacity-50 [&::-moz-range-thumb]:opacity-50'}`}
         />
       </div>
-      <div className="text-center font-mono text-[0.7rem] uppercase tracking-[0.15em] text-muted-dark mt-4">
-        {(() => {
-          const pct = Math.round(current * 100);
-          // Regler-Wert in Bezug auf die Pole ausdrücken statt nackter Zahl:
-          // < 50 → Tendenz zum linken Pol, > 50 → rechter Pol, = 50 → ausgeglichen.
-          if (pct === 50) return 'Ausgeglichen · 50 / 50';
-          if (pct < 50) return `${100 - pct}% ${poles.left}`;
-          return `${pct}% ${poles.right}`;
-        })()}
+      <div className="text-center font-mono text-[0.7rem] uppercase tracking-[0.15em] text-muted-dark mt-4 min-h-[1.5rem]">
+        {!answered ? (
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-gold-light">Noch nicht beantwortet</span>
+            <button
+              type="button"
+              onClick={() => onChange(0.5)}
+              className="font-mono text-[0.62rem] uppercase tracking-[0.14em] underline decoration-dotted text-bone-soft hover:text-gold transition"
+            >
+              50 / 50 bewusst auswählen
+            </button>
+          </div>
+        ) : pct === 50 ? (
+          'Ausgeglichen · 50 / 50'
+        ) : pct < 50 ? (
+          `${100 - pct}% ${leftLabel}`
+        ) : (
+          `${pct}% ${rightLabel}`
+        )}
       </div>
     </div>
   );

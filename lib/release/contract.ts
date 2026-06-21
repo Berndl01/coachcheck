@@ -34,7 +34,9 @@ export const SCORING_VERSION = 1;
 /** Korrespondiert mit der jüngsten Item-Pool-Migration (25 → 103 Items). */
 export const ITEMPOOL_VERSION = 25;
 
-export const RELEASE_SCHEMA_VERSION = 46;
+// Migration 48 hebt release_contract.schema_version auf 48 (product_items-Fix der
+// Integritätsfunktion). Readiness vergleicht diese Konstante exakt mit der DB.
+export const RELEASE_SCHEMA_VERSION = 48;
 
 // ---------------------------------------------------------------------------
 // Die sieben analytischen Module (A–G).
@@ -110,14 +112,23 @@ export function expectedItemCountForSlug(slug: string | null | undefined): numbe
 /** Minimal-Form einer (bereits client-sanitisierten) Frage für die Prüfung. */
 export type ContractItem = {
   id: number;
-  format: string;
+  code?: string | null;
   module_code?: string | null;
+  format: string;
+  text_de?: string | null;
   options?: Array<{ key?: string; text?: string; left?: string; right?: string }> | null;
 };
 
 export type ContractViolation =
   | { kind: 'empty_pool' }
   | { kind: 'item_count'; expected: number; actual: number }
+  | { kind: 'duplicate_id'; itemId: number }
+  | { kind: 'duplicate_code'; itemId: number; value: string }
+  | { kind: 'missing_text'; itemId: number }
+  | { kind: 'bad_module'; itemId: number; value: string }
+  | { kind: 'unsupported_format'; itemId: number; value: string }
+  | { kind: 'incomplete_options'; itemId: number }
+  | { kind: 'duplicate_option_key'; itemId: number; value: string }
   | { kind: 'missing_pole'; itemId: number }
   | { kind: 'placeholder_pole'; itemId: number; value: string };
 
@@ -127,6 +138,16 @@ export type ContractCheck =
 
 /** Ein Platzhalter-Pol wie „Pol A"/„Pol B"/„Pol links" darf NIE live gehen. */
 const PLACEHOLDER_POLE = /^\s*(pol\s*[ab]|pol\s*(links|rechts|left|right)|left|right|tbd|todo|n\/?a|—|-)\s*$/i;
+
+/** Vom Scoring/Runner unterstützte Itemformate (alles andere ist nicht auslieferbar). */
+export const SUPPORTED_FORMATS = new Set<string>([
+  'likert_5', 'state', 'gap_wichtig', 'gap_gelebt', // numerisch
+  'spannungsfeld',                                    // Position
+  'forced_choice', 'szenario', 'dilemma', 'ranking',  // Auswahl
+]);
+/** Formate, die vollständige Auswahloptionen (key + text) brauchen. */
+const CHOICE_FORMATS = new Set<string>(['forced_choice', 'szenario', 'dilemma', 'ranking']);
+const MODULE_SET = new Set<string>(MODULE_CODES);
 
 function isBlank(v: unknown): boolean {
   return typeof v !== 'string' || v.trim().length === 0;
@@ -160,20 +181,71 @@ export function checkItemsAgainstContract(
     violations.push({ kind: 'item_count', expected: expectedCount, actual: items.length });
   }
 
+  const seenIds = new Set<number>();
+  const seenCodes = new Set<string>();
+
   for (const it of items) {
-    if (it.format !== 'spannungsfeld') continue;
-    const opt = Array.isArray(it.options) ? it.options[0] : null;
-    const left = opt?.left;
-    const right = opt?.right;
-    if (isBlank(left) || isBlank(right)) {
-      violations.push({ kind: 'missing_pole', itemId: it.id });
-      continue;
+    // (a) Eindeutige ID.
+    if (seenIds.has(it.id)) violations.push({ kind: 'duplicate_id', itemId: it.id });
+    else seenIds.add(it.id);
+
+    // (b) Eindeutiger, nicht-leerer Code (sofern das Feld geliefert wird).
+    if (it.code !== undefined) {
+      if (isBlank(it.code)) {
+        violations.push({ kind: 'duplicate_code', itemId: it.id, value: '' });
+      } else {
+        const code = (it.code as string).trim();
+        if (seenCodes.has(code)) violations.push({ kind: 'duplicate_code', itemId: it.id, value: code });
+        else seenCodes.add(code);
+      }
     }
-    if (PLACEHOLDER_POLE.test(left as string)) {
-      violations.push({ kind: 'placeholder_pole', itemId: it.id, value: left as string });
+
+    // (c) Fragetext vorhanden (sofern geliefert).
+    if (it.text_de !== undefined && isBlank(it.text_de)) {
+      violations.push({ kind: 'missing_text', itemId: it.id });
     }
-    if (PLACEHOLDER_POLE.test(right as string)) {
-      violations.push({ kind: 'placeholder_pole', itemId: it.id, value: right as string });
+
+    // (d) Modul A–G (sofern geliefert).
+    if (it.module_code !== undefined) {
+      const mod = (it.module_code ?? '').toString().trim().toUpperCase();
+      if (!MODULE_SET.has(mod)) violations.push({ kind: 'bad_module', itemId: it.id, value: mod });
+    }
+
+    // (e) Unterstütztes Format.
+    if (!SUPPORTED_FORMATS.has(it.format)) {
+      violations.push({ kind: 'unsupported_format', itemId: it.id, value: it.format });
+    }
+
+    // (f) Auswahlformate: vollständige Optionen (key + text), eindeutige Keys.
+    if (CHOICE_FORMATS.has(it.format)) {
+      const opts = Array.isArray(it.options) ? it.options : [];
+      if (opts.length < 2) {
+        violations.push({ kind: 'incomplete_options', itemId: it.id });
+      } else {
+        const seenKeys = new Set<string>();
+        for (const o of opts) {
+          if (isBlank(o.key) || isBlank(o.text)) {
+            violations.push({ kind: 'incomplete_options', itemId: it.id });
+            break;
+          }
+          const k = (o.key as string).trim();
+          if (seenKeys.has(k)) { violations.push({ kind: 'duplicate_option_key', itemId: it.id, value: k }); break; }
+          seenKeys.add(k);
+        }
+      }
+    }
+
+    // (g) Spannungsfeld: echter linker UND rechter Pol, kein Platzhalter.
+    if (it.format === 'spannungsfeld') {
+      const opt = Array.isArray(it.options) ? it.options[0] : null;
+      const left = opt?.left;
+      const right = opt?.right;
+      if (isBlank(left) || isBlank(right)) {
+        violations.push({ kind: 'missing_pole', itemId: it.id });
+        continue;
+      }
+      if (PLACEHOLDER_POLE.test(left as string)) violations.push({ kind: 'placeholder_pole', itemId: it.id, value: left as string });
+      if (PLACEHOLDER_POLE.test(right as string)) violations.push({ kind: 'placeholder_pole', itemId: it.id, value: right as string });
     }
   }
 

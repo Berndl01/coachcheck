@@ -26,7 +26,11 @@ import {
   AXES,
   PRODUCT_ITEM_COUNTS,
   MIN_ARCHETYPES,
+  RELEASE_SCHEMA_VERSION,
+  SCORING_VERSION,
+  ITEMPOOL_VERSION,
   contractSelfConsistent,
+  checkItemsAgainstContract,
 } from '@/lib/release/contract';
 
 export type ReadinessCheck = {
@@ -53,15 +57,15 @@ export async function evaluateReadiness(admin: SupabaseClient): Promise<Readines
   );
 
   // (1) Items laden (service_role).
-  let items: Array<{ id: number; module_code: string | null; format: string; options: unknown }> = [];
+  let items: Array<{ id: number; code: string | null; module_code: string | null; format: string; text_de: string | null; options: unknown }> = [];
   try {
     const { data, error } = await admin
       .from('items')
-      .select('id, module_code, format, options')
+      .select('id, code, module_code, format, text_de, options')
       .eq('active', true);
     if (error) {
       // active existiert evtl. nicht in allen Ständen → ohne Filter erneut.
-      const retry = await admin.from('items').select('id, module_code, format, options');
+      const retry = await admin.from('items').select('id, code, module_code, format, text_de, options');
       if (retry.error) {
         add('items_load', false, `Items konnten nicht geladen werden: ${retry.error.message}`);
       } else {
@@ -102,6 +106,30 @@ export async function evaluateReadiness(admin: SupabaseClient): Promise<Readines
       polelessIds.length === 0
         ? 'Alle Spannungsfeld-Items tragen linken und rechten Pol.'
         : `Spannungsfeld-Items ohne vollständige Pole: ${polelessIds.join(', ')}.`,
+    );
+
+    // (3b) VOLLSTÄNDIGER Item-Präsentationsvertrag (P0.2): exakt dieselbe Prüfung,
+    // die auch die Fragebogen-Seite anwendet — eindeutige IDs/Codes, Fragetext,
+    // Modul A–G, unterstütztes Format, vollständige Choice-Optionen + eindeutige
+    // Schlüssel, Pole. Ohne diesen Check könnte die Readiness 200 melden, während
+    // der bezahlte Kunde danach einen fail-closed gesperrten Fragebogen bekommt.
+    const itemContract = checkItemsAgainstContract(
+      items.map((it) => ({
+        id: Number(it.id),
+        code: it.code,
+        module_code: it.module_code,
+        format: it.format,
+        text_de: it.text_de,
+        options: Array.isArray(it.options) ? (it.options as Array<{ key?: string; text?: string; left?: string; right?: string }>) : null,
+      })),
+      null,
+    );
+    add(
+      'full_item_contract',
+      itemContract.ok,
+      itemContract.ok
+        ? 'Vollständiger Item-Präsentationsvertrag erfüllt (IDs, Codes, Texte, Formate, Optionen, Pole).'
+        : `Item-Vertragsverletzungen: ${JSON.stringify(itemContract.violations).slice(0, 800)}`,
     );
   }
 
@@ -164,25 +192,59 @@ export async function evaluateReadiness(admin: SupabaseClient): Promise<Readines
     add('product_item_count', false, `Produkt-Itemzahl-Prüfung fehlgeschlagen: ${String(e)}`);
   }
 
-  // (6) Optional: DB-Integritätsfunktion (Migration 45) — prüft serverseitig
-  //     u. a. ausgelieferte Itemzahl je Produkt. Fehlt sie (vor Migration 45),
-  //     wird der Check als „nicht verfügbar" markiert und blockiert NICHT.
+  // (5b) RELEASE-VERTRAG DER DB (Migration 45/46) live lesen und exakt gegen die
+  //      Code-Konstanten prüfen. Damit ist die Readiness fail-CLOSED gegen eine
+  //      unvollständig migrierte DB: fehlt die Tabelle/Zeile (vor Migration 45)
+  //      oder steht schema_version noch auf 45 (Migration 46 nicht gelaufen),
+  //      schlägt der Check fehl — KEIN fälschliches „200 bereit".
+  try {
+    const { data, error } = await admin
+      .from('release_contract')
+      .select('schema_version, scoring_version, itempool_version');
+    if (error) {
+      add('release_contract_version', false, `release_contract nicht lesbar (Migration 45 ausstehend?): ${error.message}`);
+    } else {
+      const row = Array.isArray(data) ? (data[0] as Record<string, number> | undefined) : undefined;
+      if (!row) {
+        add('release_contract_version', false, 'release_contract enthält keine Zeile — DB nicht vollständig migriert.');
+      } else {
+        const mism: string[] = [];
+        if (row.schema_version !== RELEASE_SCHEMA_VERSION) mism.push(`schema_version DB ${row.schema_version} ≠ Code ${RELEASE_SCHEMA_VERSION}`);
+        if (row.scoring_version !== SCORING_VERSION) mism.push(`scoring_version DB ${row.scoring_version} ≠ Code ${SCORING_VERSION}`);
+        if (row.itempool_version !== ITEMPOOL_VERSION) mism.push(`itempool_version DB ${row.itempool_version} ≠ Code ${ITEMPOOL_VERSION}`);
+        add(
+          'release_contract_version',
+          mism.length === 0,
+          mism.length === 0
+            ? `Release-Vertrag der DB stimmt mit dem Code überein (schema ${RELEASE_SCHEMA_VERSION}, scoring ${SCORING_VERSION}, itempool ${ITEMPOOL_VERSION}).`
+            : `Release-Vertrag-Drift: ${mism.join('; ')}. (Sind ALLE Migrationen bis 46 gelaufen?)`,
+        );
+      }
+    }
+  } catch (e) {
+    add('release_contract_version', false, `release_contract-Prüfung fehlgeschlagen: ${String(e)}`);
+  }
+
+  // (6) DB-Integritätsfunktion (Migration 45) — prüft serverseitig u. a. die
+  //     ausgelieferte Itemzahl je Produkt. Fail-CLOSED (P0.1): fehlt die Funktion
+  //     (Migration 45 nicht aktiv) oder wirft sie, ist die DB NICHT bereit. Ein
+  //     RPC-/DB-Fehler darf NIE als ok behandelt werden.
   try {
     const { data, error } = await admin.rpc('coachcheck_release_integrity');
     if (error) {
-      add('db_integrity_fn', true, `DB-Integritätsfunktion nicht verfügbar (Migration 45 ausstehend?): ${error.message}`);
+      add('db_integrity_fn', false, `DB-Integritätsfunktion nicht verfügbar/fehlerhaft (Migration 45 ausstehend?): ${error.message}`);
     } else {
       const result = (data ?? {}) as { ok?: boolean; problems?: string[] };
       add(
         'db_integrity_fn',
-        result.ok !== false,
-        result.ok === false
-          ? `DB-Integrität: ${(result.problems ?? []).join('; ')}`
-          : 'DB-Integritätsfunktion meldet OK (Itemzahl/Module/Pole serverseitig geprüft).',
+        result.ok === true,
+        result.ok === true
+          ? 'DB-Integritätsfunktion meldet OK (Itemzahl/Module/Pole serverseitig geprüft).'
+          : `DB-Integrität: ${(result.problems ?? ['unerwartete Antwort']).join('; ')}`,
       );
     }
   } catch (e) {
-    add('db_integrity_fn', true, `DB-Integritätsfunktion nicht aufrufbar: ${String(e)}`);
+    add('db_integrity_fn', false, `DB-Integritätsfunktion nicht aufrufbar: ${String(e)}`);
   }
 
   const ready = checks.every((c) => c.ok);
