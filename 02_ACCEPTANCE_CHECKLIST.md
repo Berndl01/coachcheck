@@ -1,4 +1,4 @@
-# ABNAHME-CHECKLISTE v3.72 — Go-live-Blocker-Runden (v3.69 → v3.70 → v3.71 → v3.72)
+# ABNAHME-CHECKLISTE v3.73 — Go-live-Blocker-Runden (v3.69 → v3.70 → v3.71 → v3.72 → v3.73)
 
 Diese Welle setzt die in v3.68 ausdrücklich vertagten **architektonischen P0s** als
 zusammenhängende Release-Welle um (Readiness + Item-Vertrag + Modell-Konstanten,

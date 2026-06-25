@@ -3,7 +3,7 @@
 **Das eine, verbindliche Dokument: von „jetzt" bis „verkaufen".**
 Es bündelt für den Start, was in `GO-LIVE.md` über viele Versions-Notizen verstreut ist.
 
-Stand: **v3.72** · Migrationen **01 → 48**, alle 7 Gates sauber
+Stand: **v3.73** · Migrationen **01 → 48**, alle 7 Gates sauber
 (tsc · claimcheck · vitest · eslint · build · npm audit 0 · PDF 4/4).
 
 ---

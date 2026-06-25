@@ -15,11 +15,25 @@ export default async function TeamcheckPage({
   const admin = createAdminClient();
   const t = await getT();
 
-  const { data: invitation } = await admin
+  const { data: invitation, error: invitationError } = await admin
     .from('invitations')
-    .select('id, status, expires_at, parent_assessment_id, invitation_type, assessment:parent_assessment_id(profile:user_id(full_name, sport, club))')
+    .select('id, status, expires_at, parent_assessment_id, invitation_type')
     .eq('token', token)
     .maybeSingle();
+
+  if (invitationError) {
+    // Kein verschachteltes Embed mehr: assessments.user_id und profiles.id zeigen BEIDE
+    // nur auf auth.users — es gibt KEINEN direkten FK assessments→profiles. Ein
+    // verschachteltes PostgREST-Embed (profile:user_id(...)) ist daher nicht auflösbar
+    // und würde die gesamte Abfrage scheitern lassen (data = null). Sollte die reine
+    // Einladungsabfrage dennoch fehlschlagen, wird der Fehler protokolliert statt still
+    // als „ungültige Einladung" verschluckt.
+    console.error('[teamcheck-page] invitation lookup failed', {
+      tokenPrefix: token.slice(0, 6),
+      code: invitationError.code,
+      message: invitationError.message,
+    });
+  }
 
   if (!invitation || invitation.invitation_type !== 'spieler') {
     return (
@@ -80,7 +94,25 @@ export default async function TeamcheckPage({
   // zurückgeben (sonst könnte der Trainer anonyme Antworten mitlesen). Start leer.
   const existing: Record<number, { value_numeric?: number; value_choice?: string; value_position?: number }> = {};
 
-  const trainerProfile = (invitation.assessment as any)?.profile;
+  // Trainerprofil über zwei klare Einzelabfragen laden (kein kaputtes Embed):
+  // invitations → assessments.user_id → profiles.id. Das Profil ist nicht
+  // rendering-kritisch; fehlt es, bleibt es bei den neutralen Fallbacks unten.
+  const { data: tcAssessment } = await admin
+    .from('assessments')
+    .select('user_id')
+    .eq('id', invitation.parent_assessment_id)
+    .maybeSingle();
+
+  let trainerProfile: { full_name: string | null; sport: string | null; club: string | null } | null = null;
+  if (tcAssessment?.user_id) {
+    const { data: prof } = await admin
+      .from('profiles')
+      .select('full_name, sport, club')
+      .eq('id', tcAssessment.user_id)
+      .maybeSingle();
+    trainerProfile = prof ?? null;
+  }
+
   const trainerName = trainerProfile?.full_name ?? 'der Trainer';
   const sport = trainerProfile?.sport ?? '';
   const club = trainerProfile?.club ?? '';
