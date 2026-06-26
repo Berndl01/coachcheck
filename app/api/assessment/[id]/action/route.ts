@@ -61,12 +61,10 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // Refund-Kaskade (§14): nach voller Rückerstattung kein neuer/erneuerter
-  // Fokus mehr. Status 'paid' erforderlich (checkPaidEntitlement → not_paid bei
-  // refunded).
+  // Entitlement-Gate: Nach vollem Refund keine neuen/aktualisierten Fokuspläne.
   const ent = await checkPaidEntitlement(admin, id, user.id);
   if (!ent.ok) {
-    return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
+    return NextResponse.json({ error: 'Keine aktive Berechtigung.' }, { status: 402 });
   }
 
   // Genau ein aktiver Fokus pro (Nutzer, Assessment): bestehenden aktiven Plan

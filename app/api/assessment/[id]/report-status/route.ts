@@ -39,16 +39,12 @@ export async function GET(
   }
 
   const { data: report } = await admin
-    .from('reports').select('storage_path, ai_fallback').eq('assessment_id', id)
+    .from('reports').select('storage_path').eq('assessment_id', id)
     .order('generated_at', { ascending: false }).limit(1).maybeSingle();
 
   if (report?.storage_path) {
     const signedUrl = await getReportSignedUrl(report.storage_path);
-    return NextResponse.json({
-      status: 'ready',
-      signedUrl,
-      reportKind: report.ai_fallback ? 'basis' : 'premium',
-    });
+    return NextResponse.json({ status: 'ready', signedUrl });
   }
 
   const { data: job } = await admin

@@ -19,22 +19,11 @@ export default async function EinschaetzungPage({
   const t = await getT();
 
   // Load invitation by token
-  const { data: invitation, error: invitationError } = await admin
+  const { data: invitation } = await admin
     .from('invitations')
-    .select('id, status, expires_at, parent_assessment_id, invitation_type, unsubscribed_at')
+    .select('id, status, expires_at, parent_assessment_id, invitation_type, unsubscribed_at, assessment:parent_assessment_id(profile:user_id(full_name, sport))')
     .eq('token', token)
     .maybeSingle();
-
-  if (invitationError) {
-    // Kein verschachteltes Embed mehr: assessments.user_id und profiles.id zeigen BEIDE
-    // nur auf auth.users — KEIN direkter FK assessments→profiles. profile:user_id(...)
-    // ist daher nicht auflösbar und hätte die ganze Abfrage scheitern lassen.
-    console.error('[einschaetzung-page] invitation lookup failed', {
-      tokenPrefix: token.slice(0, 6),
-      code: invitationError.code,
-      message: invitationError.message,
-    });
-  }
 
   if (!invitation) {
     return (
@@ -126,24 +115,7 @@ export default async function EinschaetzungPage({
   // die anonymen Antworten der Teilnehmer mitlesen. Der Fragebogen startet leer.
   const existing: Record<number, { value_numeric?: number; value_choice?: string; value_position?: number }> = {};
 
-  // Trainerprofil über zwei klare Einzelabfragen (kein kaputtes Embed):
-  // invitations → assessments.user_id → profiles.id.
-  const { data: esAssessment } = await admin
-    .from('assessments')
-    .select('user_id')
-    .eq('id', invitation.parent_assessment_id)
-    .maybeSingle();
-
-  let trainerProfile: { full_name: string | null; sport: string | null } | null = null;
-  if (esAssessment?.user_id) {
-    const { data: prof } = await admin
-      .from('profiles')
-      .select('full_name, sport')
-      .eq('id', esAssessment.user_id)
-      .maybeSingle();
-    trainerProfile = prof ?? null;
-  }
-
+  const trainerProfile = (invitation.assessment as any)?.profile;
   const trainerName = trainerProfile?.full_name ?? 'der Trainer';
   const sport = trainerProfile?.sport ?? '';
 

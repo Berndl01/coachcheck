@@ -32,11 +32,21 @@ async function loadOwnedPlan(planId: string, userId: string) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('action_plans')
-    .select('id, user_id, status, target_days, assessment_id')
+    .select('id, user_id, assessment_id, status, target_days')
     .eq('id', planId)
     .maybeSingle();
   if (!data || data.user_id !== userId) return null;
   return data;
+}
+
+/**
+ * Nach vollem Refund: keine Check-ins, kein Fertigstellen aktiver Pläne mehr.
+ * Prüft die weiterhin bezahlte Berechtigung über das Eltern-Assessment.
+ */
+async function planEntitled(plan: { assessment_id: string | null }, userId: string): Promise<boolean> {
+  if (!plan.assessment_id) return false;
+  const ent = await checkPaidEntitlement(createAdminClient(), plan.assessment_id, userId);
+  return ent.ok;
 }
 
 export async function POST(
@@ -61,17 +71,11 @@ export async function POST(
   if (plan.status !== 'active') {
     return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
   }
-
-  const admin = createAdminClient();
-
-  // Refund-Kaskade (§14): nach voller Rückerstattung keine neuen Check-ins mehr.
-  if (plan.assessment_id) {
-    const ent = await checkPaidEntitlement(admin, plan.assessment_id, user.id);
-    if (!ent.ok) {
-      return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
-    }
+  if (!(await planEntitled(plan, user.id))) {
+    return NextResponse.json({ error: 'Keine aktive Berechtigung.' }, { status: 402 });
   }
 
+  const admin = createAdminClient();
   const { error } = await admin
     .from('action_checkins')
     .upsert(
@@ -95,22 +99,8 @@ export async function DELETE(
 
   const plan = await loadOwnedPlan(planId, user.id);
   if (!plan) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  // (P0.8) Nach Abschluss/Archivierung darf die Aktionshistorie nicht mehr
-  // verändert werden — auch der heutige Check-in nicht zurücknehmbar.
-  if (plan.status !== 'active') {
-    return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
-  }
 
   const admin = createAdminClient();
-
-  // (P0.8) Refund-Kaskade: nach voller Rückerstattung keine Änderung mehr.
-  if (plan.assessment_id) {
-    const ent = await checkPaidEntitlement(admin, plan.assessment_id, user.id);
-    if (!ent.ok) {
-      return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
-    }
-  }
-
   const { error } = await admin
     .from('action_checkins')
     .delete()
@@ -144,34 +134,17 @@ export async function PATCH(
 
   const plan = await loadOwnedPlan(planId, user.id);
   if (!plan) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  // (P0.8) Ein bereits abgeschlossener/archivierter Fokus kann nicht erneut
-  // abgeschlossen werden — sonst ließe sich completed_at nachträglich verschieben.
-  if (plan.status !== 'active') {
-    return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
+  if (!(await planEntitled(plan, user.id))) {
+    return NextResponse.json({ error: 'Keine aktive Berechtigung.' }, { status: 402 });
   }
 
   const admin = createAdminClient();
-
-  // Refund-Kaskade (§14): nach voller Rückerstattung kein Abschluss mehr.
-  if (plan.assessment_id) {
-    const ent = await checkPaidEntitlement(admin, plan.assessment_id, user.id);
-    if (!ent.ok) {
-      return NextResponse.json({ error: 'Keine aktive Berechtigung für diesen Vorgang.' }, { status: 402 });
-    }
-  }
-
-  // (P0.8) Statusgebundenes Update: nur wenn der Plan im Moment des Schreibens
-  // noch 'active' ist. Trifft es keine Zeile (Race/bereits abgeschlossen), 409.
-  const { data: updated, error } = await admin
+  const { error } = await admin
     .from('action_plans')
     .update({ status: 'completed', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', planId)
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .select('id')
-    .maybeSingle();
+    .eq('user_id', user.id);
   if (error) return NextResponse.json({ error: 'Konnte Fokus nicht abschließen' }, { status: 500 });
-  if (!updated) return NextResponse.json({ error: 'Fokus ist nicht aktiv' }, { status: 409 });
 
   return NextResponse.json({ ok: true });
 }

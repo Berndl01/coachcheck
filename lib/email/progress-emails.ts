@@ -174,9 +174,9 @@ export async function sendRaterReminders(admin: SupabaseClient): Promise<{ attem
   const reminderCutoff = hoursAgoISO(RATER_REMINDER_AFTER_H);
   const nowIso = new Date().toISOString();
 
-  const { data: rows, error: rowsError } = await admin
+  const { data: rows } = await admin
     .from('invitations')
-    .select('id, token, invited_email, invitation_type, last_reminder_at, reminder_count, parent_assessment_id')
+    .select('id, token, invited_email, invitation_type, last_reminder_at, reminder_count, assessment:parent_assessment_id(profile:user_id(full_name, sport))')
     .eq('status', 'pending')
     .eq('invitation_type', 'fremdbild')
     .is('unsubscribed_at', null)
@@ -185,55 +185,14 @@ export async function sendRaterReminders(admin: SupabaseClient): Promise<{ attem
     .lt('reminder_count', RATER_MAX_REMINDERS)
     .limit(BATCH);
 
-  if (rowsError) {
-    // Vorher verschluckte ein kaputtes Embed (profile:user_id(...), KEIN FK
-    // assessments→profiles) den Fehler still → (rows ?? []) = [] → es wurden NIE
-    // Rater-Erinnerungen versendet. Jetzt wird der Fehler sichtbar protokolliert.
-    console.error('[rater-reminders] invitation lookup failed', {
-      code: rowsError.code,
-      message: rowsError.message,
-    });
-  }
-
-  // Trainerprofile gesammelt nachladen (kein FK assessments→profiles, deshalb kein
-  // Embed): parent_assessment_id → assessments.user_id → profiles. Zwei Batch-Abfragen
-  // statt eines nicht auflösbaren Embeds oder N+1.
-  const raterRows = (rows ?? []) as any[];
-  const assessmentIds = Array.from(
-    new Set(raterRows.map((r) => r.parent_assessment_id).filter(Boolean)),
-  );
-  const userByAssessment = new Map<string, string>();
-  if (assessmentIds.length) {
-    const { data: assessmentsRows } = await admin
-      .from('assessments')
-      .select('id, user_id')
-      .in('id', assessmentIds);
-    for (const a of (assessmentsRows ?? []) as any[]) {
-      if (a.user_id) userByAssessment.set(a.id, a.user_id);
-    }
-  }
-  const userIds = Array.from(new Set(Array.from(userByAssessment.values())));
-  const profileByUser = new Map<string, { full_name: string | null; sport: string | null }>();
-  if (userIds.length) {
-    const { data: profileRows } = await admin
-      .from('profiles')
-      .select('id, full_name, sport')
-      .in('id', userIds);
-    for (const p of (profileRows ?? []) as any[]) {
-      profileByUser.set(p.id, { full_name: p.full_name ?? null, sport: p.sport ?? null });
-    }
-  }
-
   let sent = 0;
-  for (const r of raterRows) {
+  for (const r of (rows ?? []) as any[]) {
     // Nicht öfter als alle RATER_REMINDER_AFTER_H Stunden erinnern.
     if (r.last_reminder_at && r.last_reminder_at > reminderCutoff) continue;
     const email = r.invited_email;
     if (!email) continue;
-    const raterUserId = userByAssessment.get(r.parent_assessment_id);
-    const raterProfile = raterUserId ? profileByUser.get(raterUserId) : undefined;
-    const trainerName = raterProfile?.full_name ?? 'Ein Trainer';
-    const sport = raterProfile?.sport ?? null;
+    const trainerName = r.assessment?.profile?.full_name ?? 'Ein Trainer';
+    const sport = r.assessment?.profile?.sport ?? null;
     const { subject, html } = buildRaterReminderEmail({ trainerName, sport, token: r.token });
     const res = await sendEmailSafe({
       to: email, subject, html,

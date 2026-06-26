@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateReportTextsWithMeta, type ReportInput } from '@/lib/ai/report-prompt';
 import { softenDeep } from '@/lib/knowledge/claim-guard';
 import { evaluateCareSignals, type CareResponse } from '@/lib/safety/care-triggers';
-import { uploadReportPDF, getReportSignedUrl, deleteReportFiles } from '@/lib/pdf/storage';
+import { uploadReportPDF, getReportSignedUrl } from '@/lib/pdf/storage';
 import { sendEmailSafe } from '@/lib/email/resend';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { checkPaidEntitlement } from '@/lib/auth/entitlement';
@@ -13,7 +13,6 @@ import { isAdminUser } from '@/lib/utils/admin';
 import {
   computeFremdbildAxisScores,
   computeAxisDiscrepancies,
-  computeMaturityScores,
   computeDispersion,
   axisDistance,
   classifyProfile,
@@ -61,6 +60,21 @@ export async function POST(
     return NextResponse.json({ error: 'assessment not finalized yet' }, { status: 400 });
   }
 
+  // Antwortqualitäts-Gate (Ergebnisvertrag): Bei 'nicht_interpretierbar' wird
+  // KEIN (teurer) Premium-Report erzeugt. Stattdessen Hinweis auf den
+  // kostenlosen Wiederholungstest. Result-Seite zeigt denselben Zustand.
+  const rq = (assessment.response_quality as { dataQuality?: string } | null)?.dataQuality ?? null;
+  if (rq === 'nicht_interpretierbar') {
+    return NextResponse.json(
+      {
+        error: 'Antwortqualität nicht interpretierbar — bitte kostenlosen Wiederholungstest nutzen.',
+        reason: 'response_quality_blocked',
+        retake: true,
+      },
+      { status: 409 },
+    );
+  }
+
   // --- Idempotenz-Klammer (P0) -------------------------------------------
   // Admin-Client einmalig für Lock + Persistenz.
   const admin = createAdminClient();
@@ -77,41 +91,11 @@ export async function POST(
     );
   }
 
-  // --- Antwortqualität-Gate (verbindliche Release-Bedingung) -------------
-  // Bei nicht interpretierbarem Antwortmuster wird KEIN (scheinbar präziser)
-  // Premium-Report erzeugt. Der Käufer wird auf den kostenlosen Neuversuch
-  // verwiesen (die Ergebnisseite blockt dafür ohnehin schon). Schützt vor dem
-  // Verkauf eines Premium-Profils auf nicht belastbaren Daten.
-  if ((assessment.response_quality as { dataQuality?: string } | null)?.dataQuality === 'nicht_interpretierbar') {
-    return NextResponse.json(
-      {
-        error: 'Für dieses Antwortmuster wird kein Premium-Report erstellt. Bitte wiederhole den Fragebogen in Ruhe — das ist kostenlos.',
-        reason: 'answer_quality',
-      },
-      { status: 409 },
-    );
-  }
-
   // ?regenerate=1 erzwingt einen neuen (teuren) KI-/PDF-Lauf. Nur für Admins —
   // ein normaler Käufer kann so keine wiederholten Kostenläufe auslösen und
   // erhält den bereits erzeugten Report aus dem Cache.
   const regenerate =
     new URL(request.url).searchParams.get('regenerate') === '1' && (await isAdminUser(user));
-
-  // (P0.7) Bei Regenerate den bisherigen Pfad merken, aber NICHT vorab löschen.
-  // Erst nach erfolgreicher Finalisierung wird die alte (dann superseded) Datei
-  // aufgeräumt. So bleibt das bestehende PDF gültig, falls der neue Lauf scheitert.
-  let previousStoragePath: string | null = null;
-  if (regenerate) {
-    const { data: prev } = await admin
-      .from('reports')
-      .select('storage_path')
-      .eq('assessment_id', assessmentId)
-      .order('generated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    previousStoragePath = prev?.storage_path ?? null;
-  }
 
   // (a) Existiert bereits ein fertiger Report? Dann ohne neuen KI-/PDF-Lauf
   //     ausliefern — verhindert teure Doppelläufe bei Reload/Mehrfachklick.
@@ -210,39 +194,8 @@ export async function POST(
     if (gap > 0) moduleGaps[code] = gap;
   });
 
-  // (P0.5) Für neue Assessments die EINGEFRORENEN Modul-Signale/-Gaps aus dem
-  // Finalize-Snapshot bevorzugen — NICHT aus möglicherweise geänderten Items neu
-  // rechnen. Sonst könnte ein Altkunde im (neu erzeugten) PDF andere Modulwerte
-  // erhalten als in seinem ursprünglichen Ergebnis. Legacy ohne Snapshot fällt
-  // weiterhin auf die obige Item-Berechnung zurück.
-  const moduleSnapshot = (assessment.result_snapshot as {
-    module_signals?: Record<string, number>;
-    module_gaps?: Record<string, number>;
-  } | null) ?? null;
-  if (moduleSnapshot?.module_signals && Object.keys(moduleSnapshot.module_signals).length > 0) {
-    Object.keys(moduleAverages).forEach((k) => delete moduleAverages[k]);
-    Object.assign(moduleAverages, moduleSnapshot.module_signals);
-  }
-  if (moduleSnapshot?.module_gaps) {
-    Object.keys(moduleGaps).forEach((k) => delete moduleGaps[k]);
-    Object.assign(moduleGaps, moduleSnapshot.module_gaps);
-  }
-
-  // (P0.4) Eingefrorene Darstellung aus dem Snapshot bevorzugen: Achsen +
-  // Archetyp-Texte. So verändert ein späterer Edit an Archetyptexten/Itemgewichten
-  // einen neu erzeugten Report eines ALTEN Assessments nicht.
-  const frozenSnap = (assessment.result_snapshot as {
-    axis_scores?: AxisScores;
-    development_indicators?: MaturityScores;
-    archetypes?: { primary?: Record<string, any>; secondary?: Record<string, any> };
-  } | null) ?? null;
-  const axisScoresFrozen = (frozenSnap?.axis_scores ?? assessment.axis_scores) as AxisScores;
-  const primary = (frozenSnap?.archetypes?.primary
-    ? { ...(assessment.primary as any), ...frozenSnap.archetypes.primary }
-    : (assessment.primary as any)) as any;
-  const secondary = (frozenSnap?.archetypes?.secondary
-    ? { ...(assessment.secondary as any), ...frozenSnap.archetypes.secondary }
-    : (assessment.secondary as any)) as any;
+  const primary = assessment.primary as any;
+  const secondary = assessment.secondary as any;
   const productTier = (assessment.product as any)?.tier ?? 0;
 
   const traineeName = profile?.full_name ?? user.email?.split('@')[0] ?? 'Trainer:in';
@@ -282,7 +235,7 @@ export async function POST(
 
       const fremd = computeFremdbildAxisScores(aggregates as FremdbildAggregateRow[], itemsLookup);
       if (fremd) {
-        const selfScores = axisScoresFrozen;
+        const selfScores = assessment.axis_scores as AxisScores;
         const discrepancies = computeAxisDiscrepancies(selfScores, fremd.axisScores);
 
         fremdbildSection = {
@@ -415,24 +368,16 @@ export async function POST(
 
   // ============== PREMIUM INTELLIGENCE LAYER ==============
 
-  // Entwicklungsindikatoren (Tier 2+): bevorzugt den eingefrorenen Finalize-Wert
-  // lesen (Migration 46 / assessments.maturity_scores) — NICHT neu rechnen und
-  // erst recht nicht über den eingefrorenen Stand drüberschreiben. Nur
-  // Alt-Assessments ohne gespeicherten Wert fallen deterministisch zurück.
+  // Entwicklungsindikatoren (vormals „Führungsreife"): AUS DEM EINGEFRORENEN
+  // SNAPSHOT, nicht neu gerechnet (Ergebnisvertrag). moduleAverages oben werden
+  // weiterhin für die KI-Texte gebraucht, aber die Indikator-WERTE stammen aus
+  // dem beim Finalisieren gespeicherten Stand. Fallback auf maturity_scores
+  // (Pre-Snapshot-Assessments).
   let maturityScores: MaturityScores | null = null;
   if (productTier >= 2) {
-    const frozen =
-      (frozenSnap?.development_indicators ?? null) ??
-      (assessment.maturity_scores as MaturityScores | null) ??
-      null;
-    if (frozen && Object.keys(frozen).length > 0) {
-      maturityScores = frozen;
-    } else {
-      maturityScores = computeMaturityScores(
-        axisScoresFrozen,
-        moduleAverages,
-      );
-    }
+    const snap = (assessment.result_snapshot as { development_indicators?: MaturityScores } | null) ?? null;
+    const stored = snap?.development_indicators ?? ((assessment.maturity_scores as MaturityScores | null) ?? null);
+    maturityScores = stored && Object.keys(stored).length > 0 ? stored : null;
   }
 
   // Polarization detection in fremdbild (if 360° data exists)
@@ -522,8 +467,8 @@ export async function POST(
   let archetypeDistanceDelta: number | null = null;
   let profileType: 'dominant' | 'mixed' | null = null;
   if (primary?.axis_profile && secondary?.axis_profile) {
-    const dPrimary = axisDistance(axisScoresFrozen, primary.axis_profile);
-    const dSecondary = axisDistance(axisScoresFrozen, secondary.axis_profile);
+    const dPrimary = axisDistance(assessment.axis_scores as AxisScores, primary.axis_profile);
+    const dSecondary = axisDistance(assessment.axis_scores as AxisScores, secondary.axis_profile);
     archetypeDistanceDelta = Math.abs(dSecondary - dPrimary);
     profileType = classifyProfile([
       { archetype: primary as never, distance: dPrimary },
@@ -550,7 +495,7 @@ export async function POST(
     },
     archetypeDistanceDelta,
     profileType,
-    axisScores: axisScoresFrozen,
+    axisScores: assessment.axis_scores as AxisScores,
     moduleAverages,
     moduleGaps,
     maturityScores,
@@ -591,6 +536,14 @@ export async function POST(
     console.warn('[claim-guard] forbidden terms softened:', JSON.stringify(guard.audit.hits));
   }
 
+  // Fallback ehrlich kennzeichnen: ohne KI-Texte ist das eine deterministische
+  // BASIS-AUSWERTUNG, kein vollständiger Premium-Report. Diese Unterscheidung
+  // erscheint identisch in PDF, Report-Status, Dashboard und E-Mail.
+  const reportKind: 'premium' | 'basis' = gen.fallback ? 'basis' : 'premium';
+  const reportPages = productTier >= 4 && teamcheckSection
+    ? (fremdbildSection ? 19 : 17)
+    : productTier >= 3 && fremdbildSection ? 15 : productTier >= 2 ? 12 : 7;
+
   // 2. Render PDF
   let pdfBuffer: Buffer;
   try {
@@ -612,6 +565,7 @@ export async function POST(
       profileType,
       axisScores: reportInput.axisScores,
       texts,
+      isFallback: gen.fallback,
       fremdbildScores: pdfFremdbildScores,
       discrepancies: pdfDiscrepancies,
       fremdbildResponseCount: pdfResponseCount,
@@ -652,28 +606,22 @@ export async function POST(
     return failJob(`Upload failed: ${msg}`);
   }
 
-  // 4+5. ATOMARE FINALISIERUNG (Migration 46): Report-Zeile + Assessment
-  //       'report_ready' + Report-Job 'ready' (mit report_id) in EINER
-  //       Transaktion. Schlägt sie fehl, bleibt KEINE halbe Wahrheit zurück
-  //       (kein Report ohne Statuswechsel, kein Status ohne Report-Zeile) — und
-  //       das bereits hochgeladene PDF wird wieder aus dem Storage gelöscht,
-  //       damit kein verwaistes File zurückbleibt. Job wird freigegeben.
-  const pages =
-    productTier >= 4 && teamcheckSection
-      ? (fremdbildSection ? 19 : 17)
-      : productTier >= 3 && fremdbildSection ? 15 : productTier >= 2 ? 12 : 7;
-
+  // 4. Report-Zeile + Assessment-Status + Job-Status TRANSAKTIONAL abschließen.
+  //    finalize_report_atomic() committet entweder alle drei Schritte oder
+  //    keinen. Schlägt die DB fehl, wird die bereits hochgeladene PDF wieder
+  //    GELÖSCHT — keine verwaiste Datei im Storage ohne DB-Referenz.
   const { data: newReportId, error: finalizeErr } = await admin.rpc('finalize_report_atomic', {
     p_assessment_id: assessmentId,
     p_job_id: jobId,
     p_storage_path: storagePath,
-    p_file_size_bytes: pdfBuffer.length,
-    p_pages: pages,
-    p_generation_model: gen.model,
+    p_file_size: pdfBuffer.length,
+    p_pages: reportPages,
+    p_model: gen.model,
     p_prompt_version: gen.promptVersion,
     p_prompt_tokens: gen.promptTokens,
     p_completion_tokens: gen.completionTokens,
     p_ai_fallback: gen.fallback,
+    p_report_kind: reportKind,
     p_metadata: {
       has_360: !!fremdbildSection,
       fremdbild_count: pdfResponseCount,
@@ -682,19 +630,20 @@ export async function POST(
       claim_audit: guard.audit,
       ai_attempts: gen.attempts,
       ai_fallback: gen.fallback,
+      report_kind: reportKind,
     },
   });
 
   if (finalizeErr || !newReportId) {
-    await deleteReportFiles([storagePath]);
-    return failJob(`Report-Finalisierung fehlgeschlagen: ${finalizeErr?.message ?? 'keine Report-ID'}`);
-  }
-
-  // (P0.7) Transaktion stand: jetzt — und erst jetzt — die vorherige (superseded)
-  // PDF-Datei eines Admin-Regenerate aufräumen. Best-effort; die App liefert
-  // ohnehin stets den jüngsten Report-Datensatz aus.
-  if (regenerate && previousStoragePath && previousStoragePath !== storagePath) {
-    await deleteReportFiles([previousStoragePath]);
+    // DB-Fehler nach Upload: hochgeladene PDF entfernen, damit Storage und DB
+    // konsistent bleiben (kein „fertiger" Report ohne Zeile).
+    try {
+      const { deleteReportFiles } = await import('@/lib/pdf/storage');
+      await deleteReportFiles([storagePath]);
+    } catch (e) {
+      console.error('[report] cleanup of orphaned PDF failed:', e);
+    }
+    return failJob(`Report finalize failed: ${finalizeErr?.message ?? 'no report id'}`);
   }
 
   // 6. Signed URL
@@ -709,28 +658,24 @@ export async function POST(
            </p>`
         : '';
 
-      // Ehrliche Kennzeichnung (verbindliche Release-Bedingung): Ein Fallback ist
-      // eine vollständige, deterministisch erstellte BASIS-Auswertung — kein
-      // KI-personalisierter Premium-Report. Wir behaupten in der E-Mail also nicht
-      // „Premium", wenn es die Basis-Variante ist. Bewusst OHNE Alarm-Sprache
-      // („Dienst ausgelastet") — der Käufer bekommt sofort sein vollständiges
-      // Ergebnis.
-      const isBasis = gen.fallback;
-      const mailSubject = isBasis
-        ? `Deine CoachCheck Auswertung ist bereit — ${assessment.product.name_de}`
-        : `Dein CoachCheck Report ist bereit — ${assessment.product.name_de}`;
-      const mailKicker = isBasis ? 'Deine Auswertung ist bereit' : 'Dein Report ist bereit';
-      const mailHeadline = isBasis
-        ? `${traineeName}, <br>deine Auswertung ist bereit.`
+      // Ehrliche Kennzeichnung: Bei einer Basis-Auswertung (KI-Texte nicht
+      // verfügbar) wird KEIN „Premium-Report" versprochen.
+      const isBasis = reportKind === 'basis';
+      const kicker = isBasis ? 'Deine Basis-Auswertung ist bereit' : 'Dein Report ist bereit';
+      const headline = isBasis
+        ? `${traineeName}, <br>deine Basis-Auswertung ist da.`
         : `${traineeName}, <br>dein Premium-Profil wartet.`;
-      const mailIntro = isBasis
-        ? `Dein ${assessment.product.name_de} wurde ausgewertet. Du erhältst eine vollständige Basis-Auswertung — mit deinem Archetyp, deiner funktionalen Signatur, den Modul-Interpretationen und einem konkreten Entwicklungspfad, deterministisch aus deinen Daten erstellt.`
+      const bodyLine = isBasis
+        ? `Dein ${assessment.product.name_de} wurde ausgewertet. Du erhältst eine <strong>Basis-Auswertung</strong> mit deinem Archetyp, deiner funktionalen Signatur und deinen Kernachsen — deterministisch aus deinen Antworten. Die ausführlichen, individuell formulierten Premium-Texte konnten diesmal nicht erzeugt werden; bei Bedarf erstellen wir den vollständigen Premium-Report nach.`
         : `Dein ${assessment.product.name_de} wurde ausgewertet. Der vollständige Premium-Report mit deinem Archetyp, deiner funktionalen Signatur, allen Modul-Interpretationen und einem konkreten 30-Tage-Entwicklungspfad steht zum Download bereit.`;
-      const mailCta = isBasis ? 'Auswertung herunterladen →' : 'Report herunterladen →';
+      const ctaLabel = isBasis ? 'Basis-Auswertung herunterladen →' : 'Report herunterladen →';
+      const subject = isBasis
+        ? `Deine CoachCheck Basis-Auswertung — ${assessment.product.name_de}`
+        : `Dein CoachCheck Report ist bereit — ${assessment.product.name_de}`;
 
       await sendEmailSafe({
         to: user.email,
-        subject: mailSubject,
+        subject,
         category: 'report-ready',
         html: `
           <div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; color: #1B1C1E;">
@@ -739,20 +684,20 @@ export async function POST(
             </div>
             <div style="padding: 32px 0;">
               <div style="font-family: monospace; font-size: 11px; letter-spacing: 2px; color: #B38E45; text-transform: uppercase; margin-bottom: 12px;">
-                ${mailKicker}
+                ${kicker}
               </div>
               <h1 style="font-size: 28px; font-weight: 300; letter-spacing: -0.5px; line-height: 1.2; margin: 0 0 16px 0;">
-                ${mailHeadline}
+                ${headline}
               </h1>
               <p style="font-size: 15px; line-height: 1.55; color: #767471; margin-bottom: 18px;">
-                ${mailIntro}
+                ${bodyLine}
               </p>
               ${has360Note}
               <a href="${signedUrl}" style="display: inline-block; padding: 14px 28px; background: #1B1C1E; color: #FAFAF8; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px;">
-                ${mailCta}
+                ${ctaLabel}
               </a>
               <p style="font-size: 12px; color: #9A9793; margin-top: 32px;">
-                Der Download-Link ist 7 Tage gültig. Du findest ${isBasis ? 'die Auswertung' : 'den Report'} auch jederzeit in deinem Dashboard auf coachcheck.humatrix.cc.
+                Der Download-Link ist 7 Tage gültig. Du findest die Auswertung auch jederzeit in deinem Dashboard auf coachcheck.humatrix.cc.
               </p>
             </div>
             <div style="padding: 20px 0; border-top: 1px solid #DBD8D1; font-size: 11px; color: #9A9793; letter-spacing: 1px; text-transform: uppercase;">
@@ -770,7 +715,8 @@ export async function POST(
     ok: true,
     storagePath,
     signedUrl,
-    reportKind: gen.fallback ? 'basis' : 'premium',
+    reportKind,
+    isFallback: gen.fallback,
     has360: !!fremdbildSection,
     fremdbildCount: pdfResponseCount,
   });

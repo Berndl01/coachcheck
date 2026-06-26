@@ -293,10 +293,10 @@ function buildUserPrompt(input: ReportInput): string {
       .join('\n');
     sectionMaturity = `
 
-# ENTWICKLUNGSINDIKATOREN (zweite Schicht — Reflexionsraster, KEIN normiertes Reifemaß)
+# FÜHRUNGSREIFE (zweite Schicht — jenseits des Stils)
 ${matLines}
 
-→ Diese Werte zeigen, wie stark bestimmte Muster in den Antworten ausgeprägt sind. Behandle sie als Reflexionshinweise, NICHT als validiertes Reife-Urteil. Vermeide normierende Verdikte wie „souverän", „gefestigt" oder „unreif".
+→ Reife ist NICHT der Stil. Sondern wie souverän der Trainer mit den Anforderungen seines Stils umgeht.
 `;
   }
 
@@ -442,7 +442,7 @@ WICHTIG für deine Texte: Greife diese Hinweise in teamcheck_narrative und team_
     "krise": "~50 Wörter — wie wirkt er in akuten Krisenphasen?"
   },
 
-  ${input.maturityScores ? '"fuehrungsreife_interpretation": "~180 Wörter. Lies die sechs Entwicklungsindikatoren als Reflexionsraster aus den Antworten — NICHT als normiertes Reifemaß. Beschreibe Tendenzen, wo genaueres Hinsehen lohnt. Keine wertenden Verdikte wie souverän/gefestigt/unreif. Mache klar: das sind Denkanstöße, keine endgültige Einstufung.",' : ''}
+  ${input.maturityScores ? '"fuehrungsreife_interpretation": "~180 Wörter. Interpretiere die 6 Reifeachsen. Wo ist der Trainer souverän, wo gibt es Reife-Lücken? Reife ≠ Stil — kläre das.",' : ''}
 
   "no_go_warnungen": [
     "3-5 konkrete No-Go-Hinweise je nach Profil. Was sollte dieser Trainer NICHT tun? Beispiele bei kontrollstarkem Profil: 'Nicht noch mehr Kontrolle erhöhen wenn Unsicherheit steigt', 'Keine pauschale Teamkritik im Kollektiv'. Sehr praktisch, nicht moralisch."

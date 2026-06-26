@@ -3,7 +3,7 @@
 **Das eine, verbindliche Dokument: von „jetzt" bis „verkaufen".**
 Es bündelt für den Start, was in `GO-LIVE.md` über viele Versions-Notizen verstreut ist.
 
-Stand: **v3.73** · Migrationen **01 → 48**, alle 7 Gates sauber
+Stand: Migrationen **01 → 46**, **360 Tests grün**, alle 7 Gates sauber
 (tsc · claimcheck · vitest · eslint · build · npm audit 0 · PDF 4/4).
 
 ---
@@ -28,22 +28,14 @@ ist startklar. Was jetzt folgt, ist **Betrieb und Recht — nicht Code.**
 
 ### Schritt 1 — Supabase (Datenbank)
 1. Projekt in Region **Frankfurt** nutzen/anlegen.
-2. Migrationen **01 → 48 in Reihenfolge** anwenden (SQL-Editor oder `supabase db push`,
+2. Migrationen **01 → 46 in Reihenfolge** anwenden (SQL-Editor oder `supabase db push`,
    Datei für Datei aufsteigend).
    - **Wichtig:** Die Migrationen sind selbstheilend/idempotent. Migration 39 enthält einen
      Dedup-Block *vor* einem Unique-Index — bei einer Bestandsdatenbank zuerst diese
      Migration sauber durchlaufen lassen.
 3. **Verifikation:** Jede Migration endet mit `raise notice '... OK'`. Läuft eine durch
    ohne Exception, ist sie korrekt angewendet. Die neuen Tabellen müssen existieren:
-   `result_feedback`, `action_plans`, `action_checkins`, `release_contract` (Migration 45).
-   Migration 46 ergänzt `profiles.timezone`, den Ergebnis-Snapshot auf `assessments`,
-   und Migration 47 spiegelt den vollständigen Item-Vertrag in `coachcheck_release_integrity()`; Migration 48 korrigiert dort die fälschliche `product_items`-Abfrage zurück auf `items.package_tiers` und führt die Integritätsprüfung während der Migration WIRKLICH aus (schema_version 48)
-   und die Funktion `finalize_report_atomic`.
-4. **Readiness-Preflight (Release-Vertrag):** Nach den Migrationen einmal
-   `PREFLIGHT_BASE_URL=<deine-URL> CRON_SECRET=<secret> node scripts/preflight-release.mjs`
-   ausführen. Exit 0 / HTTP 200 = das deployte Modell entspricht dem Vertrag
-   (Module, Spannungsfeld-Pole, Itemzahlen, Archetypen). Bei Exit 1 die gemeldeten
-   Punkte beheben, BEVOR der Fragebogen freigeschaltet wird.
+   `result_feedback`, `action_plans`, `action_checkins`. Migration 45 ergänzt `schema_meta` und die Funktion `check_release_contract()`, Migration 46 die Spalte `assessments.result_snapshot`, `profiles.timezone`, `reports.report_kind` und `finalize_report_atomic()`.
 
 ### Schritt 2 — ENV-Variablen
 Vollständige, kommentierte Liste in **`.env.local.example`** (inkl. SPF/DKIM/DMARC- und
@@ -101,14 +93,9 @@ Diese Klick-Strecke **einmal vollständig** mit echten Keys durchspielen:
    muss **„Zugriff gesperrt"** zeigen. Das beweist die Kaskade live.
 
 ### Schritt 7 — Live-Stripe/Supabase-E2E-Refund-Test
-Die E2E-Tests sind **echte, env-gated Tests** (`test.skip`, wenn `PLAYWRIGHT_BASE_URL` /
-`E2E_EMAIL` / `E2E_PASSWORD` / `E2E_ASSESSMENT_ID` fehlen) — kein `test.fixme` mehr.
-Der verbindliche Release-Lauf ist `npm run release:verify`
-(`ci` + `preflight` + `test:e2e:release` → `tests/e2e/release-flow.spec.ts`). Er fährt
-Login → bezahltes Assessment → alle Items (variabel) → Ergebnis → Report; der Stripe-
-Checkout-/Webhook-/Refund-Teil braucht zusätzlich Stripe-Test-Infrastruktur und einen
-optionalen `E2E_REFUND_URL`-Hook. Einmal gegen die echte Umgebung ausführen — das ist der
-Beweis, den ich von hier aus nicht führen kann.
+Der hinterlegte E2E-Test ist als `test.fixme` markiert, weil er nur gegen die **echte**
+Produktions-Stripe-/Supabase-Umgebung sinnvoll läuft. Einmal manuell entsprechend
+Schritt 6.7 verifizieren — das ist der einzige Beweis, den ich von hier aus nicht führen kann.
 
 ---
 

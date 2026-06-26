@@ -98,7 +98,7 @@ KRITISCH:
 # Seine Achsen-Werte
 ${axisLines}
 
-${maturityLines ? `# Seine Entwicklungsindikatoren (Reflexionsraster, KEIN normiertes Reifemaß — keine Verdikte wie souverän/gefestigt/unreif)\n${maturityLines}\n` : ''}
+${maturityLines ? `# Seine Führungsreife\n${maturityLines}\n` : ''}
 
 ${seasonPhase ? `Saisonphase: ${seasonPhase}\n` : ''}
 ${teamMaturity ? `Team-Reife: ${teamMaturity}\n` : ''}

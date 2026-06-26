@@ -1,6 +1,7 @@
 'use client';
 
 import type { RawAnswer } from '@/lib/scoring';
+import { MODULE_TITLES } from '@/lib/release-contract';
 
 export type Item = {
   id: number;
@@ -28,16 +29,6 @@ type Props = {
   onAnswer: (value: AnswerValue) => void;
 };
 
-const MODULE_TITLES: Record<string, string> = {
-  A: 'Führungsidentität',
-  B: 'Kommunikationsarchitektur',
-  C: 'Entscheidung & Priorität',
-  D: 'Fehler- & Lernkultur',
-  E: 'Führung unter Druck',
-  F: 'Motivation & Aktivierung',
-  G: 'Beziehung & Vertrauen',
-};
-
 const FORMAT_HINTS: Record<string, string> = {
   likert_5: 'Wie stark trifft das auf dich zu?',
   forced_choice: 'Wähle die Option, die eher zu dir passt.',
@@ -51,7 +42,7 @@ const FORMAT_HINTS: Record<string, string> = {
 };
 
 export function ItemRenderer({ item, currentValue, onAnswer }: Props) {
-  const moduleLabel = MODULE_TITLES[item.module_code] ?? item.module_code;
+  const moduleLabel = (MODULE_TITLES as Record<string, string>)[item.module_code] ?? item.module_code;
   const formatHint = FORMAT_HINTS[item.format] ?? '';
 
   return (
@@ -93,7 +84,9 @@ export function ItemRenderer({ item, currentValue, onAnswer }: Props) {
             onChange={(p) => onAnswer({ value_position: p })}
           />
         ) : (
-          <div className="text-muted font-mono text-sm">Unbekanntes Format: {item.format}</div>
+          <div className="mt-4 border border-bone-line/30 rounded-md px-5 py-4 text-center text-sm text-muted-dark leading-snug">
+            Diese Frage kann gerade nicht angezeigt werden und wird übersprungen.
+          </div>
         )}
       </div>
     </div>
@@ -194,79 +187,77 @@ function SpannungsfeldInput({
   value: number | undefined;
   onChange: (p: number) => void;
 }) {
-  // Die Pol-Beschriftungen liegen auf der ersten Option. KEINE erfundenen
-  // Platzhalter-Pole mehr (P0.4): fehlende Pole werden vom Release-Vertrag bereits
-  // VOR Anzeige des Fragebogens geblockt — hier wird nichts erfunden.
-  const first = options[0] ?? {};
-  const leftLabel = first.left ?? '';
-  const rightLabel = first.right ?? '';
+  // Die erste Option trägt die Pol-Beschriftungen. KEINE Ersatztexte:
+  // Fehlt ein Pol, wird der Regler NICHT angezeigt (Fail-Closed). Die
+  // vorgelagerte Vertragsprüfung verhindert das normalerweise schon — dies
+  // ist die zweite Verteidigungslinie direkt am Eingabefeld.
+  const left = options[0]?.left?.trim();
+  const right = options[0]?.right?.trim();
 
-  // Unbeantwortet ist NICHT dasselbe wie eine bewusst gesetzte 50/50-Antwort.
-  // Solange value undefined ist, gilt das Item als unbeantwortet; der Regler
-  // steht optisch (gedämpft) in der Mitte, zählt aber nicht als Antwort. Der
-  // Weiter-Button bleibt gesperrt (Runner: disabled bei fehlendem pending).
-  const answered = value !== undefined;
+  if (!left || !right) {
+    return (
+      <div className="mt-6 border border-bone-line/30 rounded-md px-5 py-4 text-center">
+        <div className="font-mono text-[0.7rem] uppercase tracking-[0.15em] text-gold-deep mb-1">
+          Frage nicht verfügbar
+        </div>
+        <p className="text-sm text-muted-dark leading-snug">
+          Diese Frage kann gerade nicht angezeigt werden und wird übersprungen, statt sie
+          unvollständig auszuspielen.
+        </p>
+      </div>
+    );
+  }
+
+  // „Bewusstes 50/50": Solange der Trainer den Regler nicht bewegt hat
+  // (value === undefined), ist die Frage NICHT beantwortet — auch wenn der
+  // Regler optisch mittig steht. Erst eine echte Interaktion (auch bewusst auf
+  // 50 %) zählt als Antwort. So wird die Mitte nie als Default „mitgespeichert".
+  const touched = value !== undefined;
   const current = value ?? 0.5;
   const pct = Math.round(current * 100);
-
-  const valueText = !answered
-    ? 'Noch nicht beantwortet'
-    : pct === 50
-      ? 'Ausgeglichen, 50 zu 50'
-      : pct < 50
-        ? `${100 - pct} Prozent ${leftLabel}`
-        : `${pct} Prozent ${rightLabel}`;
 
   return (
     <div className="mt-6">
       <div className="flex justify-between font-mono text-xs uppercase tracking-[0.12em] text-bone-soft mb-4">
-        <span data-testid="pole-left">{leftLabel}</span>
-        <span data-testid="pole-right">{rightLabel}</span>
+        <span>{left}</span>
+        <span>{right}</span>
       </div>
       <div className="relative h-14 flex items-center">
         <div className="absolute inset-x-0 h-0.5 bg-ink-line rounded" />
-        <div
-          className={`absolute h-0.5 rounded ${answered ? 'bg-gradient-to-r from-gold to-gold-light' : 'bg-ink-line'}`}
-          style={{ left: 0, width: `${current * 100}%` }}
-        />
+        {touched && (
+          <div
+            className="absolute h-0.5 bg-gradient-to-r from-gold to-gold-light rounded"
+            style={{ left: 0, width: `${current * 100}%` }}
+          />
+        )}
         <input
           type="range"
           min={0}
           max={100}
           step={1}
           value={pct}
-          aria-valuetext={valueText}
-          data-answered={answered ? 'true' : 'false'}
+          aria-valuetext={touched ? `${pct}%` : 'noch nicht beantwortet'}
           onChange={(e) => onChange(parseInt(e.target.value) / 100)}
           className={`absolute inset-0 w-full appearance-none bg-transparent cursor-pointer
                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
-                     [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:rounded-full
+                     [&::-webkit-slider-thumb]:rounded-full
                      [&::-webkit-slider-thumb]:shadow-[0_0_0_4px_var(--ink),0_10px_30px_-8px_rgba(179,142,69,0.8)]
                      [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:active:cursor-grabbing
-                     [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-gold
+                     [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6
                      [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-grab
-                     ${answered ? '' : '[&::-webkit-slider-thumb]:opacity-50 [&::-moz-range-thumb]:opacity-50'}`}
+                     ${touched
+                        ? '[&::-webkit-slider-thumb]:bg-gold [&::-moz-range-thumb]:bg-gold'
+                        : '[&::-webkit-slider-thumb]:bg-ink-line [&::-moz-range-thumb]:bg-ink-line'}`}
         />
       </div>
-      <div className="text-center font-mono text-[0.7rem] uppercase tracking-[0.15em] text-muted-dark mt-4 min-h-[1.5rem]">
-        {!answered ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-gold-light">Noch nicht beantwortet</span>
-            <button
-              type="button"
-              onClick={() => onChange(0.5)}
-              className="font-mono text-[0.62rem] uppercase tracking-[0.14em] underline decoration-dotted text-bone-soft hover:text-gold transition"
-            >
-              50 / 50 bewusst auswählen
-            </button>
-          </div>
-        ) : pct === 50 ? (
-          'Ausgeglichen · 50 / 50'
-        ) : pct < 50 ? (
-          `${100 - pct}% ${leftLabel}`
-        ) : (
-          `${pct}% ${rightLabel}`
-        )}
+      <div className="text-center font-mono text-[0.7rem] uppercase tracking-[0.15em] text-muted-dark mt-4">
+        {!touched
+          ? 'Regler bewegen, um zu antworten'
+          : pct === 50
+            ? 'Ausgeglichen · 50 / 50'
+            : pct < 50
+              ? `${100 - pct}% ${left}`
+              : `${pct}% ${right}`}
       </div>
     </div>
   );

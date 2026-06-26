@@ -113,6 +113,12 @@ const variants = [
     name: '4-mischprofil',
     props: { ...base, productTier: 2, profileType: 'mixed' },
   },
+  {
+    // Basis-Auswertung (KI-Fallback): Cover/Meta müssen den Fallback ehrlich
+    // kennzeichnen und der Renderpfad muss fehlerfrei durchlaufen.
+    name: '5-basis-fallback',
+    props: { ...base, productTier: 2, isFallback: true },
+  },
 ];
 
 const outDir = join(ROOT, '.pdf-fulltest');

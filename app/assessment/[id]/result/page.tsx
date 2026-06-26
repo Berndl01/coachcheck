@@ -7,7 +7,7 @@ import { TopNav } from '@/components/top-nav';
 import { Footer } from '@/components/landing/footer';
 import { ReportGenerateButton } from '@/components/assessment/report-generate-button';
 import { ResultRecovery } from './recovery';
-import { AnswerQualityRetry } from '@/components/assessment/answer-quality-retry';
+import { ResultRetake } from './retake';
 import { InvitationsManager } from '@/components/assessment/invitations-manager';
 import { TeamcheckManager } from '@/components/assessment/teamcheck-manager';
 import { ContextForm } from '@/components/assessment/context-form';
@@ -19,8 +19,7 @@ import { RecognitionFeedback } from '@/components/assessment/recognition-feedbac
 import { ResultReveal } from '@/components/assessment/result-reveal';
 import { ActionFocusCard } from '@/components/assessment/action-focus-card';
 import { buildProgressComparison } from '@/lib/insight/progress';
-import { computeMaturityScores, MATURITY_KEYS, MATURITY_LABELS, type AxisScores } from '@/lib/scoring';
-import { MODULES } from '@/lib/release/contract';
+import { DEVELOPMENT_INDICATOR_KEYS, DEVELOPMENT_INDICATOR_LABELS, DEVELOPMENT_INDICATOR_DISCLAIMER } from '@/lib/release-contract';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -43,14 +42,13 @@ const AXIS_ORDER = [
   'standardisierung_anpassung',
 ];
 
-// Entwicklungsindikatoren sind KEIN normiertes, validiertes Reifemaß — sie sind
-// Reflexionshinweise aus den eigenen Antworten. Deshalb bewusst KEINE wertenden
-// Verdikte mehr („souverän"/„gefestigt"/„unreif"), sondern neutrale Tendenz-
-// Beschreibungen, wie stark ein Indikator in den Antworten ausgeprägt ist.
-function indicatorTendency(v: number): { label: string; tone: string } {
-  if (v >= 0.66) return { label: 'deutlich ausgeprägt', tone: 'text-gold-deep' };
-  if (v >= 0.33) return { label: 'im mittleren Bereich', tone: 'text-muted' };
-  return { label: 'wenig ausgeprägt', tone: 'text-muted' };
+// Entwicklungsindikatoren werden NICHT normierend bewertet. Statt wertender
+// Reife-Etiketten gibt es nur eine neutrale, beschreibende Verortung der
+// Tendenz (niedrig/mittel/ausgeprägt) — als Reflexionshinweis, kein Urteil.
+function indicatorBand(v: number): { label: string; tone: string } {
+  if (v >= 0.66) return { label: 'ausgeprägte Tendenz', tone: 'text-gold-deep' };
+  if (v >= 0.33) return { label: 'mittlere Tendenz', tone: 'text-muted' };
+  return { label: 'geringe Tendenz', tone: 'text-muted' };
 }
 
 export default async function ResultPage({
@@ -126,42 +124,6 @@ export default async function ResultPage({
     );
   }
 
-  // ----------------------------------------------------------------------
-  // ANTWORTQUALITÄT (verbindliche Release-Bedingung): Bei einem nicht
-  // interpretierbaren Antwortmuster (sehr schnell UND gleichförmig) wird KEIN
-  // scheinbar präzises Premium-Ergebnis und KEIN Premium-Report ausgeliefert.
-  // Stattdessen ein ehrlicher Hinweis + kostenloser Neuversuch (gleicher Kauf).
-  // 'eingeschränkt' wird weiter unten nur abgemildert als Banner gezeigt.
-  // ----------------------------------------------------------------------
-  const responseQuality = (assessment.response_quality as { dataQuality?: string; note?: string } | null) ?? null;
-  const qualityBlocked = responseQuality?.dataQuality === 'nicht_interpretierbar';
-  if (qualityBlocked) {
-    return (
-      <>
-        <TopNav />
-        <main className="max-w-[760px] mx-auto px-4 md:px-8 py-16">
-          <div className="bg-bone-soft border border-bone-line p-8 rounded-md">
-            <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
-              {t('resultPage.qualityBlockedKicker')}
-            </div>
-            <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
-              {t('resultPage.qualityBlockedTitle')}
-            </h1>
-            <p className="text-muted leading-relaxed mb-3">
-              {t('resultPage.qualityBlockedBody1')}
-            </p>
-            <p className="text-muted leading-relaxed text-sm mb-6">
-              {t('resultPage.qualityBlockedBody2')}
-            </p>
-            <AnswerQualityRetry assessmentId={id} />
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
-  const qualityLimited = responseQuality?.dataQuality === 'eingeschraenkt';
-
   // Existing report check
   const { data: existingReport } = await supabase
     .from('reports')
@@ -207,22 +169,8 @@ export default async function ResultPage({
     teamInvitations = invs ?? [];
   }
 
-  // (P0.4) Eingefrorener Ergebnis-Snapshot ist für neue Assessments die
-  // Lesequelle. Die Archetyp-DARSTELLUNG wird über das FK-Objekt gelegt (alle
-  // Felder bleiben erhalten, die eingefrorenen Texte überschreiben aktuelle).
-  const snap = (assessment.result_snapshot as {
-    axis_scores?: Record<string, number>;
-    development_indicators?: Record<string, number>;
-    module_signals?: Record<string, number>;
-    archetypes?: { primary?: Record<string, any>; secondary?: Record<string, any> };
-  } | null) ?? null;
-
-  const primary = (snap?.archetypes?.primary
-    ? { ...(assessment.primary as any), ...snap.archetypes.primary }
-    : (assessment.primary as any)) as any;
-  const secondary = (snap?.archetypes?.secondary
-    ? { ...(assessment.secondary as any), ...snap.archetypes.secondary }
-    : (assessment.secondary as any)) as any;
+  const primary = assessment.primary as any;
+  const secondary = assessment.secondary as any;
   const profileMeta = (assessment.signature as any)?.profile as
     | { type?: string; headline?: string }
     | undefined;
@@ -244,81 +192,39 @@ export default async function ResultPage({
     .eq('assessment_id', id)
     .eq('status', 'active')
     .maybeSingle();
-  // (P0.5) Für neue Assessments alle Kennwerte bevorzugt aus dem eingefrorenen
-  // result_snapshot lesen (Migration 46), niemals beim Lesen neu rechnen. Legacy
-  // ohne Snapshot fällt deterministisch auf die persistierten Spalten zurück.
-  // axisScores: Snapshot zuerst (P0.4), sonst persistierte Spalte.
-  const axisScores = (snap?.axis_scores ?? assessment.axis_scores) as Record<string, number>;
+  const axisScores = assessment.axis_scores as Record<string, number>;
   const signature = buildInstantSignature(axisScores as any);
   const manual = primary ? buildOperatingManual(primary, axisScores as any) : null;
   const playerMatrix = primary ? buildPlayerTypeMatrix(primary, axisScores as any) : null;
   const shareToken = (assessment as any).share_token as string | null;
   const shareEnabled = Boolean((assessment as any).share_enabled);
 
-  // Entwicklungsindikatoren (zweite Schicht) — bevorzugt aus dem eingefrorenen
-  // Finalize-Snapshot lesen (Migration 46), NICHT beim Lesen neu rechnen. Nur
-  // Alt-Assessments ohne gespeicherte Werte fallen deterministisch zurück.
-  // (P0.4) Entwicklungsindikatoren: SNAPSHOT zuerst, dann persistierte Spalte,
-  // erst zuletzt (nur Legacy ohne beides) deterministisch aus den Items.
+  // Entwicklungsindikatoren (zweite Schicht) — AUS DEM EINGEFRORENEN SNAPSHOT,
+  // NICHT neu gerechnet. Ein altes Assessment wird nie mit aktuellen
+  // Itemgewichten neu bewertet (Ergebnisvertrag). Primärquelle:
+  // result_snapshot.development_indicators; Fallback auf die persistierte
+  // Spalte maturity_scores für Assessments aus der Zeit vor dem Snapshot.
   let maturityScores: Record<string, number> | null = null;
   if (productTier >= 2) {
-    const frozen =
-      (snap?.development_indicators ?? null) ??
-      ((assessment.maturity_scores as Record<string, number> | null) ?? null);
-    if (frozen && Object.keys(frozen).length > 0) {
-      maturityScores = frozen;
-    } else {
-      // Legacy-Fallback: Item-Join über admin (items seit Migration 29 nicht über
-      // RLS lesbar); Ownership ist oben (id + user_id) bereits verifiziert.
-      const { data: matAnswers } = await createAdminClient()
-        .from('answers')
-        .select('value_numeric, value_position, item:items(module_code, reverse_scored)')
-        .eq('assessment_id', id);
-      const mAvg: Record<string, number> = {};
-      const mCnt: Record<string, number> = {};
-      (matAnswers ?? []).forEach((a: any) => {
-        const code = a.item?.module_code;
-        if (!code) return;
-        let v: number | null = null;
-        if (a.value_numeric != null) {
-          v = (a.value_numeric - 3) / 2;
-          if (a.item.reverse_scored) v = -v;
-        } else if (a.value_position != null) {
-          v = a.value_position * 2 - 1;
-        }
-        if (v == null) return;
-        mAvg[code] = (mAvg[code] ?? 0) + v;
-        mCnt[code] = (mCnt[code] ?? 0) + 1;
-      });
-      Object.keys(mAvg).forEach((c) => { mAvg[c] = mAvg[c] / mCnt[c]; });
-      maturityScores = computeMaturityScores(axisScores as AxisScores, mAvg) as unknown as Record<string, number>;
-    }
+    const snap = (assessment as { result_snapshot?: { development_indicators?: Record<string, number> } | null }).result_snapshot;
+    const stored = snap?.development_indicators ?? ((assessment as { maturity_scores?: Record<string, number> | null }).maturity_scores ?? null);
+    maturityScores = stored && Object.keys(stored).length > 0 ? stored : null;
   }
 
   // Re-Check: jüngstes früheres Assessment desselben Trainers für den Verlauf.
-  // (P0.4) Nur vergleichbar, wenn PRODUKT, Scoring- UND Itempool-Version identisch
-  // sind und ein eingefrorener Snapshot existiert. Verglichen wird ausschließlich
-  // Snapshot gegen Snapshot — nie gegen evtl. nachgerechnete Spaltenwerte.
   let progress: ReturnType<typeof buildProgressComparison> | null = null;
   {
     const { data: prior } = await supabase
       .from('assessments')
-      .select('id, result_snapshot, completed_at, created_at')
+      .select('id, axis_scores, maturity_scores, completed_at, created_at')
       .eq('user_id', user.id)
       .neq('id', id)
-      .eq('product_id', (assessment as any).product_id)
-      .eq('scoring_version', (assessment as any).scoring_version)
-      .eq('itempool_version', (assessment as any).itempool_version)
       .in('status', ['completed', 'report_ready', 'archived'])
-      .not('result_snapshot', 'is', null)
+      .not('axis_scores', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    const priorSnap = (prior?.result_snapshot as {
-      axis_scores?: Record<string, number>;
-      development_indicators?: Record<string, number>;
-    } | null) ?? null;
-    if (priorSnap?.axis_scores) {
+    if (prior?.axis_scores) {
       progress = buildProgressComparison(
         {
           axisScores: axisScores as any,
@@ -326,8 +232,8 @@ export default async function ResultPage({
           date: (assessment as any).completed_at ?? new Date().toISOString(),
         },
         {
-          axisScores: priorSnap.axis_scores as any,
-          maturityScores: (priorSnap.development_indicators as any) ?? null,
+          axisScores: prior.axis_scores as any,
+          maturityScores: (prior as any).maturity_scores ?? null,
           date: (prior as any).completed_at ?? (prior as any).created_at ?? new Date().toISOString(),
         },
       );
@@ -337,14 +243,58 @@ export default async function ResultPage({
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://coachcheck.humatrix.cc';
   const metadataContext = ((assessment as any).metadata?.context ?? {}) as Record<string, any>;
 
+  // ----------------------------------------------------------------------
+  // ANTWORTQUALITÄTS-GATE (Ergebnisvertrag).
+  // 'nicht_interpretierbar' (z. B. Durchklicken in Sekunden, alles gleich):
+  // Ergebnis UND Premiumreport werden blockiert, stattdessen ein kostenloser
+  // Wiederholungstest angeboten. 'eingeschränkt' wird sichtbar erklärt und das
+  // Ergebnis vorsichtiger gerahmt (Banner weiter unten), aber gezeigt.
+  // ----------------------------------------------------------------------
+  const responseQuality = (assessment as { response_quality?: { dataQuality?: string; note?: string } | null }).response_quality ?? null;
+  const dataQuality = responseQuality?.dataQuality ?? null;
+
+  if (dataQuality === 'nicht_interpretierbar') {
+    return (
+      <>
+        <TopNav />
+        <main className="max-w-[760px] mx-auto px-4 md:px-8 py-16">
+          <div className="bg-bone-soft border border-bone-line p-8 rounded-md">
+            <div className="font-mono text-xs uppercase tracking-[0.2em] text-gold-deep mb-3">
+              Auswertung pausiert
+            </div>
+            <h1 className="font-display text-3xl tracking-[-0.02em] mb-3">
+              Dein Antwortmuster lässt noch keine belastbare Auswertung zu.
+            </h1>
+            <p className="text-muted leading-relaxed mb-3">
+              {responseQuality?.note ??
+                'Die Antworten deuten auf sehr schnelles oder sehr gleichförmiges Ausfüllen hin. Damit dein Profil aussagekräftig ist, bekommst du eine kostenlose Wiederholung — nimm dir dafür ein paar Minuten in Ruhe.'}
+            </p>
+            <p className="text-muted leading-relaxed text-sm mb-6">
+              Dein Kauf bleibt gültig. Es entstehen keine weiteren Kosten. Bis zur Wiederholung
+              wird kein Ergebnis und kein Premium-Report erstellt.
+            </p>
+            <ResultRetake assessmentId={id} />
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       <TopNav />
       <main>
-        {qualityLimited && (
-          <div className="max-w-4xl mx-auto px-4 md:px-8 pt-6">
-            <div className="bg-bone-soft border border-bone-line rounded-md px-4 py-3 text-sm text-muted leading-[1.5]">
-              {t('resultPage.qualityLimitedNote')}
+        {dataQuality === 'eingeschraenkt' && (
+          <div className="bg-gold/10 border-b border-gold/30">
+            <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 flex items-start gap-3">
+              <span className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-gold-deep mt-0.5 shrink-0">
+                Hinweis
+              </span>
+              <p className="text-sm text-ink/80 leading-snug">
+                {responseQuality?.note ??
+                  'Die Antwortqualität ist eingeschränkt. Lies einzelne Aussagen als Tendenz, nicht als endgültig — und prüfe sie im Gespräch.'}
+              </p>
             </div>
           </div>
         )}
@@ -598,36 +548,32 @@ export default async function ResultPage({
           </div>
         </section>
 
-        {/* ENTWICKLUNGSINDIKATOREN — zweite Schicht, jenseits des Stils (Tier 2+).
-            Bewusst KEIN normiertes Reifemaß: Reflexionshinweise aus den Antworten. */}
+        {/* ENTWICKLUNGSINDIKATOREN — zweite Schicht, jenseits des Stils (Tier 2+) */}
         {maturityScores && (
           <section className="max-w-4xl mx-auto px-4 md:px-8 pb-4 pt-4 md:pt-0">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-3 flex items-center gap-3">
               <span className="w-10 h-px bg-ink" /> Entwicklungsindikatoren
             </div>
             <h2 className="font-display font-light text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.05] tracking-[-0.03em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
-              Sechs Hinweise zum Weiterdenken.
+              Sechs Felder zum Weiterdenken.
             </h2>
             <p className="text-muted text-sm leading-[1.5] max-w-[60ch] mb-4">
-              Diese sechs Dimensionen zeigen, wie stark bestimmte Muster in deinen
-              Antworten ausgeprägt sind — als Anstoß zur Reflexion, nicht als
-              Bewertung. Sie deuten an, wo es sich lohnen kann, genauer hinzusehen.
+              Diese sechs Felder zeigen Tendenzen aus deinen Antworten — als Anstoß zur
+              Selbstreflexion und fürs Trainergespräch. Sie sind bewusst kein abschließendes Urteil.
             </p>
-            <p className="text-xs text-muted/80 leading-[1.5] max-w-[60ch] mb-10 border-l-2 border-bone-line pl-3">
-              Hinweis: Diese Indikatoren sind ein Reflexionsraster aus deinen eigenen
-              Antworten — kein normiertes, validiertes Reifemaß und keine endgültige
-              Einstufung deiner Führung.
+            <p className="text-[0.8rem] text-muted-dark leading-[1.5] max-w-[60ch] mb-10 border-l-2 border-bone-line pl-3">
+              {DEVELOPMENT_INDICATOR_DISCLAIMER}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-              {MATURITY_KEYS.map((key) => {
+              {DEVELOPMENT_INDICATOR_KEYS.map((key) => {
                 const value = maturityScores![key] ?? 0.5;
-                const tendency = indicatorTendency(value);
+                const band = indicatorBand(value);
                 return (
                   <div key={key} className="grid gap-2">
                     <div className="flex justify-between items-baseline">
-                      <span className="font-display text-[1.05rem] tracking-[-0.01em]">{MATURITY_LABELS[key]}</span>
-                      <span className={`font-mono text-xs uppercase tracking-[0.1em] ${tendency.tone}`}>
-                        {tendency.label}
+                      <span className="font-display text-[1.05rem] tracking-[-0.01em]">{DEVELOPMENT_INDICATOR_LABELS[key]}</span>
+                      <span className={`font-mono text-xs uppercase tracking-[0.1em] ${band.tone}`}>
+                        {band.label}
                       </span>
                     </div>
                     <div className="relative h-1 bg-bone-line rounded">
@@ -639,45 +585,6 @@ export default async function ResultPage({
                   </div>
                 );
               })}
-            </div>
-          </section>
-        )}
-
-        {/* SIEBEN FÜHRUNGSDIMENSIONEN — dieselben sieben Module wie im Report.
-            (P0.6) BEWUSST nur Namen + qualitative Reflexionsbereiche: KEINE
-            bipolaren Pol-Positionen und KEINE pseudo-präzisen Prozentwerte, solange
-            keine fachlich freigegebene Item-Konstrukt-Matrix vorliegt. Die
-            ausführliche Einordnung je Modul steht im Report. */}
-        {productTier >= 2 && primary && (
-          <section className="max-w-4xl mx-auto px-4 md:px-8 pb-4 pt-10">
-            <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted mb-3 flex items-center gap-3">
-              <span className="w-10 h-px bg-ink" /> Sieben Führungsdimensionen
-            </div>
-            <h2 className="font-display font-light text-[clamp(1.8rem,4vw,2.8rem)] leading-[1.05] tracking-[-0.03em] mb-4" style={{ fontVariationSettings: "'opsz' 144" }}>
-              Die Architektur deiner Führung.
-            </h2>
-            <p className="text-muted text-sm leading-[1.5] max-w-[60ch] mb-4">
-              Dieselben sieben Dimensionen, die dein Report ausführlich beschreibt.
-              Sie strukturieren deine Führung in greifbare Bereiche — die
-              vertiefte Einordnung je Modul findest du in deinem Report.
-            </p>
-            <p className="text-xs text-muted/80 leading-[1.5] max-w-[60ch] mb-8 border-l-2 border-bone-line pl-3">
-              Hinweis: Diese sieben Module sind qualitative Reflexionsbereiche —
-              kein normiertes, validiertes Maß, keine bipolare Positionierung und
-              keine endgültige Einstufung deiner Führung.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-3">
-              {MODULES.map((m) => (
-                <div key={m.code} className="flex items-baseline justify-between gap-4 border-b border-bone-line/60 pb-3">
-                  <span className="font-display text-[1.05rem] tracking-[-0.01em]">
-                    <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-gold-deep mr-2">{m.code}</span>
-                    {m.name_de}
-                  </span>
-                  <span className="font-mono text-[0.56rem] uppercase tracking-[0.12em] text-muted shrink-0 text-right">
-                    Qualitativer Reflexionsbereich
-                  </span>
-                </div>
-              ))}
             </div>
           </section>
         )}

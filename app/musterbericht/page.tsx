@@ -16,12 +16,12 @@ const AXES = [
 ];
 
 const MATURITY = [
-  { label: 'Selbstregulation', v: 0.72, band: 'deutlich ausgeprägt' },
-  { label: 'Perspektivflexibilität', v: 0.48, band: 'im mittleren Bereich' },
-  { label: 'Konfliktreife', v: 0.55, band: 'im mittleren Bereich' },
-  { label: 'Druckreife', v: 0.7, band: 'deutlich ausgeprägt' },
-  { label: 'Verantwortungsklarheit', v: 0.84, band: 'deutlich ausgeprägt' },
-  { label: 'Integrationsfähigkeit', v: 0.52, band: 'im mittleren Bereich' },
+  { label: 'Selbstregulation', v: 0.72, band: 'gefestigt' },
+  { label: 'Perspektivflexibilität', v: 0.48, band: 'im Aufbau' },
+  { label: 'Konfliktreife', v: 0.55, band: 'im Aufbau' },
+  { label: 'Druckreife', v: 0.7, band: 'gefestigt' },
+  { label: 'Verantwortungsklarheit', v: 0.84, band: 'souverän' },
+  { label: 'Integrationsfähigkeit', v: 0.52, band: 'im Aufbau' },
 ];
 
 const MODULES = [
@@ -150,22 +150,18 @@ export default async function MusterberichtPage() {
             </div>
           </Page>
 
-          {/* Entwicklungsindikatoren */}
-          <Page kicker="03 — Entwicklungsindikatoren">
-            <p className="text-muted text-[0.92rem] leading-[1.55] mb-3 max-w-[58ch]">
-              Diese sechs Dimensionen zeigen, wie stark bestimmte Muster in den Antworten
-              ausgeprägt sind — als Anstoß zur Reflexion, nicht als Bewertung.
-            </p>
-            <p className="text-muted/80 text-[0.78rem] leading-[1.5] mb-8 max-w-[58ch] border-l-2 border-bone-line pl-3">
-              Hinweis: ein Reflexionsraster aus den Antworten — kein normiertes, validiertes
-              Reifemaß.
+          {/* Führungsreife */}
+          <Page kicker="03 — Führungsreife">
+            <p className="text-muted text-[0.92rem] leading-[1.55] mb-8 max-w-[58ch]">
+              Reife ist nicht dein Stil — sondern wie souverän du mit den Anforderungen deines
+              Stils umgehst.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5">
               {MATURITY.map((m) => (
                 <div key={m.label} className="grid gap-1.5">
                   <div className="flex justify-between items-baseline">
                     <span className="font-display text-[1rem] tracking-[-0.01em]">{m.label}</span>
-                    <span className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-gold-deep">{m.band}</span>
+                    <span className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-gold-deep">{m.band} · {Math.round(m.v * 100)} %</span>
                   </div>
                   <div className="relative h-1 bg-bone-line rounded">
                     <span className="absolute top-0 left-0 h-1 bg-gold rounded" style={{ width: `${m.v * 100}%` }} />
