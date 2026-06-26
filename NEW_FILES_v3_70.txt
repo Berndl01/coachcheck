@@ -1,0 +1,28 @@
+CoachCheck v3.70 — ALLE neuen Dateien (müssen committet sein)
+==============================================================
+Mit `git add -A` committen, sonst fehlen untrackte (neue) Dateien und CI bricht
+mit „Cannot find module" ab.
+
+NEU in v3.70 (Profil):
+  app/profil/page.tsx
+  tests/profile-page-v3-70.test.ts
+
+NEU bereits aus v3.69 (müssen ebenfalls drin sein):
+  lib/release-contract.ts
+  supabase/migrations/45_release_contract_integrity.sql
+  supabase/migrations/46_score_snapshot_timezone_report_finalize.sql
+  app/api/admin/readiness/route.ts
+  app/api/assessment/[id]/retake/route.ts
+  app/assessment/[id]/result/retake.tsx
+  scripts/preflight-release.mjs
+  tests/release-contract-v3-69.test.ts
+  tests/e2e/questionnaire-flow.spec.ts
+
+PRÜFEN (in deinem Repo):
+  git ls-files | grep -E "profil/page|profile-page|release-contract|45_release|46_score|admin/readiness|retake|preflight-release|questionnaire-flow"
+  -> 11 Treffer erwartet.
+
+FIX, falls welche fehlen:
+  git add -A
+  git commit -m "v3.70: trainer profile + v3.69 release wave (all new files)"
+  git push

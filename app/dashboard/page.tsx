@@ -393,6 +393,9 @@ export default async function DashboardPage() {
 
         {/* Logout */}
         <div className="pt-8 border-t border-bone-line flex flex-wrap gap-6 items-center">
+          <a href="/profil" className="font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition">
+            {t('nav.profile')}
+          </a>
           <a href="/konto/daten" className="font-mono text-xs uppercase tracking-[0.1em] text-muted hover:text-ink transition">
             {t('dashboard.myData')}
           </a>
