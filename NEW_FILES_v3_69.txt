@@ -1,0 +1,30 @@
+CoachCheck v3.69 — NEUE Dateien (müssen committet sein)
+========================================================
+Diese 9 Dateien sind in v3.69 NEU hinzugekommen. Fehlt eine davon im Commit,
+schlägt CI mit „Cannot find module"-Fehlern fehl (lib/release-contract.ts wird
+von 6 Dateien importiert → ~10 TS-Fehler).
+
+NEU:
+  lib/release-contract.ts
+  supabase/migrations/45_release_contract_integrity.sql
+  supabase/migrations/46_score_snapshot_timezone_report_finalize.sql
+  app/api/admin/readiness/route.ts
+  app/api/assessment/[id]/retake/route.ts
+  app/assessment/[id]/result/retake.tsx
+  scripts/preflight-release.mjs
+  tests/release-contract-v3-69.test.ts
+  tests/e2e/questionnaire-flow.spec.ts
+
+PRÜFEN (in deinem Repo):
+  git ls-files | grep -E "release-contract|45_release|46_score|admin/readiness|retake|preflight-release|questionnaire-flow"
+
+Erwartet: alle 9 Zeilen erscheinen. Fehlt eine → sie wurde nicht committet.
+
+FIX (staged ALLE neuen Dateien, nicht nur geänderte):
+  git add -A
+  git commit -m "v3.69: add missing new files (release-contract, migrations 45/46, readiness, retake, preflight, tests)"
+  git push
+
+Hintergrund: `git commit -a` und `git add -u` erfassen NUR bereits getrackte,
+geänderte Dateien — neue (untracked) Dateien werden stillschweigend ausgelassen.
+`git add -A` (oder `git add .`) nimmt auch die neuen Dateien mit.
