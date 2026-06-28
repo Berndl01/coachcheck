@@ -15,7 +15,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:release": "playwright test tests/e2e/release-flow.spec.ts",
     "preflight": "node scripts/preflight-release.mjs",
+    "release:assert-env": "node scripts/assert-release-e2e-env.mjs",
+    "release:verify": "npm run ci && npm run preflight && npm run release:assert-env && npm run test:e2e:release",
+    "pdftest": "node scripts/pdf-fulltest.mjs",
     "sample": "node scripts/build-sample-report.mjs",
     "ci": "tsc --noEmit && node scripts/claimcheck.mjs && vitest run && eslint .",
     "verify": "next build && tsc --noEmit && node scripts/claimcheck.mjs && vitest run && eslint . --max-warnings 0"

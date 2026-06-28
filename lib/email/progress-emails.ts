@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmailSafe } from '@/lib/email/resend';
+import { getInviterProfile } from '@/lib/invitations/inviter-profile';
 import { PROVIDER } from '@/lib/legal/provider';
 
 /**
@@ -176,7 +177,7 @@ export async function sendRaterReminders(admin: SupabaseClient): Promise<{ attem
 
   const { data: rows } = await admin
     .from('invitations')
-    .select('id, token, invited_email, invitation_type, last_reminder_at, reminder_count, assessment:parent_assessment_id(profile:user_id(full_name, sport))')
+    .select('id, token, invited_email, invitation_type, last_reminder_at, reminder_count, parent_assessment_id')
     .eq('status', 'pending')
     .eq('invitation_type', 'fremdbild')
     .is('unsubscribed_at', null)
@@ -191,8 +192,9 @@ export async function sendRaterReminders(admin: SupabaseClient): Promise<{ attem
     if (r.last_reminder_at && r.last_reminder_at > reminderCutoff) continue;
     const email = r.invited_email;
     if (!email) continue;
-    const trainerName = r.assessment?.profile?.full_name ?? 'Ein Trainer';
-    const sport = r.assessment?.profile?.sport ?? null;
+    const inviter = await getInviterProfile(admin, r.parent_assessment_id);
+    const trainerName = inviter?.fullName ?? 'Ein Trainer';
+    const sport = inviter?.sport ?? null;
     const { subject, html } = buildRaterReminderEmail({ trainerName, sport, token: r.token });
     const res = await sendEmailSafe({
       to: email, subject, html,

@@ -23,20 +23,12 @@ export async function TopNav() {
         <div className="flex items-center gap-3">
           <LanguageToggle />
           {user ? (
-            <>
-              <Link
-                href="/profil"
-                className="hidden sm:inline-flex font-mono text-xs uppercase tracking-[0.1em] px-4 py-2.5 border border-bone-line rounded-full text-muted hover:bg-ink hover:text-bone hover:border-ink transition"
-              >
-                {t('nav.profile')}
-              </Link>
-              <Link
-                href="/dashboard"
-                className="font-mono text-xs uppercase tracking-[0.1em] px-4 py-2.5 bg-ink text-bone rounded-full hover:bg-gold hover:text-ink transition"
-              >
-                {t('nav.dashboard')}
-              </Link>
-            </>
+            <Link
+              href="/dashboard"
+              className="font-mono text-xs uppercase tracking-[0.1em] px-4 py-2.5 bg-ink text-bone rounded-full hover:bg-gold hover:text-ink transition"
+            >
+              {t('nav.dashboard')}
+            </Link>
           ) : (
             <Link
               href="/login"

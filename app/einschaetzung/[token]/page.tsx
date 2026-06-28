@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { EinschaetzungRunner } from './runner';
 import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
+import { getInviterProfile } from '@/lib/invitations/inviter-profile';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export default async function EinschaetzungPage({
   // Load invitation by token
   const { data: invitation } = await admin
     .from('invitations')
-    .select('id, status, expires_at, parent_assessment_id, invitation_type, unsubscribed_at, assessment:parent_assessment_id(profile:user_id(full_name, sport))')
+    .select('id, status, expires_at, parent_assessment_id, invitation_type, unsubscribed_at')
     .eq('token', token)
     .maybeSingle();
 
@@ -115,9 +116,9 @@ export default async function EinschaetzungPage({
   // die anonymen Antworten der Teilnehmer mitlesen. Der Fragebogen startet leer.
   const existing: Record<number, { value_numeric?: number; value_choice?: string; value_position?: number }> = {};
 
-  const trainerProfile = (invitation.assessment as any)?.profile;
-  const trainerName = trainerProfile?.full_name ?? 'der Trainer';
-  const sport = trainerProfile?.sport ?? '';
+  const inviter = await getInviterProfile(admin, invitation.parent_assessment_id);
+  const trainerName = inviter?.fullName ?? 'der Trainer';
+  const sport = inviter?.sport ?? '';
 
   return (
     <EinschaetzungRunner

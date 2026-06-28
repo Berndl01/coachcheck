@@ -1,9 +1,17 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { randomUUID } from 'node:crypto';
 
 const BUCKET = 'reports';
 
 /**
- * Uploads a PDF buffer to Supabase Storage and returns the storage path.
+ * Lädt ein PDF in den Storage und gibt den (versionierten) Pfad zurück.
+ *
+ * (P0.7) Jeder Lauf schreibt unter einen EIGENEN, versionierten Pfad
+ * (`userId/assessmentId/uuid.pdf`) mit `upsert:false`. Damit überschreibt eine
+ * Report-Regeneration NIE das bestehende PDF, bevor die DB-Transaktion steht.
+ * Schlägt die Finalisierung fehl, wird nur die NEUE Datei aufgeräumt; der
+ * bestehende Report-Datensatz zeigt weiter auf seine (unberührte) Datei.
+ * Ein vorheriger Pfad wird erst NACH erfolgreicher Transaktion gelöscht.
  */
 export async function uploadReportPDF(
   assessmentId: string,
@@ -11,13 +19,14 @@ export async function uploadReportPDF(
   buffer: Buffer
 ): Promise<string> {
   const admin = createAdminClient();
-  const path = `${userId}/${assessmentId}.pdf`;
+  const versionId = randomUUID();
+  const path = `${userId}/${assessmentId}/${versionId}.pdf`;
 
   const { error } = await admin.storage
     .from(BUCKET)
     .upload(path, buffer, {
       contentType: 'application/pdf',
-      upsert: true,
+      upsert: false,
     });
 
   if (error) {

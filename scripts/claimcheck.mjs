@@ -22,6 +22,10 @@ const ROOTS = [
   'supabase/migrations',
   // v3_15: Achtsamkeitshinweise enthalten endnutzer-sichtbare Texte (UI + PDF)
   'lib/safety',
+  // v3_74: Die kundensichtbaren Marketing-Texte leben in den i18n-Dictionaries
+  // (Landing-Komponenten enthalten nur noch t()-Keys). Ohne diese Roots würde
+  // claimcheck die echten Claims gar nicht sehen.
+  'lib/i18n/dictionaries',
 ];
 const SINGLE_FILES = ['app/page.tsx'];
 
@@ -38,6 +42,10 @@ const HARD = [
   { re: /\b(?:ist|wird)\s+bewiesen\b/gi, msg: 'Beweis-Behauptung' },
   { re: /\bobjektive?\s+(?:trainer)?bewertung\b/gi, msg: 'objektive Bewertung' },
   { re: /\bvalidierter?\s+(?:psychologischer\s+)?test\b/gi, msg: 'validierter Test' },
+  // v3_74: entschärfte Landing-Claims dauerhaft sperren (Regression-Guard)
+  { re: /null\s+aufwand/gi, msg: 'Aufwand-Untertreibung "Null Aufwand"' },
+  { re: /entscheidet\s+(?:das\s+)?spiele?\b/gi, msg: 'unbelegte Kausalbehauptung "entscheidet Spiele"' },
+  { re: /kein\s+team\s+sagt\s+dir\s+die\s+wahrheit/gi, msg: 'absolute Behauptung "kein Team sagt dir die Wahrheit"' },
 ];
 
 // Negation-aware: diagnostisch* nur als POSITIVER Claim verboten.

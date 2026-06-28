@@ -272,8 +272,9 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Refund entitlement update failed' }, { status: 500 });
         }
 
-        // Aktive Fokus-/Aktionspläne archivieren: nach vollem Refund keine
-        // weiteren Check-ins, kein Fertigstellen, keine aktiven Pläne mehr.
+        // 2a') Refund-Kaskade (§14): aktive 7-Tage-Fokus-Pläne dieses Assessments
+        //      archivieren. Neue Pläne/Check-ins/Abschlüsse sind ohnehin schon
+        //      durch das Entitlement-Gate in den Action-Routen gesperrt.
         const { error: planErr } = await admin
           .from('action_plans')
           .update({ status: 'archived', updated_at: new Date().toISOString() })

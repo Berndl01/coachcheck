@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isAssessmentActivated } from '@/lib/assessment/activation-gate';
 import { computeAxisScores, determineArchetypes, classifyProfile, profileHeadline, buildSignature, computeMaturityScores, type RawAnswer, type Archetype } from '@/lib/scoring';
 import { computeResponseQuality, type QualityAnswer } from '@/lib/insight/response-quality';
-import { SCORING_VERSION, ITEMPOOL_VERSION, SCHEMA_VERSION } from '@/lib/release-contract';
+import { SCORING_VERSION, ITEMPOOL_VERSION } from '@/lib/release/contract';
+import { isValidAnswerValue } from '@/lib/assessment/answer-validity';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -66,29 +67,15 @@ export async function POST(
     return NextResponse.json({ error: 'could not load expected items' }, { status: 500 });
   }
 
-  const NUMERIC_FORMATS = new Set(['likert_5', 'state', 'gap_wichtig', 'gap_gelebt']);
-  const POSITION_FORMATS = new Set(['spannungsfeld']);
-  const CHOICE_FORMATS = new Set(['forced_choice', 'szenario', 'dilemma', 'ranking']);
-
   // Genau eine gültige Antwort je item_id (Set entdoppelt automatisch).
   const answerById = new Map<number, any>();
   for (const row of answers as any[]) {
     if (!answerById.has(row.item_id)) answerById.set(row.item_id, row);
   }
 
-  const hasValidValue = (fmt: string, row: any): boolean => {
-    if (!row) return false;
-    if (NUMERIC_FORMATS.has(fmt)) {
-      return Number.isInteger(row.value_numeric) && row.value_numeric >= 1 && row.value_numeric <= 5;
-    }
-    if (POSITION_FORMATS.has(fmt)) {
-      return typeof row.value_position === 'number' && row.value_position >= 0 && row.value_position <= 1;
-    }
-    if (CHOICE_FORMATS.has(fmt)) {
-      return typeof row.value_choice === 'string' && row.value_choice.length > 0;
-    }
-    return false;
-  };
+  // (P0.5) Zentrale, fail-closed Gültigkeitsprüfung (inkl. Choice-Schlüssel,
+  // ungültig bei fehlenden Optionen). Siehe lib/assessment/answer-validity.ts.
+  const hasValidValue = (fmt: string, row: any): boolean => isValidAnswerValue(fmt, row);
 
   const expectedIds: number[] = (expectedItems as any[]).map((it) => it.id);
   const missingItemIds: number[] = [];
@@ -105,8 +92,17 @@ export async function POST(
     );
   }
 
+  // (P0.6) Ab hier wird AUSSCHLIESSLICH auf den erwarteten Items dieses Tiers
+  // gerechnet. Fremde/doppelte/unerwartete Antworten fließen NICHT ins Scoring,
+  // in die Modul-Signale, die Antwortqualität oder den Snapshot ein.
+  const expectedIdSet = new Set<number>(expectedIds);
+  const validAnswers = (answers as any[]).filter((row) => {
+    if (!expectedIdSet.has(row.item_id)) return false;
+    return hasValidValue(row.item?.format, row);
+  });
+
   // Build RawAnswer array
-  const rawAnswers: RawAnswer[] = answers.map((row: any) => ({
+  const rawAnswers: RawAnswer[] = validAnswers.map((row: any) => ({
     item_id: row.item_id,
     format: row.item.format,
     axis_weights: row.item.axis_weights ?? {},
@@ -123,7 +119,7 @@ export async function POST(
   // Compute leadership maturity (second layer) and persist for progress / re-check.
   const mAvg: Record<string, number> = {};
   const mCnt: Record<string, number> = {};
-  (answers as any[]).forEach((row) => {
+  validAnswers.forEach((row) => {
     const code = row.item?.module_code;
     if (!code) return;
     let v: number | null = null;
@@ -140,20 +136,44 @@ export async function POST(
   Object.keys(mAvg).forEach((c) => { mAvg[c] = mAvg[c] / mCnt[c]; });
   const maturityScores = computeMaturityScores(axisScores, mAvg);
 
-  // Antwortqualität (#6): rein aus Antwortwerten + Ausfülldauer.
+  // Wichtig-vs-Gelebt-Lücke je Modul — ebenfalls aus den validen Items, damit
+  // der Report sie aus dem eingefrorenen Snapshot lesen kann (statt später aus
+  // möglicherweise geänderten Items neu zu rechnen).
+  const gapW: Record<string, number[]> = {};
+  const gapG: Record<string, number[]> = {};
+  validAnswers.forEach((row: any) => {
+    const code = row.item?.module_code;
+    const fmt = row.item?.format;
+    if (!code || row.value_numeric == null) return;
+    if (fmt === 'gap_wichtig') (gapW[code] ??= []).push(row.value_numeric);
+    else if (fmt === 'gap_gelebt') (gapG[code] ??= []).push(row.value_numeric);
+  });
+  const moduleGaps: Record<string, number> = {};
+  Object.keys(gapW).forEach((code) => {
+    const w = gapW[code]; const g = gapG[code];
+    if (!w?.length || !g?.length) return;
+    const avgW = w.reduce((x, y) => x + y, 0) / w.length;
+    const avgG = g.reduce((x, y) => x + y, 0) / g.length;
+    const gap = Math.max(0, Math.min(1, (avgW - avgG) / 4));
+    if (gap > 0) moduleGaps[code] = gap;
+  });
+
+  // Antwortqualität (#6): rein aus Antwortwerten + Ausfülldauer (valide Items).
   const startedAt = assessment.started_at ? new Date(assessment.started_at).getTime() : null;
   const durationMs = startedAt != null ? Date.now() - startedAt : null;
-  const qualityAnswers: QualityAnswer[] = (answers as any[]).map((row) => {
+  const qualityAnswers: QualityAnswer[] = validAnswers.map((row: any) => {
     const v = row.value_numeric;
     const likert = typeof v === 'number' && v >= 1 && v <= 5 ? v : null;
     return { likert, reverse: !!row.item?.reverse_scored };
   });
   const responseQuality = computeResponseQuality(qualityAnswers, durationMs);
 
-  // Load archetypes
+  // Load archetypes — inkl. Anzeigefelder (P0.4), damit der Snapshot die
+  // vollständige Archetyp-Darstellung EINFRIERT und ein späterer Edit an den
+  // Archetyptexten einen neu erzeugten Report eines alten Assessments nicht ändert.
   const { data: archetypes } = await supabase
     .from('archetypes')
-    .select('id, code, name_de, axis_profile');
+    .select('id, code, name_de, short_trait, kernmuster, staerken, risiken, entwicklungshebel, axis_profile');
 
   if (!archetypes || archetypes.length < 2) {
     return NextResponse.json({ error: 'at least two archetypes required' }, { status: 500 });
@@ -176,23 +196,47 @@ export async function POST(
   };
 
   // ----------------------------------------------------------------------
-  // UNVERÄNDERBARER ERGEBNIS-SNAPSHOT (Ergebnisvertrag).
-  // Einmal beim Abschluss eingefroren. Ergebnis-Ansicht, Report und PDF lesen
-  // danach gespeicherte Werte — NIE wird ein altes Assessment mit aktuellen
-  // Itemgewichten neu gerechnet. Enthält Versionen + erwartete Item-IDs, sodass
-  // erkennbar bleibt, welcher Skala/welchem Pool das Ergebnis folgt.
+  // UNVERÄNDERBARER ERGEBNIS-SNAPSHOT (Migration 46): friert exakt das ein,
+  // was bei diesem Abschluss galt — inkl. Scoring-/Itempool-Version und der
+  // erwarteten Item-IDs. Ergebnisansicht/Report/PDF lesen danach diesen
+  // Snapshot; alte Assessments werden NIE mit neuen Itemgewichten neu
+  // gerechnet. Die Reife-Werte sind hier bewusst „Entwicklungsindikatoren"
+  // (kein normiertes Reifemaß) — siehe Darstellung in Result/PDF.
   // ----------------------------------------------------------------------
   const resultSnapshot = {
     scoring_version: SCORING_VERSION,
     itempool_version: ITEMPOOL_VERSION,
-    schema_version: SCHEMA_VERSION,
     expected_item_ids: expectedIds,
     axis_scores: axisScores,
-    module_signals: mAvg, // Modul-Mittelwerte in -1..+1 (Signale je Modul A–G)
-    development_indicators: maturityScores, // vormals „Führungsreife"
+    module_signals: mAvg,
+    module_gaps: moduleGaps,
+    development_indicators: maturityScores,
     primary_archetype_code: primary.code,
     secondary_archetype_code: secondary.code,
-    profile, // Dominant-/Mischprofil-Klassifikation
+    // (P0.4) Eingefrorene Archetyp-Darstellung — alle Felder, die Ergebnisseite,
+    // Report und PDF anzeigen. Neue Assessments lesen daraus, nicht aus der
+    // (potenziell später geänderten) Archetyptabelle.
+    archetypes: {
+      primary: {
+        id: primary.id,
+        code: primary.code,
+        name_de: primary.name_de,
+        short_trait: (primary as any).short_trait ?? null,
+        kernmuster: (primary as any).kernmuster ?? null,
+        staerken: (primary as any).staerken ?? [],
+        risiken: (primary as any).risiken ?? [],
+        entwicklungshebel: (primary as any).entwicklungshebel ?? [],
+        axis_profile: primary.axis_profile,
+      },
+      secondary: {
+        id: secondary.id,
+        code: secondary.code,
+        name_de: secondary.name_de,
+        short_trait: (secondary as any).short_trait ?? null,
+        axis_profile: secondary.axis_profile,
+      },
+    },
+    profile,
     response_quality: responseQuality,
     completed_at: new Date().toISOString(),
   };
@@ -214,7 +258,10 @@ export async function POST(
       maturity_scores: maturityScores,
       response_quality: responseQuality,
       signature: { axes: signature, profile },
+      scoring_version: SCORING_VERSION,
+      itempool_version: ITEMPOOL_VERSION,
       result_snapshot: resultSnapshot,
+      snapshot_finalized_at: new Date().toISOString(),
     })
     .eq('id', id);
 

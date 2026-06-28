@@ -3,9 +3,9 @@ import { getT } from '@/lib/i18n/server';
 export async function VoicesSection() {
   const t = await getT();
   const voices = [
-    { text: t('voices.v1text'), name: 'Markus W.', role: t('voices.v1role') },
-    { text: t('voices.v2text'), name: 'Lena B.', role: t('voices.v2role') },
-    { text: t('voices.v3text'), name: 'Tobias F.', role: t('voices.v3role') },
+    { text: t('voices.v1text'), context: t('voices.v1role') },
+    { text: t('voices.v2text'), context: t('voices.v2role') },
+    { text: t('voices.v3text'), context: t('voices.v3role') },
   ];
 
   return (
@@ -32,9 +32,9 @@ export async function VoicesSection() {
             <p className="font-editorial italic text-[1.1rem] leading-[1.45] text-ink flex-grow mb-6">
               {v.text}
             </p>
-            <footer className="border-t border-bone-line pt-4 flex flex-col gap-0.5">
-              <span className="font-display font-medium text-[0.95rem] tracking-[-0.01em]">{v.name}</span>
-              <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-muted">{v.role}</span>
+            <footer className="border-t border-bone-line pt-4 flex items-center justify-between gap-3">
+              <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-muted">{v.context}</span>
+              <span className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gold-deep">{t('voices.exampleTag')}</span>
             </footer>
           </blockquote>
         ))}

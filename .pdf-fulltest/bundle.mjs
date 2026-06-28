@@ -636,6 +636,7 @@ function ReportDocument(props) {
     date,
     primaryArchetype,
     secondaryArchetype,
+    profileType,
     axisScores,
     texts,
     fremdbildScores,
@@ -649,6 +650,7 @@ function ReportDocument(props) {
     dataQuality
   } = props;
   const showAllModules = productTier >= 2;
+  const isMixedProfile = profileType === "mixed";
   const has360 = !!(fremdbildScores && discrepancies && discrepancies.length > 0);
   const hasTeamcheck = !!teamcheckScores;
   const hasPremium = productTier >= 2 && (texts.coach_signature_portrait || texts.paradoxien);
@@ -662,10 +664,16 @@ function ReportDocument(props) {
     verantwortungsklarheit: "Verantwortungsklarheit",
     integrationsfaehigkeit: "Integrationsf\xE4higkeit"
   };
+  const pdfTendency = (v) => {
+    const n = Number.isFinite(v) ? v : 0.5;
+    if (n >= 0.66) return "deutlich ausgepr\xE4gt";
+    if (n >= 0.33) return "mittlerer Bereich";
+    return "wenig ausgepr\xE4gt";
+  };
   return /* @__PURE__ */ jsxs(
     Document,
     {
-      title: `Humatrix Coach Assessment \u2014 ${traineeName}`,
+      title: `CoachCheck Assessment \u2014 ${traineeName}`,
       author: "Humatrix \u2014 The Mind Club Company",
       children: [
         /* @__PURE__ */ jsx(Page, { size: "A4", style: styles.pageDark, children: /* @__PURE__ */ jsxs(View, { style: styles.coverContainer, children: [
@@ -683,7 +691,7 @@ function ReportDocument(props) {
                 "\n",
                 "profil."
               ] }),
-              /* @__PURE__ */ jsx(Text, { style: styles.coverSubtitle, children: "Ein hybrides Premium-Assessment f\xFCr F\xFChrungsarchitektur, Coach Impact und Teamdynamik im Sport." })
+              /* @__PURE__ */ jsx(Text, { style: styles.coverSubtitle, children: "Ein hybrides Premium-Assessment f\xFCr F\xFChrungsarchitektur, Coach-Wirkung und Teamdynamik im Sport." })
             ] })
           ] }),
           /* @__PURE__ */ jsxs(View, { children: [
@@ -706,7 +714,7 @@ function ReportDocument(props) {
           ] })
         ] }) }),
         /* @__PURE__ */ jsxs(Page, { size: "A4", style: styles.page, children: [
-          /* @__PURE__ */ jsx(Text, { style: styles.kicker, children: "01 \u2014 Executive Summary" }),
+          /* @__PURE__ */ jsx(Text, { style: styles.kicker, children: "01 \u2014 \xDCberblick" }),
           /* @__PURE__ */ jsxs(Text, { style: styles.h1, children: [
             "Die Kernbotschaft",
             "\n",
@@ -724,24 +732,31 @@ function ReportDocument(props) {
             /* @__PURE__ */ jsx(Text, { style: styles.bodyMuted, children: dataQuality.note })
           ] }),
           /* @__PURE__ */ jsxs(View, { style: { marginTop: 28 }, children: [
-            /* @__PURE__ */ jsx(Text, { style: styles.mono, children: "Prim\xE4rer Archetyp" }),
+            /* @__PURE__ */ jsx(Text, { style: styles.mono, children: isMixedProfile ? "Dein Profil \xB7 Mischprofil" : "Prim\xE4rer Archetyp" }),
             /* @__PURE__ */ jsx(Text, { style: styles.h3, children: primaryArchetype.name_de }),
             /* @__PURE__ */ jsx(Text, { style: styles.bodyMuted, children: primaryArchetype.short_trait }),
             /* @__PURE__ */ jsxs(View, { style: { marginTop: 14 }, children: [
-              /* @__PURE__ */ jsx(Text, { style: styles.mono, children: "Sekund\xE4rer Archetyp" }),
+              /* @__PURE__ */ jsx(Text, { style: styles.mono, children: isMixedProfile ? "Gleich starke Zweittendenz" : "Sekund\xE4rer Archetyp" }),
               /* @__PURE__ */ jsx(Text, { style: { ...styles.h3, fontSize: 13 }, children: secondaryArchetype.name_de }),
               /* @__PURE__ */ jsx(Text, { style: styles.bodyMuted, children: secondaryArchetype.short_trait })
+            ] }),
+            isMixedProfile && /* @__PURE__ */ jsxs(Text, { style: { ...styles.bodyMuted, marginTop: 12 }, children: [
+              "Dein Ergebnis ist ein Mischprofil aus ",
+              primaryArchetype.name_de,
+              " und ",
+              secondaryArchetype.name_de,
+              ". Beide Muster sind aktuell etwa gleich stark ausgepr\xE4gt; die folgenden St\xE4rken und Hinweise gelten f\xFCr beide Tendenzen."
             ] })
           ] }),
           /* @__PURE__ */ jsx(PageFooter, { pageNum: 2, productName })
         ] }),
         /* @__PURE__ */ jsxs(Page, { size: "A4", style: styles.pagePetrol, children: [
-          /* @__PURE__ */ jsx(Text, { style: styles.archetypeLabel, children: "Dein Prim\xE4rer Archetyp" }),
+          /* @__PURE__ */ jsx(Text, { style: styles.archetypeLabel, children: isMixedProfile ? "Dein Mischprofil" : "Dein Prim\xE4rer Archetyp" }),
           /* @__PURE__ */ jsx(Text, { style: styles.archetypeName, children: primaryArchetype.name_de }),
           /* @__PURE__ */ jsx(Text, { style: styles.archetypeTrait, children: primaryArchetype.short_trait }),
           /* @__PURE__ */ jsx(Text, { style: styles.archetypeKernmuster, children: primaryArchetype.kernmuster }),
           /* @__PURE__ */ jsxs(View, { style: styles.secondarySection, children: [
-            /* @__PURE__ */ jsx(Text, { style: styles.secondaryLabel, children: "Sekund\xE4rer Archetyp" }),
+            /* @__PURE__ */ jsx(Text, { style: styles.secondaryLabel, children: isMixedProfile ? "Gleich starke Zweittendenz" : "Sekund\xE4rer Archetyp" }),
             /* @__PURE__ */ jsx(Text, { style: styles.secondaryName, children: secondaryArchetype.name_de }),
             /* @__PURE__ */ jsx(Text, { style: styles.secondaryTrait, children: secondaryArchetype.short_trait })
           ] }),
@@ -845,28 +860,26 @@ function ReportDocument(props) {
           }) })
         ] }),
         hasMaturity && maturityScores && /* @__PURE__ */ jsxs(Page, { size: "A4", style: styles.page, children: [
-          /* @__PURE__ */ jsx(Text, { style: styles.kicker, children: "Premium \xB7 F\xFChrungsreife" }),
+          /* @__PURE__ */ jsx(Text, { style: styles.kicker, children: "Premium \xB7 Entwicklungsindikatoren" }),
           /* @__PURE__ */ jsxs(Text, { style: styles.h1, children: [
             "Stil ist das eine.",
             "\n",
-            /* @__PURE__ */ jsx(Text, { style: { fontFamily: PDF_DISPLAY, fontStyle: "italic" }, children: "Reife" }),
-            " ist etwas anderes."
+            /* @__PURE__ */ jsx(Text, { style: { fontFamily: PDF_DISPLAY, fontStyle: "italic" }, children: "Entwicklung" }),
+            " ist das andere."
           ] }),
           /* @__PURE__ */ jsx(View, { style: styles.dividerGold }),
           /* @__PURE__ */ jsx(Text, { style: styles.body, children: texts.fuehrungsreife_interpretation }),
           /* @__PURE__ */ jsx(View, { style: { marginTop: 22 }, children: Object.entries(maturityScores).map(([key, val]) => /* @__PURE__ */ jsxs(View, { style: { marginBottom: 12 }, children: [
             /* @__PURE__ */ jsxs(View, { style: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }, children: [
               /* @__PURE__ */ jsx(Text, { style: { fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.ink }, children: MATURITY_LABELS_PDF[key] ?? key }),
-              /* @__PURE__ */ jsxs(Text, { style: { fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }, children: [
-                Math.round((Number.isFinite(val) ? val : 0.5) * 100),
-                " %"
-              ] })
+              /* @__PURE__ */ jsx(Text, { style: { fontFamily: PDF_SANS, fontSize: 9, color: COLORS.goldDeep, textTransform: "uppercase", letterSpacing: 0.5 }, children: pdfTendency(Number(val)) })
             ] }),
             /* @__PURE__ */ jsxs(Svg, { height: 8, width: "100%", children: [
               /* @__PURE__ */ jsx(Rect, { x: 0, y: 3, width: "100%", height: 2, fill: COLORS.boneLine, rx: 1 }),
               /* @__PURE__ */ jsx(Circle, { cx: safePct(val), cy: 4, r: 4, fill: COLORS.gold })
             ] })
-          ] }, key)) })
+          ] }, key)) }),
+          /* @__PURE__ */ jsx(Text, { style: { fontFamily: PDF_SANS, fontSize: 8, color: COLORS.muted, marginTop: 16, lineHeight: 1.5 }, children: "Hinweis: Diese Indikatoren sind ein Reflexionsraster aus den eigenen Antworten \u2014 kein normiertes, validiertes Reifema\xDF und keine endg\xFCltige Einstufung der F\xFChrung." })
         ] }),
         hasPremium && (texts.saisonphase_interpretation || texts.coach_to_team_fit) && /* @__PURE__ */ jsxs(Page, { size: "A4", style: styles.page, children: [
           /* @__PURE__ */ jsx(Text, { style: styles.kicker, children: "Premium \xB7 Kontext-Fit" }),
@@ -977,8 +990,8 @@ function ReportDocument(props) {
             ] }, d.axis);
           }) }),
           /* @__PURE__ */ jsxs(View, { style: { ...styles.calloutGold, marginTop: 20 }, children: [
-            /* @__PURE__ */ jsx(Text, { style: styles.calloutLabel, children: "Blind Spots" }),
-            /* @__PURE__ */ jsx(Text, { style: styles.body, children: texts.blind_spots ?? "Keine signifikanten Blind Spots erkennbar." })
+            /* @__PURE__ */ jsx(Text, { style: styles.calloutLabel, children: "Blinde Flecken" }),
+            /* @__PURE__ */ jsx(Text, { style: styles.body, children: texts.blind_spots ?? "Keine signifikanten blinden Flecken erkennbar." })
           ] })
         ] }),
         has360 && texts.diskrepanz_interpretationen && /* @__PURE__ */ jsxs(Page, { size: "A4", style: styles.page, children: [
@@ -1061,7 +1074,7 @@ function ReportDocument(props) {
           /* @__PURE__ */ jsx(View, { style: styles.dividerGold }),
           /* @__PURE__ */ jsx(Text, { style: styles.body, children: texts.teamcheck_narrative }),
           /* @__PURE__ */ jsx(View, { style: { marginTop: 22 }, children: [
-            ["coach_impact", teamcheckScores.coachImpact, "Coach Impact", "Negativ", "Positiv"],
+            ["coach_impact", teamcheckScores.coachImpact, "Coach-Wirkung", "Negativ", "Positiv"],
             ["psy_safety", teamcheckScores.psySafety, "Psychologische Sicherheit", "Unsicher", "Sicher"],
             ["team_klima", teamcheckScores.teamKlima, "Teamklima", "Schwach", "Stark"],
             ["leistungsdr", teamcheckScores.leistungsdruck, "Leistungsklima", "Erdr\xFCckend", "Inspirierend"],
@@ -1400,7 +1413,7 @@ var SAMPLE_REPORT = {
     konflikt: "In Konflikten bleibt er fair und faktenorientiert. Er sucht die saubere L\xF6sung. Bei aufgeladenen Spannungen hilft es, fr\xFCher das pers\xF6nliche Gespr\xE4ch zu suchen, bevor sich Positionen verh\xE4rten.",
     krise: "In akuten Krisenphasen ist die Stabilit\xE4t dieses Trainers ein Anker. Die Gefahr liegt darin, zu lange auf Kontrolle zu setzen, wo das Team einen aktivierenden, neuen Impuls br\xE4uchte."
   },
-  fuehrungsreife_interpretation: "Reife ist nicht dein Stil, sondern wie souver\xE4n du mit den Anforderungen deines Stils umgehst \u2014 und hier zeigt dein Profil ein erfreuliches Bild. Besonders gefestigt bist du in der Verantwortungsklarheit (74 %): Du wei\xDFt, wof\xFCr du stehst, und triffst Entscheidungen ohne Schlingern. Auch deine Selbstregulation (66 %) und Druckreife (61 %) tragen dich verl\xE4sslich durch enge Phasen. Den gr\xF6\xDFten Entwicklungsraum zeigt die Perspektivflexibilit\xE4t (48 %): die F\xE4higkeit, bewusst die Sicht deiner Spieler einzunehmen und deinen Stil daran anzupassen. Genau dort liegt der Hebel, um deine ohnehin starke F\xFChrung anschlussf\xE4higer zu machen \u2014 Reife hei\xDFt hier nicht, weicher zu werden, sondern beweglicher.",
+  fuehrungsreife_interpretation: "Diese sechs Entwicklungsindikatoren sind ein Reflexionsraster aus deinen Antworten \u2014 kein normiertes Reifema\xDF, sondern Hinweise, wo genaueres Hinsehen lohnt. Deutlich ausgepr\xE4gt zeigt sich die Verantwortungsklarheit: Du wei\xDFt, wof\xFCr du stehst, und triffst Entscheidungen ohne Schlingern. Auch Selbstregulation und Druckreife liegen im oberen Bereich und deuten an, dass dich enge Phasen verl\xE4sslich tragen. Im mittleren Bereich liegt die Perspektivflexibilit\xE4t \u2014 die F\xE4higkeit, bewusst die Sicht deiner Spieler einzunehmen und deinen Stil daran anzupassen. Lies das als Ansto\xDF, nicht als Urteil: Genau dort k\xF6nnte ein Hebel liegen, um deine F\xFChrung anschlussf\xE4higer zu machen.",
   no_go_warnungen: [
     "Nicht noch mehr Kontrolle erh\xF6hen, wenn die Unsicherheit im Team steigt \u2014 das verst\xE4rkt die Abwartehaltung.",
     "Keine pauschale Kritik im Kollektiv aussprechen; was sachlich gemeint ist, wirkt vor der Gruppe schnell hart.",

@@ -692,8 +692,6 @@ export type ReportProps = {
   };
   /** Mischprofil-Einordnung (Bestcase §9): 'mixed' → PDF nennt es Mischprofil. */
   profileType?: 'dominant' | 'mixed' | null;
-  /** true = Basis-Auswertung (KI-Texte nicht verfügbar) — ehrlich kennzeichnen. */
-  isFallback?: boolean;
   axisScores: AxisScores;
   texts: ReportOutput;
   // Optional 360° data
@@ -752,7 +750,7 @@ export function ReportDocument(props: ReportProps) {
     fremdbildScores, discrepancies, fremdbildResponseCount,
     teamcheckScores, teamcheckResponseCount, teamcheckCareHints,
     maturityScores, context,
-    dataQuality, isFallback,
+    dataQuality,
   } = props;
 
   const showAllModules = productTier >= 2;
@@ -777,6 +775,15 @@ export function ReportDocument(props: ReportProps) {
     integrationsfaehigkeit: 'Integrationsfähigkeit',
   };
 
+  // Entwicklungsindikatoren sind KEIN normiertes Reifemaß → neutrale Tendenz
+  // statt wertendem Prozent-Verdikt.
+  const pdfTendency = (v: number): string => {
+    const n = Number.isFinite(v) ? v : 0.5;
+    if (n >= 0.66) return 'deutlich ausgeprägt';
+    if (n >= 0.33) return 'mittlerer Bereich';
+    return 'wenig ausgeprägt';
+  };
+
   return (
     <Document
       title={`CoachCheck Assessment — ${traineeName}`}
@@ -793,18 +800,14 @@ export function ReportDocument(props: ReportProps) {
               </Text>
             </View>
             <View style={{ marginTop: 80 }}>
-              <Text style={{ ...styles.kicker, color: COLORS.gold }}>
-                {isFallback ? 'Basis-Auswertung' : 'Premium Coaching-Analyse'}
-              </Text>
+              <Text style={{ ...styles.kicker, color: COLORS.gold }}>Premium Coaching-Analyse</Text>
               <Text style={styles.coverTitle}>
                 Dein{'\n'}
                 <Text style={styles.coverTitleGold}>Führungs-</Text>{'\n'}
                 profil.
               </Text>
               <Text style={styles.coverSubtitle}>
-                {isFallback
-                  ? 'Eine Basis-Auswertung deiner Führungsarchitektur — deterministisch aus deinen Antworten abgeleitet (Archetyp, Signatur, Kernachsen). Die ausführlichen Premium-Texte sind nicht enthalten.'
-                  : 'Ein hybrides Premium-Assessment für Führungsarchitektur, Coach-Wirkung und Teamdynamik im Sport.'}
+                Ein hybrides Premium-Assessment für Führungsarchitektur, Coach-Wirkung und Teamdynamik im Sport.
               </Text>
             </View>
           </View>
@@ -821,8 +824,6 @@ export function ReportDocument(props: ReportProps) {
               )}
               <Text style={styles.coverMetaLabel}>Paket</Text>
               <Text style={styles.coverMetaValue}>{productName}</Text>
-              <Text style={styles.coverMetaLabel}>Auswertung</Text>
-              <Text style={styles.coverMetaValue}>{isFallback ? 'Basis-Auswertung' : 'Premium-Report'}</Text>
               <Text style={styles.coverMetaLabel}>Erstellt</Text>
               <Text style={styles.coverMetaValue}>{date}</Text>
             </View>
@@ -1025,20 +1026,16 @@ export function ReportDocument(props: ReportProps) {
         </Page>
       )}
 
-      {/* FÜHRUNGSREIFE */}
+      {/* ENTWICKLUNGSINDIKATOREN (kein normiertes Reifemaß) */}
       {hasMaturity && maturityScores && (
         <Page size="A4" style={styles.page}>
           <Text style={styles.kicker}>Premium · Entwicklungsindikatoren</Text>
           <Text style={styles.h1}>
-            Sechs Felder{'\n'}
-            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>zum Weiterdenken.</Text>
+            Stil ist das eine.{'\n'}
+            <Text style={{ fontFamily: PDF_DISPLAY, fontStyle: 'italic' }}>Entwicklung</Text> ist das andere.
           </Text>
           <View style={styles.dividerGold} />
           <Text style={styles.body}>{texts.fuehrungsreife_interpretation}</Text>
-          <Text style={{ ...styles.body, fontSize: 8.5, color: COLORS.muted, marginTop: 10 }}>
-            Diese Entwicklungsindikatoren sind Reflexionshinweise, keine normierte Reifemessung. Sie zeigen
-            Tendenzen aus den Antworten und sind als Gesprächsanstoß gedacht — nicht als abschließende Bewertung.
-          </Text>
 
           <View style={{ marginTop: 22 }}>
             {Object.entries(maturityScores).map(([key, val]) => (
@@ -1047,8 +1044,8 @@ export function ReportDocument(props: ReportProps) {
                   <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.ink }}>
                     {MATURITY_LABELS_PDF[key] ?? key}
                   </Text>
-                  <Text style={{ fontFamily: PDF_SANS, fontSize: 10, fontWeight: 600, color: COLORS.goldDeep }}>
-                    {Math.round((Number.isFinite(val) ? val : 0.5) * 100)} %
+                  <Text style={{ fontFamily: PDF_SANS, fontSize: 9, color: COLORS.goldDeep, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {pdfTendency(Number(val))}
                   </Text>
                 </View>
                 <Svg height={8} width="100%">
@@ -1058,6 +1055,11 @@ export function ReportDocument(props: ReportProps) {
               </View>
             ))}
           </View>
+
+          <Text style={{ fontFamily: PDF_SANS, fontSize: 8, color: COLORS.muted, marginTop: 16, lineHeight: 1.5 }}>
+            Hinweis: Diese Indikatoren sind ein Reflexionsraster aus den eigenen Antworten —
+            kein normiertes, validiertes Reifemaß und keine endgültige Einstufung der Führung.
+          </Text>
         </Page>
       )}
 

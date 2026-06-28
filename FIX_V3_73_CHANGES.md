@@ -1,121 +1,86 @@
-## Kontext
+# FIX v3_73 — PostgREST-Embed-Bug (Einladungs-Gültigkeit + Rater-Reminder) behoben
 
-Bei einer Schwester-App (YOU/PlayerCheck) wurde ein Fehler gefunden: Eine Feedbackseite
-versuchte über ein verschachteltes PostgREST-Embed `assessments → profiles` zu laden, obwohl
-zwischen diesen Tabellen **kein direkter Foreign Key** existiert (beide zeigen nur auf
-`auth.users`). Das Embed ist nicht auflösbar, die Abfrage liefert `null`, der Fehler wurde
-verschluckt und die Seite zeigte eine 404/„ungültig"-Meldung für gültige Einladungen.
-
-Aufgabe: prüfen, ob **CoachCheck denselben Fehler** macht — und falls ja, beheben.
-
-**Ergebnis: Ja, identisches Muster an drei Stellen. Behoben und empirisch gegen echtes
-PostgreSQL 16 nachgewiesen.**
+Rekonstruktion des **verlorenen v3.73** auf Basis von v3.72. Die v3.73-ZIP existierte nicht mehr;
+der Fix wurde aus dem realen Code **empirisch wiederhergestellt**, nicht aus dem Gedächtnis behauptet.
+Kernlinie unverändert: **fail-closed**, **Advertised = Delivered**, **ehrliches Scoping**, **systematischer
+Sweep statt Einzelfix**.
 
 ---
 
-## Empirischer Befund (echtes PostgreSQL 16, reale Migrationen 01–48)
+## Befund (empirisch gegen Code + Schema)
 
-Die FK-Realität wurde direkt aus dem Constraint-Katalog der migrierten DB gelesen:
+`assessments.user_id` referenziert **`auth.users(id)`**, **nicht** `public.profiles`. Damit existiert
+**keine von PostgREST auflösbare Relation `assessments → profiles`**. Der verschachtelte Embed
 
-- `public.profiles.id` → `auth.users(id)` (Migration 01)
-- `public.assessments.user_id` → **`auth.users(id)`** (Migration 01) — **nicht** zu `profiles`
-- Anzahl FK `assessments → profiles`: **0**
-- `auth.users` besitzt **keine** der Spalten `full_name` / `sport` / `club`
-- `invitations.parent_assessment_id` → `assessments` (der äußere Teil des Embeds löst auf,
-  der innere `profile:user_id(...)` nicht)
+```
+assessment:parent_assessment_id(profile:user_id(full_name, sport[, club]))
+```
 
-PostgREST kann keine Beziehung einbetten, für die kein FK-Constraint existiert. Der Hint
-`user_id` löst auf den FK → `auth.users` auf; die verlangten Profilspalten existieren dort
-nicht → die **gesamte** `.select()`-Abfrage scheitert (`data = null`). Das ist
-konfigurationsunabhängig und deterministisch.
+ließ sich deshalb nicht auflösen → die Query lieferte `data = null`. Konsequenzen, beide produktiv
+relevant:
 
-**Reproduktion + Fix-Beweis mit echten Datensätzen:** Ein zusammenhängender Satz (User in
-`auth.users`, Profil „Maria Trainerin/handball/TV Musterstadt", Assessment, Einladung) wurde
-angelegt. Der **reparierte** Pfad — drei getrennte Einzelabfragen
-`invitations → assessments.user_id → profiles` — liefert den korrekten Trainernamen zurück.
-Die Einzelabfragen sind reine Single-Table-Lookups (`.eq(...)`) ohne jede
-Beziehungsauflösung und damit trivial korrekt.
+- **Einladungs-Token-Seiten** (Fremdbild + TeamCheck): Für **gültige** Token wurde `invitation` null →
+  es rendert „nicht gefunden". Die Validity bricht, obwohl die Einladung gültig ist.
+- **Rater-Reminder-Cron**: Die Reminder-Query lieferte 0 Zeilen → es wurde **nie eine Erinnerung**
+  verschickt.
 
----
+Das deckt sich exakt mit den zwei aus dem Verlauf erinnerten Symptomen.
 
-## Betroffene Stellen (3) und jeweilige Auswirkung
+## Sweep (statt Einzelfix): drei Fundstellen
 
-Alle drei verwendeten exakt
-`assessment:parent_assessment_id(profile:user_id(full_name, sport[, club]))` und
-verschluckten den Fehler (`const { data } = …` ohne `error`).
+Codebasis-weite Suche nach dem doppelt verschachtelten Embed ergab **genau drei** Stellen — die dritte
+(`teamcheck`) wäre bei einem Named-Item-Fix übersehen worden:
 
-### 1. `app/teamcheck/[token]/page.tsx` — Spieler-Fragebogen (TeamCheck)
-Das kaputte Embed ließ die ganze Einladungsabfrage scheitern → `invitation = null` → die Seite
-zeigte den **„ungültige Einladung"**-Screen für **gültige** Einladungen. Der Spieler konnte den
-Trainer-Fragebogen nicht ausfüllen.
+1. `app/einschaetzung/[token]/page.tsx` (Select + Konsum)
+2. `app/teamcheck/[token]/page.tsx` (Select + Konsum) — **nur über den Sweep gefunden**
+3. `lib/email/progress-emails.ts` → `sendRaterReminders` (Select + Konsum)
 
-### 2. `app/einschaetzung/[token]/page.tsx` — Fremdbild-Einschätzung (360°)
-Gleiches Muster → **„nicht gefunden"**-Screen für gültige Fremdbild-Einladungen.
+Einfache to-one-Embeds im Projekt (`product:products(...)`, `primary:primary_archetype_id(...)` u. a.)
+sind **nicht** betroffen — sie laufen über reale Fremdschlüssel und lösen sauber auf.
 
-### 3. `lib/email/progress-emails.ts` → `sendRaterReminders()` — Cron
-Hier war die Folge subtiler, aber real: das Embed ließ die Listenabfrage scheitern,
-`(rows ?? [])` wurde `[]` → der Cron fand „0 Zeilen" und versendete **nie** Rater-Erinnerungen,
-ohne Fehlermeldung.
+## Fix
 
----
+- **`lib/invitations/inviter-profile.ts`** (NEU): `getInviterProfile(admin, parentAssessmentId)` löst das
+  Trainer-Profil über **zwei explizite, FK-reale Lookups** auf
+  (`invitations.parent_assessment_id → assessments.id`, dann `profiles.id = user_id`). FK-Inferenz-
+  unabhängig, **fail-closed**: jedes fehlende Glied → sauber `null` statt Exception. MUSS mit dem
+  Admin-Client (service_role) laufen.
+- Alle drei Fundstellen ziehen den verschachtelten Embed aus dem `.select(...)` und nutzen den Helfer.
+  `parent_assessment_id` bleibt/wird als **Top-Level-Spalte** selektiert; die Validity nutzt ohnehin nur
+  Top-Level-Felder und ist damit unabhängig von jeder Relation.
 
-## Fix (additiv, keine Migration, kein Schemaeingriff)
+## Lock-in-Tests
 
-In allen drei Stellen wurde das nicht auflösbare Embed entfernt und durch **getrennte,
-klare Einzelabfragen** ersetzt:
+- **`tests/embed-fix-v3-73.test.ts`** (NEU, 7 Tests):
+  - **Statischer Regressions-Guard**: kein `.select(...)` in `app/` oder `lib/` enthält das verschachtelte
+    `parent_assessment_id(profile:user_id(`-Muster mehr (der Doku-Kommentar im Helfer zeigt es bewusst —
+    er ist kein `.select(` und wird korrekt nicht erfasst).
+  - Alle drei Stellen referenzieren `getInviterProfile`.
+  - Helfer-Verhalten (gemockter Admin-Client): ohne `parentAssessmentId` → `null` ohne DB-Zugriff;
+    Zwei-Schritt-Auflösung über `assessment.user_id`; fehlendes Assessment → `null` (kein zweiter Lookup);
+    fehlendes Profil → `null`; Null-/fehlende Felder werden zu `null` normalisiert.
 
-- Einladung lädt nur noch eigene Spalten (`id, status, expires_at, parent_assessment_id,
-  invitation_type[, unsubscribed_at]`).
-- Das Trainerprofil wird separat geladen: `assessments.user_id` → `profiles(full_name,
-  sport[, club])`. In `sendRaterReminders` über **zwei Batch-Abfragen** (`.in(...)`) statt N+1.
-- Der Fehler der Einladungsabfrage wird jetzt **protokolliert** (`console.error` mit `code` /
-  `message`) statt still als „ungültig"/leer verschluckt zu werden — er kann nach Entfernen des
-  Embeds praktisch nur noch bei echtem DB-Ausfall auftreten und ist dann in den Vercel-Logs
-  sichtbar.
+## Ehrliche Grenze
 
-Das Trainerprofil ist in allen drei Fällen **nicht rendering-kritisch**: fehlt es, greifen die
-bestehenden neutralen Fallbacks (`„der Trainer"` / `„Ein Trainer"`). Der eigentliche Schaden lag
-allein im scheiternden Embed, nicht in der Profilanzeige.
-
-### Lock-in-Test
-`tests/p0-feedback-embed-v3-73.test.ts` (NEU): scannt **alle** `.ts/.tsx` unter `app/` und
-`lib/` (Kommentare entfernt) und verbietet das Muster `profile:user_id(...)` sowie verschachtelte
-`assessment(...)`-Embeds mit `profile:`. Zusätzlich wird je betroffener Datei geprüft, dass das
-Profil getrennt über `public.profiles` geladen und der Abfragefehler nicht mehr verschluckt wird.
-
----
+Ob der frühere Embed zur Laufzeit **errort** oder ein **Array** zurückgab, hängt von PostgRESTs
+FK-Erkennung gegen das reale Schema ab und ist hier **statisch nicht** abschließend beweisbar. Der Fix ist
+davon unabhängig korrekt: Er **entfernt die Abhängigkeit von der Relationserkennung** vollständig und nutzt
+nur real existierende Fremdschlüssel. Der vollständige Live-Nachweis (Token-Seite lädt + Rater-Reminder-Cron
+verschickt) gegen eine laufende Supabase bleibt deine Verantwortung.
 
 ## Verbindliche Gates — alle grün (echte Läufe)
 
 ```text
-tsc --noEmit                  ✓
-node scripts/claimcheck.mjs   ✓  (70 Dateien)
-npx vitest run                ✓  (441/441, inkl. neuem Lock-in-Test)
-eslint .                      ✓
-next build                    ✓  (vollständige Route-Tabelle, fehlerfrei)
-npm audit --omit=dev …=high   ✓  (0 Schwachstellen im Produktionsbundle)
-node scripts/pdf-fulltest.mjs ✓  (4/4 PDF-Varianten)
+tsc --noEmit                          ✓
+node scripts/claimcheck.mjs           ✓
+npx vitest run                        ✓  (443/443, inkl. 7 neue Embed-Tests)
+eslint .                              ✓
+next build                            ✓
+npm audit --omit=dev --audit-level=high ✓  (0)
+node scripts/pdf-fulltest.mjs         ✓  (4/4)
 ```
-
-(Volles `npm audit` weiterhin: 1× low, `esbuild`-Dev-Server, transitiv über Vitest, nicht im
-Produktionsbundle — bewusst akzeptiert.)
-
----
-
-## Was diese Prüfung NICHT beweist
-
-Der Fix ist statisch und gegen echtes PostgreSQL 16 (Schema/Constraint-Ebene + reale Datensätze)
-verifiziert. **Nicht** abgedeckt — bleibt deine Live-Abnahme:
-
-- ein echter End-to-End-Aufruf von `/teamcheck/<token>` und `/einschaetzung/<token>` gegen die
-  laufende App mit echter Supabase-Instanz (HTTP 200, Fragebogen lädt, Trainername erscheint)
-- ein realer Lauf des Rater-Reminder-Crons gegen echte Daten
-
-Diese brauchen die laufende Umgebung; aus dem ZIP allein nicht beweisbar.
-
----
 
 ## Version
 
-`CoachCheck v3.73` (von 3.72). Reiner Code-Fix, **keine** neue Migration —
-`schema_version` bleibt **48**.
+`CoachCheck v3.73` (rekonstruiert, auf v3.72). Migrationsstand unverändert **01 → 48** — der Fix ist reiner
+Code, keine Schema-Änderung.

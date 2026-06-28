@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TeamcheckRunner } from './runner';
 import { sanitizeItemsForClient } from '@/lib/utils/sanitize-items';
+import { getInviterProfile } from '@/lib/invitations/inviter-profile';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,7 @@ export default async function TeamcheckPage({
 
   const { data: invitation } = await admin
     .from('invitations')
-    .select('id, status, expires_at, parent_assessment_id, invitation_type, assessment:parent_assessment_id(profile:user_id(full_name, sport, club))')
+    .select('id, status, expires_at, parent_assessment_id, invitation_type')
     .eq('token', token)
     .maybeSingle();
 
@@ -80,10 +81,10 @@ export default async function TeamcheckPage({
   // zurückgeben (sonst könnte der Trainer anonyme Antworten mitlesen). Start leer.
   const existing: Record<number, { value_numeric?: number; value_choice?: string; value_position?: number }> = {};
 
-  const trainerProfile = (invitation.assessment as any)?.profile;
-  const trainerName = trainerProfile?.full_name ?? 'der Trainer';
-  const sport = trainerProfile?.sport ?? '';
-  const club = trainerProfile?.club ?? '';
+  const inviter = await getInviterProfile(admin, invitation.parent_assessment_id);
+  const trainerName = inviter?.fullName ?? 'der Trainer';
+  const sport = inviter?.sport ?? '';
+  const club = inviter?.club ?? '';
 
   return (
     <TeamcheckRunner

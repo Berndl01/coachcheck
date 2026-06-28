@@ -1,101 +1,63 @@
-#!/usr/bin/env node
 /**
- * PREFLIGHT RELEASE — Live-Datenbank gegen den Release-Vertrag prüfen.
+ * RELEASE-PREFLIGHT (Live-Datenbank).
  *
- * Ruft check_release_contract() (Migration 45) auf der ECHTEN Datenbank auf und
- * gleicht zusätzlich die schema_meta-Version mit dem Code (lib/release-contract)
- * ab. Schlägt mindestens eine Bedingung fehl, endet das Script mit Exit-Code 1 —
- * der Release ist dann NICHT freigabefähig.
+ * Ruft die geschützte Readiness-API gegen die echte (migrierte) Umgebung auf
+ * und beendet sich mit Exit-Code != 0, solange NICHT „ready: true" (HTTP 200)
+ * gemeldet wird. Damit lässt sich vor jedem Deploy maschinell sicherstellen,
+ * dass das deployte Modell dem Release-Vertrag entspricht (Module, Pole,
+ * Itemzahlen, Archetypen).
  *
- * Nutzung:
- *   NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
- *     node scripts/preflight-release.mjs
+ * Aufruf:
+ *   PREFLIGHT_BASE_URL=https://coachcheck.humatrix.cc \
+ *   CRON_SECRET=*** \
+ *   node scripts/preflight-release.mjs
  *
- * .env.local wird, falls vorhanden, automatisch geladen.
+ * Default-Basis-URL: NEXT_PUBLIC_APP_URL bzw. http://localhost:3000.
  */
-import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createClient } from '@supabase/supabase-js';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const BASE =
+  process.env.PREFLIGHT_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'http://localhost:3000';
+const SECRET = process.env.CRON_SECRET;
 
-// --- .env.local minimal laden (KEY=VALUE, ohne externe Abhängigkeit) ---------
-function loadEnvLocal() {
-  const p = join(ROOT, '.env.local');
-  if (!existsSync(p)) return;
-  for (const raw of readFileSync(p, 'utf8').split('\n')) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq === -1) continue;
-    const key = line.slice(0, eq).trim();
-    let val = line.slice(eq + 1).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1);
-    }
-    if (!(key in process.env)) process.env[key] = val;
+function fail(msg) {
+  console.error(`✗ Preflight: ${msg}`);
+  process.exit(1);
+}
+
+if (!SECRET) {
+  fail('CRON_SECRET ist nicht gesetzt — die Readiness-API ist ohne Bearer-Token nicht erreichbar.');
+}
+
+const url = `${BASE.replace(/\/$/, '')}/api/admin/readiness`;
+
+try {
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${SECRET}` },
+  });
+
+  let body;
+  try {
+    body = await res.json();
+  } catch {
+    fail(`Antwort von ${url} war kein JSON (HTTP ${res.status}).`);
   }
-}
-loadEnvLocal();
 
-// --- Erwartete Versionen aus dem Code spiegeln (muss zu lib/release-contract passen) ---
-const EXPECTED = { schema: 46, scoring: '2.0.0', itempool: '2025-06-A' };
+  if (res.status === 200 && body?.ready === true) {
+    console.log(`✓ Preflight OK — Release-Vertrag erfüllt (${url}).`);
+    for (const c of body.checks ?? []) {
+      console.log(`  · ${c.ok ? 'OK ' : 'ERR'} ${c.id}: ${c.detail}`);
+    }
+    process.exit(0);
+  }
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!url || !key) {
-  console.error('✗ NEXT_PUBLIC_SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY müssen gesetzt sein.');
+  console.error(`✗ Preflight: Readiness meldet NICHT bereit (HTTP ${res.status}).`);
+  for (const c of body?.checks ?? []) {
+    if (!c.ok) console.error(`  · ERR ${c.id}: ${c.detail}`);
+  }
   process.exit(1);
+} catch (err) {
+  fail(`Readiness-API nicht erreichbar (${url}): ${err?.message ?? err}`);
 }
-
-const admin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-
-let failed = false;
-
-console.log('— Preflight: Release-Vertrag gegen Live-DB —\n');
-
-// 1) Vertragsprüfung
-const { data: checks, error } = await admin.rpc('check_release_contract');
-if (error) {
-  console.error(`✗ check_release_contract fehlgeschlagen: ${error.message}`);
-  console.error('  (Migration 45 angewendet?)');
-  process.exit(1);
-}
-
-for (const row of checks ?? []) {
-  const mark = row.ok ? '✓' : '✗';
-  console.log(`${mark} ${row.check_name.padEnd(34)} ${row.detail}`);
-  if (!row.ok) failed = true;
-}
-
-// 2) Versionen
-const { data: meta, error: metaErr } = await admin
-  .from('schema_meta')
-  .select('schema_version, scoring_version, itempool_version')
-  .eq('id', true)
-  .maybeSingle();
-
-console.log('');
-if (metaErr || !meta) {
-  console.error('✗ schema_meta nicht lesbar/vorhanden.');
-  failed = true;
-} else {
-  const checkVer = (name, got, want) => {
-    const ok = got === want;
-    console.log(`${ok ? '✓' : '✗'} ${('version_' + name).padEnd(34)} DB=${got} erwartet=${want}`);
-    if (!ok) failed = true;
-  };
-  checkVer('schema', meta.schema_version, EXPECTED.schema);
-  checkVer('scoring', meta.scoring_version, EXPECTED.scoring);
-  checkVer('itempool', meta.itempool_version, EXPECTED.itempool);
-}
-
-console.log('');
-if (failed) {
-  console.error('RESULT: ✗ Release NICHT freigabefähig — mindestens eine Vertragsbedingung verletzt.');
-  process.exit(1);
-}
-console.log('RESULT: ✓ Live-DB entspricht dem Release-Vertrag.');
-process.exit(0);

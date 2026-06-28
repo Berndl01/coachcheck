@@ -849,3 +849,53 @@ WICHTIG FÜR DEN GITHUB-UPLOAD
    Vertrags-PDF-Hash/Widerruf-Retry-Spalten).
 5. Vercel: CRON_SECRET als Env setzen, sonst laufen ALLE Crons nicht
    (reminders, confirmation-retry, withdrawal-retry → HTTP 503).
+
+================================================================================
+v3_69 — Architektur-Release-Welle (Readiness · Snapshot · Antwortqualität · Refund · Entschärfung)
+================================================================================
+Datum: 2026-06-21
+
+NEU:
+  lib/release/contract.ts                         (Release-Vertrag: Module/Achsen/Itemzahlen/Versionen + Item-Check)
+  lib/release/readiness.ts                        (Live-Readiness gegen den Vertrag)
+  app/api/admin/readiness/route.ts                (geschützte Readiness-API, 200/503)
+  app/api/assessment/[id]/retry/route.ts          (kostenloser Neuversuch, eng abgesichert)
+  components/assessment/answer-quality-retry.tsx  (Retry-Button)
+  supabase/migrations/45_release_contract_integrity.sql
+  supabase/migrations/46_score_snapshot_timezone_report_finalize.sql
+  scripts/preflight-release.mjs                   (Live-Preflight, npm run preflight)
+  tests/release-contract-v3-69.test.ts            (18 Tests)
+  tests/e2e/questionnaire.spec.ts                 (Pol-Integrität, Kernlauf test.fixme)
+  COPY_MAP_v3_69.md, 02_ACCEPTANCE_CHECKLIST.md, FIX_V3_69_CHANGES.md
+
+GEÄNDERT:
+  app/assessment/[id]/page.tsx                    (Fail-Closed-Item-Gate)
+  app/assessment/[id]/result/page.tsx             (Snapshot lesen · Antwortqualität-Block · Entschärfung)
+  app/api/assessment/[id]/finalize/route.ts       (Snapshot + Versionen einfrieren)
+  app/api/assessment/[id]/report/route.ts         (Snapshot lesen · atomare Finalisierung · PDF-Cleanup · ehrliche Fallback-E-Mail · Antwortqualität-Block)
+  app/api/assessment/[id]/report-status/route.ts  (reportKind basis/premium)
+  app/api/assessment/[id]/action/route.ts         (Refund-Gate)
+  app/api/action/[planId]/route.ts                (Refund-Gate Check-in/Abschluss)
+  app/api/stripe/webhook/route.ts                 (Refund: aktive Aktionspläne archivieren)
+  app/api/archetyp/personalize/route.ts           (Prompt-Entschärfung)
+  app/musterbericht/page.tsx                       (Entschärfung Beispielreport)
+  lib/pdf/report-document.tsx                      (Entschärfung Reife-Seite)
+  lib/pdf/sample-report-data.ts                    (Entschärfung Beispieltext)
+  lib/ai/report-prompt.ts                          (Prompt-Entschärfung)
+  lib/insight/progress.ts                          (Entschärfung Headline/Kommentar)
+  lib/i18n/dictionaries/de.ts, en.ts               (neue Keys + Entschärfung b3/s2text)
+  LAUNCH.md, tests/launch-doc-v3-51.test.ts        (Migrationsstand 01 → 46)
+  package.json                                     (preflight/pdftest-Skripte)
+  package-lock.json                                (npm audit fix: js-yaml moderate behoben)
+
+GATES:
+  tsc --noEmit ............. Exit 0
+  claimcheck ............... 68 Dateien, keine riskanten Claims
+  vitest ................... 378/378 (36 Dateien)
+  eslint ................... Exit 0
+  next build ............... Exit 0
+  npm audit ................ 1 low (esbuild, Dev-Server/Windows, transitiv, nicht Produktion); js-yaml (moderate) behoben
+  pdf-fulltest ............. 4/4 fehlerfrei
+
+OFFEN (Live, nicht statisch erbringbar): Migration 45+46 anwenden · Readiness 200 live ·
+  echter Browserdurchlauf · echter Kauf · Refund-Test · Antwortqualität-Test · Rechts-Gate (Anwalt).

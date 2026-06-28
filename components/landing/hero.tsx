@@ -91,21 +91,26 @@ export async function Hero() {
             <div className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-gold mb-4">
               {t('hero.cardKicker')}
             </div>
-            <div className="font-display font-light text-[clamp(3rem,5vw,4.4rem)] leading-none tracking-[-0.04em]">
-              87<sup className="text-[0.35em] align-super text-gold font-mono font-medium tracking-normal">/100</sup>
+            <div className="font-display font-light text-[clamp(1.7rem,3vw,2.3rem)] leading-[1.08] tracking-[-0.025em] text-bone">
+              {t('hero.cardProfileTitle')}
             </div>
             <div className="font-editorial text-base text-bone-soft mt-3 pt-4 border-t border-ink-line leading-[1.4]">
               {t('hero.cardQuote')}
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-ink-line">
+            <div className="flex flex-col gap-3.5 mt-6 pt-6 border-t border-ink-line">
               {[
-                [t('hero.cardClarity'), 'A'],
-                [t('hero.cardTone'), 'B+'],
-                [t('hero.cardCloseness'), 'C'],
-              ].map(([lbl, val]) => (
-                <div key={lbl}>
-                  <div className="font-mono text-[0.62rem] uppercase tracking-[0.15em] text-muted-dark mb-1">{lbl}</div>
-                  <div className="font-display text-[1.4rem] font-medium text-bone tracking-[-0.02em]">{val}</div>
+                [t('hero.cardClarity'), t('hero.cardClarityVal'), 0.82],
+                [t('hero.cardTone'), t('hero.cardToneVal'), 0.58],
+                [t('hero.cardCloseness'), t('hero.cardClosenessVal'), 0.4],
+              ].map(([lbl, val, frac]) => (
+                <div key={lbl as string}>
+                  <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                    <span className="font-mono text-[0.62rem] uppercase tracking-[0.15em] text-muted-dark">{lbl}</span>
+                    <span className="font-editorial italic text-[0.92rem] text-bone">{val}</span>
+                  </div>
+                  <div className="h-[3px] w-full bg-ink-line rounded-full overflow-hidden">
+                    <div className="h-full bg-gold rounded-full" style={{ width: `${(frac as number) * 100}%` }} />
+                  </div>
                 </div>
               ))}
             </div>
